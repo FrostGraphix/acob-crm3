@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      USE_MOCK_ONLY: "true"
+      MOCK_FALLBACK_ON_ERROR: "true"
+      UPSTREAM_API_URL: "http://8.208.16.168:9311"
+      UPSTREAM_USERNAME: "admin"
+      UPSTREAM_PASSWORD: "ACOB_admin"
+      JWT_SECRET: "change-me-in-production"
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

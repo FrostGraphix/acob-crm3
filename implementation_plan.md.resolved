@@ -1,0 +1,304 @@
+# ACOB CRM3 — Full Platform Replication
+
+Build a complete CRM platform that replicates every feature of the third-party Meter System at `http://8.208.16.168:9311`. The new platform will use the existing API as its data source, giving ACOB full control of their data, UI, and user experience.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Architecture Decision: Vite + React + TypeScript with a Node.js/Express backend proxy.**
+> The backend acts as a proxy to the third-party API (`8.208.16.168:9311`), so credentials and the upstream URL are never exposed to the browser. All data flows through our backend.
+
+> [!WARNING]
+> **This is a large project (~20+ pages, 144 API endpoints).** The plan below covers the complete replication. We will build it phase by phase, with the first deliverable being a working dashboard + navigation + auth flow.
+
+> [!CAUTION]
+> **No secrets will be hardcoded.** The upstream API URL and credentials will be stored in `.env` files only.
+
+---
+
+## Reference Platform Analysis
+
+### Sidebar Navigation (7 sections, 20+ pages)
+
+| Section | Sub-pages |
+|---------|-----------|
+| **Dashboard** | Main dashboard with 4 stat cards + 4 charts |
+| **Token Generate** | Credit Token, Clear Tamper Token, Clear Credit Token, Set Maximum Power Limit Token |
+| **Token Record** | Credit Token Record, Clear Tamper Record, Clear Credit Record, Set Max Power Limit Record |
+| **Remote Operation** | Meter Reading, Meter Control, Meter Token |
+| **Remote Operation Task** | Meter Reading Task, Meter Control Task, Meter Token Task |
+| **Data Report** | Long Nonpurchase Situation, Low Purchase Situation, Consumption Statistics, Interval Data |
+| **Management** | Customer, Account, Tariff, Gateway |
+
+### Dashboard Charts
+1. **Purchase Money** — Bar chart over date axis
+2. **Hourly Success Rate** — Line chart over 24h axis
+3. **Abnormal Alarm** — Pie chart (No Data Report, Current Unbalance, Current Reverse, Cover Open, Terminal Cover Open, Magnetic Interference, Battery Low, Relay Open)
+4. **Daily Consumption** — Bar chart with Daily/Monthly toggle
+
+### API Endpoints (144 total, 26 groups)
+All endpoints are `POST` with JSON body, returning `{ code, reason, result }` envelope. Key groups: Account, Customer, DailyData, DailyDataMeter, Dashboard, Debt, DLMS, DLT645, DLT645Task, EventNotification, File, Gateway, GPRSMeterTask, GPRSOnlineStatus, Item, LoadProfile, Log, Meter, PrepayReport, RemoteMeterTask, Role, Station, Tariff, Token, UpdateFirmwareTask, User.
+
+---
+
+## Proposed Changes
+
+### Project Structure
+
+```
+acob-crm3/
+├── backend/
+│   ├── src/
+│   │   ├── api/              # Route handlers grouped by domain
+│   │   │   ├── auth.ts       # /api/user/login, logout, info
+│   │   │   ├── dashboard.ts  # /api/dashboard/*
+│   │   │   ├── account.ts    # /api/account/*
+│   │   │   ├── customer.ts   # /api/customer/*
+│   │   │   ├── meter.ts      # /api/meter/*
+│   │   │   ├── tariff.ts     # /api/tariff/*
+│   │   │   ├── gateway.ts    # /api/gateway/*
+│   │   │   ├── token.ts      # /api/token/*
+│   │   │   ├── remote.ts     # /API/RemoteMeterTask/* + GPRSMeterTask/*
+│   │   │   ├── report.ts     # /API/PrepayReport/* + DailyData*
+│   │   │   └── proxy.ts      # Generic catch-all proxy
+│   │   ├── middleware/
+│   │   │   ├── auth.ts       # JWT validation
+│   │   │   └── error.ts      # Global error handler
+│   │   ├── services/
+│   │   │   └── upstream.ts   # Axios client to upstream API
+│   │   └── index.ts          # Express app entry
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/
+│   │   │   │   ├── Sidebar.tsx
+│   │   │   │   ├── Header.tsx
+│   │   │   │   └── AppLayout.tsx
+│   │   │   ├── common/
+│   │   │   │   ├── DataTable.tsx        # Reusable table with pagination
+│   │   │   │   ├── SearchBar.tsx        # Search + Reset + action buttons
+│   │   │   │   ├── StatCard.tsx         # Dashboard stat cards
+│   │   │   │   ├── ConfirmModal.tsx
+│   │   │   │   └── FormModal.tsx
+│   │   │   └── charts/
+│   │   │       ├── BarChart.tsx
+│   │   │       ├── LineChart.tsx
+│   │   │       └── PieChart.tsx
+│   │   ├── pages/
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── token-generate/
+│   │   │   │   ├── CreditTokenPage.tsx
+│   │   │   │   ├── ClearTamperTokenPage.tsx
+│   │   │   │   ├── ClearCreditTokenPage.tsx
+│   │   │   │   └── SetMaxPowerLimitTokenPage.tsx
+│   │   │   ├── token-record/
+│   │   │   │   ├── CreditTokenRecordPage.tsx
+│   │   │   │   ├── ClearTamperTokenRecordPage.tsx
+│   │   │   │   ├── ClearCreditTokenRecordPage.tsx
+│   │   │   │   └── SetMaxPowerLimitTokenRecordPage.tsx
+│   │   │   ├── remote-operation/
+│   │   │   │   ├── MeterReadingPage.tsx
+│   │   │   │   ├── MeterControlPage.tsx
+│   │   │   │   └── MeterTokenPage.tsx
+│   │   │   ├── remote-operation-task/
+│   │   │   │   ├── MeterReadingTaskPage.tsx
+│   │   │   │   ├── MeterControlTaskPage.tsx
+│   │   │   │   └── MeterTokenTaskPage.tsx
+│   │   │   ├── data-report/
+│   │   │   │   ├── LongNonpurchasePage.tsx
+│   │   │   │   ├── LowPurchasePage.tsx
+│   │   │   │   ├── ConsumptionStatisticsPage.tsx
+│   │   │   │   └── IntervalDataPage.tsx
+│   │   │   └── management/
+│   │   │       ├── CustomerPage.tsx
+│   │   │       ├── AccountPage.tsx
+│   │   │       ├── TariffPage.tsx
+│   │   │       └── GatewayPage.tsx
+│   │   ├── services/
+│   │   │   └── api.ts         # API client with typed methods
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx
+│   │   ├── hooks/
+│   │   │   ├── useAuth.ts
+│   │   │   └── useDataTable.ts
+│   │   ├── types/
+│   │   │   └── index.ts       # All shared TypeScript interfaces
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── index.css          # Design system
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── .env                       # UPSTREAM_API_URL, etc.
+├── .gitignore
+└── package.json               # Root workspace scripts
+```
+
+---
+
+### [Backend] Core Setup
+
+#### [NEW] [index.ts](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/backend/src/index.ts)
+- Express server with CORS, JSON body parser, cookie-parser
+- Mounts all API route groups
+- Proxies all `/api/*` requests to upstream `8.208.16.168:9311`
+- Stores auth token in HTTP-only cookie
+
+#### [NEW] [upstream.ts](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/backend/src/services/upstream.ts)
+- Axios instance configured with upstream base URL from `.env`
+- Intercepts responses to unwrap `{ code, reason, result }` envelope
+- Forwards auth token from cookies
+
+#### [NEW] [proxy.ts](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/backend/src/api/proxy.ts)
+- Generic proxy that forwards any `/api/*` POST to upstream
+- Used for all 144 endpoints — no need for individual route files initially
+- Adds auth token header from session
+
+---
+
+### [Frontend] Design System & Layout
+
+#### [NEW] [index.css](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/index.css)
+- CSS custom properties for color palette (matching reference: blues, teals, whites)
+- Typography using Inter/Roboto from Google Fonts
+- Dark sidebar theme, white content area
+- Table styles, card styles, button styles, modal styles
+- Pagination component styles
+
+#### [NEW] [AppLayout.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/components/layout/AppLayout.tsx)
+- Fixed left sidebar (185px) with dark blue background
+- Top header bar with breadcrumbs, search icon, fullscreen toggle, user dropdown
+- Main content area with scrolling
+
+#### [NEW] [Sidebar.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/components/layout/Sidebar.tsx)
+- "Meter System" logo at top (matching reference)
+- 7 collapsible menu sections with icons
+- Active route highlighting
+- Sub-items for each section
+
+#### [NEW] [DataTable.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/components/common/DataTable.tsx)
+- Reusable table component with:
+  - Checkbox column for bulk selection
+  - Sortable/filterable column headers
+  - Pagination: "Total XXX" | "20/page" dropdown | page numbers | "Go to" input
+  - Loading and empty states
+
+---
+
+### [Frontend] Dashboard Page
+
+#### [NEW] [DashboardPage.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/pages/DashboardPage.tsx)
+- **Row 1**: 4 stat cards — Account Count (teal), Purchase Times (blue), Purchase Unit (green), Purchase Money (red)
+- **Row 2**: Purchase Money bar chart (full width, blue bars, date x-axis)
+- **Row 3**: Hourly Success Rate line chart (left, 60%) + Abnormal Alarm pie chart (right, 40%)
+- **Row 4**: Daily Consumption bar chart with Daily/Monthly toggle
+- Data from: `POST /api/dashboard/readPanelGroup` and `POST /api/dashboard/readLineChart`
+- Charts using ECharts (Apache ECharts via `echarts-for-react`)
+
+---
+
+### [Frontend] Token Generate Pages
+
+#### [NEW] [CreditTokenPage.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/pages/token-generate/CreditTokenPage.tsx)
+- Table columns: Customer Id, Customer Name, Meter Id, Meter Type, Communication Way, Tariff Id, Protocol Version, Remark, Create Time, Station Id, Actions
+- Actions: **Recharge** button per row → opens modal with Money/Unit input + Generate button
+- Top bar: Search Term input, Search button, Reset button
+- Pagination: Total 2179, 20/page
+- Data from: `POST /api/account/read`
+- Recharge from: `POST /api/token/creditToken/generate`
+
+#### [NEW] ClearTamperTokenPage, ClearCreditTokenPage, SetMaxPowerLimitTokenPage
+- Similar table layout, different token generation endpoints
+
+---
+
+### [Frontend] Token Record Pages
+
+#### [NEW] [CreditTokenRecordPage.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/pages/token-record/CreditTokenRecordPage.tsx)
+- Table columns: Receipt Id, Customer Id, Customer Name, Meter Id, Meter Type, Tariff Id, VAT Charge, Total Unit, Total Paid, Token(Recharge), Vend, Time, Remark, Station Id, Actions
+- Actions: Print, Cancel per row + Export top bar
+- Data from: `POST /api/token/creditTokenRecord/read`
+
+#### [NEW] Other Record pages
+- ClearTamperTokenRecordPage, ClearCreditTokenRecordPage, SetMaxPowerLimitTokenRecordPage
+- Similar layout, different endpoints
+
+---
+
+### [Frontend] Remote Operation Pages
+
+#### [NEW] Meter Reading, Control, Token pages
+- Columns: Status, Customer Name, Meter Id, Meter Type, Remark, Station Id, Actions
+- Actions: Add Task, Add Batch Task
+- Data from: `POST /api/meter/read` + task creation via `POST /API/RemoteMeterTask/*`
+
+---
+
+### [Frontend] Data Report Pages
+
+#### [NEW] LongNonpurchasePage, LowPurchasePage, ConsumptionStatisticsPage
+- Report-style tables with date filters
+- Data from: `POST /API/PrepayReport/*`
+
+#### [NEW] [IntervalDataPage.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/pages/data-report/IntervalDataPage.tsx)
+- Columns: Meter Id, Gateway Id, Collection Date, Customer Id, Customer Name, Station Id, Total Energy, Last Hour Usage, Credit Balance, Maximum Demand, Protocol, Actions
+- Drill-down: "Hourly" button shows per-hour data
+- Data from: `POST /api/DailyDataMeter/read` + `POST /api/DailyDataMeter/readHourly`
+
+---
+
+### [Frontend] Management Pages
+
+#### [NEW] [CustomerPage.tsx](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/frontend/src/pages/management/CustomerPage.tsx)
+- Columns: Checkbox, Id, Name, Phone, Address, CertifiName, CertifiNo, Remark, Create Time, Update Time, Station Id, Actions (Edit, Delete)
+- Top actions: Add, Import, Export, Delete (bulk)
+- CRUD via: `POST /api/customer/*`
+
+#### [NEW] AccountPage, TariffPage, GatewayPage
+- Similar CRUD pattern with appropriate columns and endpoints
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vite + React 18 + TypeScript |
+| Styling | Vanilla CSS (custom design system) |
+| Charts | Apache ECharts (echarts-for-react) |
+| HTTP Client | Axios |
+| Routing | React Router v6 |
+| Backend | Node.js + Express + TypeScript |
+| Backend HTTP | Axios (upstream proxy) |
+| State | React Context + hooks |
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. **TypeScript Build Check** — Run `npx tsc --noEmit` in both `frontend/` and `backend/` to verify type consistency
+   ```
+   cd c:\Users\ACOB\Desktop\VS Code\acob-crm3\frontend && npx tsc --noEmit
+   cd c:\Users\ACOB\Desktop\VS Code\acob-crm3\backend && npx tsc --noEmit
+   ```
+
+2. **Dev Server Startup** — Verify both servers start without errors
+   ```
+   cd c:\Users\ACOB\Desktop\VS Code\acob-crm3\backend && npm run dev
+   cd c:\Users\ACOB\Desktop\VS Code\acob-crm3\frontend && npm run dev
+   ```
+
+### Browser Verification
+3. **Login Flow** — Navigate to the app, log in with admin/ACOB_admin, verify dashboard loads
+4. **Dashboard Data** — Verify all 4 stat cards show real numbers, all 4 charts render with data
+5. **Page Navigation** — Click through every sidebar item, verify each page loads and shows data
+6. **CRUD Operations** — Test Add/Edit/Delete on Customer and Account management pages
+7. **Token Generation** — Test Recharge flow on Credit Token page
+
+### Cross-Reference
+8. **Side-by-side comparison** — Open both the reference platform and our app, compare each page visually to confirm data and layout parity
