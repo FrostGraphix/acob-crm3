@@ -47,6 +47,7 @@ export interface TableColumn {
   key: string;
   label: string;
   align?: "start" | "center" | "end";
+  searchable?: boolean;
 }
 
 export interface FilterField {
@@ -59,8 +60,9 @@ export interface FilterField {
 export interface ActionField {
   key: string;
   label: string;
-  type?: "text" | "date" | "number";
+  type?: "text" | "date" | "number" | "textarea";
   placeholder: string;
+  sourceKey?: string;
 }
 
 export type ActionOperationKind =
@@ -68,11 +70,14 @@ export type ActionOperationKind =
   | "task-create"
   | "task-update"
   | "management-create"
+  | "management-import"
   | "management-update"
   | "management-delete"
   | "bulk-delete"
   | "record-cancel"
   | "report-export"
+  | "client-export"
+  | "client-print"
   | "generic";
 
 export interface ActionConfig {
@@ -88,12 +93,13 @@ export interface ActionConfig {
 export type ReadOperationKind = "table-read" | "report-read" | "task-read";
 
 export interface BasePageConfig {
-  kind: "dashboard" | "data";
+  kind: "dashboard" | "data" | "profile";
   path: string;
   title: string;
   menuLabel: string;
   description: string;
   sectionKey: string;
+  includeInNavigation?: boolean;
 }
 
 export interface DashboardPageConfig extends BasePageConfig {
@@ -109,12 +115,27 @@ export interface DataPageConfig extends BasePageConfig {
   toolbarActions?: ActionConfig[];
   rowActions?: ActionConfig[];
   bulkActions?: ActionConfig[];
+  showQuota?: boolean;
 }
 
-export type AppPageConfig = DashboardPageConfig | DataPageConfig;
+export interface ProfilePageConfig extends BasePageConfig {
+  kind: "profile";
+}
+
+export type AppPageConfig = DashboardPageConfig | DataPageConfig | ProfilePageConfig;
+
+export type SidebarIconKey =
+  | "dashboard"
+  | "token-generate"
+  | "token-record"
+  | "remote-operation"
+  | "remote-operation-task"
+  | "data-report"
+  | "management";
 
 export interface NavigationSection {
   key: string;
   label: string;
+  iconKey: SidebarIconKey;
   items: AppPageConfig[];
 }

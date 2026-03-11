@@ -1,4 +1,4 @@
-import axios, { type AxiosError } from "axios";
+import axios, { AxiosHeaders, type AxiosError } from "axios";
 import type {
   ActionResponse,
   ApiDataResponse,
@@ -6,10 +6,28 @@ import type {
   DashboardData,
   Envelope,
 } from "../types";
+import { mapDashboardData } from "./dashboard-mapper";
+import { normalizeTableData } from "./table-data";
 
 interface RequestOptions {
   method?: "GET" | "POST";
   body?: Record<string, unknown>;
+}
+
+export interface ProfileActionResult {
+  success: boolean;
+  message: string;
+  user?: AuthUser;
+}
+
+export interface NotificationItem {
+  id: string;
+  type: "warning" | "critical" | "info";
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  meterId?: string;
 }
 
 const apiClient = axios.create({
@@ -18,6 +36,41 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+function readCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const key = `${name}=`;
+  const parts = document.cookie.split(";");
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(key)) {
+      return decodeURIComponent(trimmed.slice(key.length));
+    }
+  }
+
+  return null;
+}
+
+apiClient.interceptors.request.use((config) => {
+  const url = config.url ?? "";
+  const isLoginPath = url.includes("/api/user/login");
+
+  if (!isLoginPath) {
+    const csrfToken = readCookieValue("acob_csrf");
+    if (csrfToken) {
+      if (!config.headers) {
+        config.headers = new AxiosHeaders();
+      }
+      config.headers.set("x-csrf-token", csrfToken);
+    }
+  }
+
+  return config;
 });
 
 function toErrorMessage(error: unknown) {
@@ -29,7 +82,7 @@ function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
-async function request<T>(path: string, options: RequestOptions = {}) {
+export async function request<T>(path: string, options: RequestOptions = {}) {
   try {
     const response = await apiClient.request<Envelope<T>>({
       url: path,
@@ -68,12 +121,54 @@ export function logoutRequest() {
   return request<{ success: boolean }>("/api/user/logout");
 }
 
-export function loadDashboard() {
-  return request<DashboardData>("/api/dashboard/readPanelGroup", { body: {} });
+export function updateProfileInfo(payload: Record<string, unknown>) {
+  return request<ProfileActionResult>("/api/user/updateInfo", {
+    body: payload,
+  });
 }
 
-export function loadTableData(path: string, body: Record<string, unknown>) {
-  return request<ApiDataResponse>(path, { body });
+export function changeLoginPassword(payload: Record<string, unknown>) {
+  return request<ActionResponse>("/api/user/modifyLoginPassword", {
+    body: payload,
+  });
+}
+
+export function changeAuthorizationPassword(payload: Record<string, unknown>) {
+  return request<ActionResponse>("/api/user/modifyAuthorizationPassword", {
+    body: payload,
+  });
+}
+
+export function listNotifications() {
+  return request<NotificationItem[]>("/api/notifications", {
+    method: "GET",
+  });
+}
+
+export function dismissNotifications(ids: string[]) {
+  return request<{ dismissedCount: number }>("/api/notifications/dismiss", {
+    body: { ids },
+  });
+}
+
+export function dismissAllNotifications() {
+  return request<{ dismissedCount: number }>("/api/notifications/dismiss-all", {
+    body: {},
+  });
+}
+
+export async function loadDashboard(): Promise<DashboardData> {
+  const [panelResult, chartResult] = await Promise.all([
+    request<Record<string, unknown>>("/api/dashboard/readPanelGroup", { body: {} }),
+    request<Record<string, unknown>>("/api/dashboard/readLineChart", { body: {} }),
+  ]);
+
+  return mapDashboardData(panelResult, chartResult);
+}
+
+export async function loadTableData(path: string, body: Record<string, unknown>) {
+  const result = await request<unknown>(path, { body });
+  return normalizeTableData(result, path) satisfies ApiDataResponse;
 }
 
 export function runPageAction(path: string, body: Record<string, unknown>) {

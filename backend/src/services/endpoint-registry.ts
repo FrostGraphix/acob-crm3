@@ -34,6 +34,9 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/api/customer/update", "crud-update"],
   ["/api/customer/delete", "crud-delete"],
   ["/api/customer/import", "import"],
+  ["/api/user/updateInfo", "crud-update"],
+  ["/api/user/modifyLoginPassword", "crud-update"],
+  ["/api/user/modifyAuthorizationPassword", "crud-update"],
   ["/api/tariff/read", "read"],
   ["/api/tariff/create", "crud-create"],
   ["/api/tariff/update", "crud-update"],
@@ -48,11 +51,11 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/api/token/creditToken/generate", "token-generate"],
   ["/api/token/clearTamperToken/generate", "token-generate"],
   ["/api/token/clearCreditToken/generate", "token-generate"],
-  ["/api/token/setMaxPowerLimitToken/generate", "token-generate"],
+  ["/api/token/setMaximumPowerLimitToken/generate", "token-generate"],
   ["/api/token/creditTokenRecord/read", "read"],
   ["/api/token/clearTamperTokenRecord/read", "read"],
   ["/api/token/clearCreditTokenRecord/read", "read"],
-  ["/api/token/setMaxPowerLimitTokenRecord/read", "read"],
+  ["/api/token/setMaximumPowerLimitTokenRecord/read", "read"],
   ["/api/token/creditTokenRecord/cancel", "token-cancel"],
   ["/api/DailyDataMeter/read", "read"],
   ["/api/DailyDataMeter/readHourly", "drilldown"],
@@ -60,16 +63,18 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/API/PrepayReport/LongNonpurchaseSituation", "read"],
   ["/API/PrepayReport/LowPurchaseSituation", "read"],
   ["/API/PrepayReport/ConsumptionStatistics", "read"],
-  ["/API/PrepayReport/LongNonpurchaseSituationExport", "export"],
-  ["/API/PrepayReport/LowPurchaseSituationExport", "export"],
-  ["/API/PrepayReport/ConsumptionStatisticsExport", "export"],
   ["/API/RemoteMeterTask/CreateReadingTask", "task-create"],
+  ["/API/RemoteMeterTask/CreateSettingTask", "task-create"],
   ["/API/RemoteMeterTask/CreateControlTask", "task-create"],
   ["/API/RemoteMeterTask/CreateTokenTask", "task-create"],
+  ["/API/RemoteMeterTask/CreateTransparentForwardingTask", "task-create"],
   ["/API/RemoteMeterTask/GetReadingTask", "task-read"],
+  ["/API/RemoteMeterTask/GetSettingTask", "task-read"],
   ["/API/RemoteMeterTask/GetControlTask", "task-read"],
   ["/API/RemoteMeterTask/GetTokenTask", "task-read"],
+  ["/API/RemoteMeterTask/GetTransparentForwardingTask", "task-read"],
   ["/API/RemoteMeterTask/UpdateReadingTask", "task-update"],
+  ["/API/RemoteMeterTask/UpdateSettingTask", "task-update"],
   ["/API/RemoteMeterTask/UpdateControlTask", "task-update"],
   ["/API/RemoteMeterTask/UpdateTokenTask", "task-update"],
 ]);
@@ -77,47 +82,86 @@ const explicitPolicies = new Map<string, OperationKind>([
 let allKnownEndpoints: Set<string> | null = null;
 
 function inferOperation(pathname: string): OperationKind {
-  if (pathname.endsWith("/read") || pathname.includes("/Get")) {
-    return pathname.includes("Task") ? "task-read" : "read";
-  }
+  const lowerCasePath = pathname.toLowerCase();
 
-  if (pathname.includes("/readHourly") || pathname.includes("/readMonthly")) {
+  if (
+    lowerCasePath.endsWith("/readhourly") ||
+    lowerCasePath.endsWith("/readmonthly")
+  ) {
     return "drilldown";
   }
 
-  if (pathname.includes("/generate")) {
-    return "token-generate";
+  if (
+    lowerCasePath.includes("task") &&
+    (lowerCasePath.includes("/get") || lowerCasePath.includes("get"))
+  ) {
+    return "task-read";
   }
 
-  if (pathname.includes("Create") && pathname.includes("Task")) {
+  if (lowerCasePath.includes("task") && lowerCasePath.includes("create")) {
     return "task-create";
   }
 
-  if (pathname.includes("Update") && pathname.includes("Task")) {
+  if (lowerCasePath.includes("task") && lowerCasePath.includes("update")) {
     return "task-update";
   }
 
-  if (pathname.endsWith("/create")) {
+  if (
+    lowerCasePath.endsWith("/read") ||
+    lowerCasePath.endsWith("/readmore") ||
+    lowerCasePath.endsWith("/view") ||
+    lowerCasePath.endsWith("/info") ||
+    lowerCasePath.includes("readdatarole") ||
+    lowerCasePath.includes("readdlmstree") ||
+    lowerCasePath.includes("readdlt645tree") ||
+    lowerCasePath.includes("readitemlist") ||
+    lowerCasePath.includes("electricenergycurve") ||
+    lowerCasePath.includes("instantaneousvaluecurve") ||
+    lowerCasePath.endsWith("/dailydata") ||
+    lowerCasePath.endsWith("/monthlydata") ||
+    lowerCasePath.endsWith("/addread")
+  ) {
+    return "read";
+  }
+
+  if (lowerCasePath.includes("/generate")) {
+    return "token-generate";
+  }
+
+  if (
+    lowerCasePath.endsWith("/create") ||
+    lowerCasePath.includes("/create")
+  ) {
     return "crud-create";
   }
 
-  if (pathname.endsWith("/update")) {
+  if (
+    lowerCasePath.endsWith("/update") ||
+    lowerCasePath.includes("/update") ||
+    lowerCasePath.endsWith("/reset") ||
+    lowerCasePath.endsWith("/updateinfo") ||
+    lowerCasePath.endsWith("/modifyloginpassword") ||
+    lowerCasePath.endsWith("/modifyauthorizationpassword")
+  ) {
     return "crud-update";
   }
 
-  if (pathname.endsWith("/delete")) {
+  if (lowerCasePath.endsWith("/delete") || lowerCasePath.includes("/delete")) {
     return "crud-delete";
   }
 
-  if (pathname.endsWith("/import")) {
+  if (
+    lowerCasePath.endsWith("/import") ||
+    lowerCasePath.includes("/upload")
+  ) {
     return "import";
   }
 
-  if (pathname.endsWith("/export") || pathname.endsWith("Export")) {
+  if (lowerCasePath.endsWith("/export") || pathname.endsWith("Export")) {
     return "export";
   }
 
-  if (pathname.includes("/cancel")) {
+  if (lowerCasePath.includes("/cancel")) {
     return "token-cancel";
   }
 

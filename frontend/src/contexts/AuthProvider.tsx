@@ -35,6 +35,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  const refreshUser = async () => {
+    try {
+      const currentUser = await getUserInfo();
+      setUser(currentUser);
+      return currentUser;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  };
+
   const login = async (credentials: { username: string; password: string }) => {
     const currentUser = await loginRequest(credentials);
     setUser(currentUser);
@@ -46,7 +57,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refreshUser,
+        replaceUser: setUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

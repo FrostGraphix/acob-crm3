@@ -1,0 +1,911 @@
+Nick Name
+Full Name
+Email
+Phone
+Address
+Remark
+Modify
+Information 	Login Password 	Authorization Password
+Dashboard / profile 	ACB(admin)
+Dashboard 	profile 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 1 of 27 --
+
+ 	 Search 	 Reset 	 Add 	 Import 	 Export
+ Delete
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Customer Id  	Meter Id  	Tariff Id  	Remark  	Create Time 
+ 	
+
+
+123 	47005346144 	123 	2025-07-21 11
+123 	47300482016 	123 	2025-07-21 10
+123 	47005346136 	123 	2025-07-21 11
+47005306627 	47005306627 	RESIDENTIAL 	2026-01-03 18
+47005306643 	47005306643 	RESIDENTIAL 	2026-01-03 18
+47005306668 	47005306668 	RESIDENTIAL 	2026-01-17 20
+47005306676 	47005306676 	RESIDENTIAL 	2026-01-03 07
+47005306684 	47005306684 	RESIDENTIAL 	2026-01-03 18
+20/page 	1
+Actions
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Dashboard / Management / Account 	ACB(admin)
+Dashboard 	Account 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management
+
+Gateway
+Customer
+Tariff
+Account
+DEMO WATERMARK
+
+-- 2 of 27 --
+
+ 	 Search 	 Reset 	 Add 	 Import 	 Export
+ Delete
+Total 5 	 	1 	 	Go to
+Search Term
+Id  	Name  	VAT Charge  	Price  	Remark 
+ 	
+123 	test 	0 	350
+COMMERCIAL 	COMMERCIAL 	0 	350
+PRODUCTIVE 	PRODUCTIVE 	0 	350
+PUBLIC 	PUBLIC 	0 	350
+RESIDENTIAL 	RESIDENTIAL 	0 	350
+20/page 	1
+Actions
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Dashboard / Management / Tariff 	ACB(admin)
+Dashboard 	Tariff 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management
+
+Gateway
+Customer
+Tariff
+Account
+DEMO WATERMARK
+
+-- 3 of 27 --
+
+ 	 Search 	 Reset 	 Add 	 Import 	 Export
+ Delete
+Total 1866 	 	1 	2 	3 	4 	5 	6 	 94  	Go to
+Search Term
+Id  	Name  	Phone  	Address 
+ 	
+
+
+123 	test
+470005371449 	MUSA H SHEHU 	TUNGA
+470053039803 	DAKABA SAMUEL 	MUSHA
+47005306627 	AUGUSTINE MICHAEL 	KYAKALE
+47005306643 	LUKA IWA 	KYAKALE
+47005306668 	HABILA ABAKA 	MUSHA
+47005306676 	AUDU AGIDI 	MUSHA
+47005306684 	SARAH SUNDAY 	KYAKALE
+20/page 	1
+Actions
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Edit 	Delete
+Dashboard / Management / Customer 	ACB(admin)
+Dashboard 	Customer 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management
+
+Gateway
+Customer
+Tariff
+Account
+DEMO WATERMARK
+
+-- 4 of 27 --
+
+ 	 Search 	 Reset 	 Add 	 Import 	 Export 	 Delete	Search Term
+Status 	Success Rate 	Id  	Name 
+ 	
+N
+Actions
+Dashboard / Management / Gateway 	ACB(admin)
+Dashboard 	Gateway 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management
+
+Gateway
+Customer
+Tariff
+Account
+DEMO WATERMARK
+
+-- 5 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 21028 	 	1 	2 	3 	4 	5 	6 	 1052  	Go to
+Search Term
+Customer Id  	Customer Name 
+ 	
+
+
+47005366514 	MONDAY
+47005332417 	OLA OKALA
+47005332797 	SAMUEL ODUK
+47005367256 	JOSHUA ISHAKPA 2
+47005379939 	Abdullahi Abubakar
+20/page 	1
+Meter Id  	Gateway Id  	Collection Date 
+47005366514 	E4-38-19-FF-FE-1A-BE-63 	2025-11-04
+47005332417 	E4-38-19-FF-FE-19-F5-9F 	2025-12-28
+47005332797 	E4-38-19-FF-FE-19-E2-01 	2026-01-18
+47005367256 	E4-38-19-FF-FE-19-E2-01 	2026-01-18
+47005379939 	E4-38-19-FF-FE-19-FB-3D 	2026-01-18
+Actions
+Hourly
+Hourly
+Hourly
+Hourly
+Hourly
+Dashboard / Data Report / Interval Data 	ACB(admin)
+Dashboard 	Interval Data 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report
+
+Long Nonpurchase Situation
+Low Purchase Situation
+Consumption Statistics
+Interval Data
+Management 	
+DEMO WATERMARK
+
+-- 6 of 27 --
+
+Customer Id 	Meter Id 	Date Range
+ 	 Search 	 Reset 	 Export
+ 	 	 	Start Date 	To 	End Date
+Daily
+Monthly
+Data 	Chart
+Dashboard / Data Report / Consumption Statistics 	ACB(admin)
+Dashboard 	Consumption Statistics 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report
+
+Long Nonpurchase Situation
+Low Purchase Situation
+Consumption Statistics
+Interval Data
+Management 	
+DEMO WATERMARK
+
+-- 7 of 27 --
+
+Customer Id 	Meter Id 	Date Range 	Low Limit
+ 	 Search 	 Reset 	 Export
+Total 152 	 	1 	2 	3 	4 	5 	6 	 	8 	 	Go to
+ 	 	 	Start Date 	To 	End Date
+Customer Id 	Customer Name 	Meter Id 	Tariff
+ 	
+
+
+47005371142 	ABDUSALEM 	47005371142 	RESID
+47005365664 	Adam Ridwan 	47005365664 	COMM
+47005369567 	LUKMAN .O. USMAN 	47005369567 	RESID
+47005334660 	LUKMA .O. USMAN 	47005334660 	RESID
+47005375580 	IDRIS ISAH 	47005375580 	COMM
+47005365045 	Adamu 	47005365045 	RESID
+20/page 	1
+Dashboard / Data Report / Low Purchase Situation 	ACB(admin)
+Dashboard 	Low Purchase Situation 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report
+
+Long Nonpurchase Situation
+Low Purchase Situation
+Consumption Statistics
+Interval Data
+Management 	
+DEMO WATERMARK
+
+-- 8 of 27 --
+
+Customer Id 	Meter Id 	Nonpurchase Days Start 	Nonpurchase Days End
+ 	 Search 	 Reset 	 Export
+Total 151 	 	1 	2 	3 	4 	5 	6 	 	8 	 	Go to
+ 	
+Customer Id 	Customer Name 	Meter Id 	Tariff
+ 	
+
+
+123 	test 	47005346136 	1
+47005376034 	Mallam Ayuba 	47005376034 	RESID
+47005369302 	Alhaji Adamu Raiyanu 	47005369302 	COMM
+47005370680 	Chief John 	47005370680 	COMM
+123 	test 	47005346144 	1
+47005367744 	SAMUEL KYADU AGUYE 	47005367744 	RESID
+20/page 	1
+Dashboard / Data Report / Long Nonpurchase Situation 	ACB(admin)
+Dashboard 	Long Nonpurchase Situation 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report
+
+Long Nonpurchase Situation
+Low Purchase Situation
+Consumption Statistics
+Interval Data
+Management 	
+DEMO WATERMARK
+
+-- 9 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 13 	 	1 	 	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Data Item  	Token
+ 	
+
+
+47005309415 	JOSHUA AGIVO 	47005309415 	Send Token 	3151 0727 40
+47005309415 	JOSHUA AGIVO 	47005309415 	Send Token 	3151 0727 40
+47005308995 	IWALA JONNAH M. 	47005308995 	Send Token 	5215 2406 68
+47005308995 	IWALA JONNAH M. 	47005308995 	Send Token 	3655 9798 47
+47005308995 	IWALA JONNAH M. 	47005308995 	Send Token 	3655 9798 47
+47005308995 	IWALA JONNAH M. 	47005308995 	Send Token 	3655 9798 47
+20/page 	1
+Dashboard / Remote Operation Task / Meter Token Task 	ACB(admin)
+Dashboard 	Meter Token Task 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task
+
+Meter Reading Task
+Meter Control Task
+Meter Token Task
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 10 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 18 	 	1 	 	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Data Item  	Site 
+ 	
+
+
+47005309415 	JOSHUA AGIVO 	47005309415 	Switch On 	MUSHA
+47005308995 	IWALA JONNAH M. 	47005308995 	Switch On 	MUSHA
+47005370615 	Musa Ibrahim 	47005370615 	Switch On 	TUNGA
+47005370615 	Musa Ibrahim 	47005370615 	Switch On 	TUNGA
+47005370615 	Musa Ibrahim 	47005370615 	Switch Off 	TUNGA
+47005332235 	Mustapha Audu 	47005332235 	Switch Off 	TUNGA
+20/page 	1
+Dashboard / Remote Operation Task / Meter Control Task 	ACB(admin)
+Dashboard 	Meter Control Task 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task
+
+Meter Reading Task
+Meter Control Task
+Meter Token Task
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 11 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 15 	 	1 	 	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Data Item  	Site 
+ 	
+
+
+47005309415 	JOSHUA AGIVO 	47005309415 	Power 	MUSHA
+47005309415 	JOSHUA AGIVO 	47005309415 	Power 	MUSHA
+47005309415 	JOSHUA AGIVO 	47005309415 	Power 	MUSHA
+47005333860
+AUGUSTINE .D. OKOD
+U 47005333860 	Power 	MUSHA
+47005308995 	IWALA JONNAH M. 	47005308995 	Power 	MUSHA
+47005309415 	JOSHUA AGIVO 	47005309415 	Power 	MUSHA
+20/page 	1
+Dashboard / Remote Operation Task / Meter Reading Task 	ACB(admin)
+Dashboard 	Meter Reading Task 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task
+
+Meter Reading Task
+Meter Control Task
+Meter Token Task
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 12 of 27 --
+
+ 	 Search 	 Reset 	Add Batch Task
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Status 	Customer Name  	Meter Id  	Meter Type  	Remark 
+ 	
+
+
+Online 	test 	47005346144 	Electricity
+Offline 	test 	47300482016 	Electricity
+Offline 	test 	47005346136 	Electricity
+Online 	AUGUSTINE MICHAEL 	47005306627 	Electricity
+Online 	LUKA IWA 	47005306643 	Electricity
+Online 	HABILA ABAKA 	47005306668 	Electricity
+Online 	AUDU AGIDI 	47005306676 	Electricity
+Online 	SARAH SUNDAY 	47005306684 	Electricity
+20/page 	1
+Actions
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Dashboard / Remote Operation / Meter Token 	ACB(admin)
+Dashboard 	Meter Token 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation
+
+Meter Reading
+Meter Control
+Meter Token
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 13 of 27 --
+
+ 	 Search 	 Reset 	Add Batch Task
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Status 	Customer Name  	Meter Id  	Meter Type  	Remark 
+ 	
+
+
+Online 	test 	47005346144 	Electricity
+Offline 	test 	47300482016 	Electricity
+Offline 	test 	47005346136 	Electricity
+Online 	AUGUSTINE MICHAEL 	47005306627 	Electricity
+Online 	LUKA IWA 	47005306643 	Electricity
+Online 	HABILA ABAKA 	47005306668 	Electricity
+Online 	AUDU AGIDI 	47005306676 	Electricity
+Online 	SARAH SUNDAY 	47005306684 	Electricity
+20/page 	1
+Actions
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Dashboard / Remote Operation / Meter Control 	ACB(admin)
+Dashboard 	Meter Control 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation
+
+Meter Reading
+Meter Control
+Meter Token
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 14 of 27 --
+
+ 	 Search 	 Reset 	Add Batch Task
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Status 	Customer Name  	Meter Id  	Meter Type  	Remark 
+ 	
+
+
+Online 	test 	47005346144 	Electricity
+Offline 	test 	47300482016 	Electricity
+Offline 	test 	47005346136 	Electricity
+Online 	AUGUSTINE MICHAEL 	47005306627 	Electricity
+Online 	LUKA IWA 	47005306643 	Electricity
+Online 	HABILA ABAKA 	47005306668 	Electricity
+Online 	AUDU AGIDI 	47005306676 	Electricity
+Online 	SARAH SUNDAY 	47005306684 	Electricity
+20/page 	1
+Actions
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Add Task
+Dashboard / Remote Operation / Meter Reading 	ACB(admin)
+Dashboard 	Meter Reading 
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation
+
+Meter Reading
+Meter Control
+Meter Token
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 15 of 27 --
+
+ 	 Search 	 Reset 	 Export	Search Term
+Receipt Id  	Customer Id  	Customer Name  	Meter Id  	Maximum Po
+Actions
+Dashboard / Token Record / Set Maximum Power Limit Token Record 	ACB(admin)
+Dashboard 	Set Maximum Power Limit Token Record 
+Meter System
+Dashboard
+Token Generate 	
+Token Record
+
+Credit Token Record
+Clear Tamper Token Record
+Clear Credit Token Record
+Set Maximum Power Limit Token R
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 16 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 2 	 	1 	 	Go to
+Search Term
+Receipt Id  	Customer Id  	Customer Name  	Meter Id  	Token
+ 	
+3 	47005376034 	Mallam Ayuba 	47005376034 	1286 7301 2863
+2 	47005376034 	Mallam Ayuba 	47005376034 	7227 2826 7803
+20/page 	1
+Actions
+Print
+Print
+Dashboard / Token Record / Clear Credit Token Record 	ACB(admin)
+Dashboard 	Clear Credit Token Record 
+Meter System
+Dashboard
+Token Generate 	
+Token Record
+
+Credit Token Record
+Clear Tamper Token Record
+Clear Credit Token Record
+Set Maximum Power Limit Token R
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 17 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 54 	 	1 	2 	3 	 	Go to
+Search Term
+Receipt Id  	Customer Id  	Customer Name  	Meter Id  	Token
+ 	
+
+
+107 	47005309415 	JOSHUA AGIVO 	47005309415 	1822 7744 5
+106 	47005309415 	JOSHUA AGIVO 	47005309415 	4735 3644 6
+105 	47005331799 	ERCC SABON GARI 	47005331799 	2564 1014 3
+104 	47005365953 	AGYI ILIY 	47005365953 	2190 9783 5
+103 	47005313433 	AGIDI MABE 	47005313433 	4943 1457 6
+102 	47005376737 	PASTORAL HOUSE 	47005376737 	5894 4625 6
+20/page 	1
+Actions
+Print
+Print
+Print
+Print
+Print
+Print
+Dashboard / Token Record / Clear Tamper Token Record 	ACB(admin)
+Dashboard 	Clear Tamper Token Record 
+Meter System
+Dashboard
+Token Generate 	
+Token Record
+
+Credit Token Record
+Clear Tamper Token Record
+Clear Credit Token Record
+Set Maximum Power Limit Token R
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 18 of 27 --
+
+ 	 Search 	 Reset 	 Export
+Total 188 	 	1 	2 	3 	4 	5 	6 	 10  	Go to
+Search Term
+Receipt Id  	Customer Id  	Customer Name  	Meter Id  	Meter Type  	Site
+ 	
+
+
+1194 	47005371639 	UMAR MOHAMMED 	47005371639 	Electricity 	UM
+1193 	47005375739 	HAJIYA YUSUF KUMEJO 	47005375739 	Electricity 	UM
+1192 	47005375770 	ABDUMALIK 	47005375770 	Electricity 	UM
+1191 	47005308995 	IWALA JONNAH M. 	47005308995 	Electricity 	M
+1190 	47005306668 	HABILA ABAKA 	47005306668 	Electricity 	M
+1189 	47005309415 	JOSHUA AGIVO 	47005309415 	Electricity 	M
+20/page 	1
+Actions
+Print 	Cancel
+Print 	Cancel
+Print 	Cancel
+Print 	Cancel
+Print 	Cancel
+Print 	Cancel
+Dashboard / Token Record / Credit Token Record 	ACB(admin)
+Dashboard 	Credit Token Record 
+Meter System
+Dashboard
+Token Generate 	
+Token Record
+
+Credit Token Record
+Clear Tamper Token Record
+Clear Credit Token Record
+Set Maximum Power Limit Token R
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 19 of 27 --
+
+ 	 Search 	 Reset
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Meter Type  	Tariff Id  	Crea
+ 	
+
+
+123 	test 	47005346144 	Electricity 	123 	2025
+123 	test 	47300482016 	Electricity 	123 	2025
+123 	test 	47005346136 	Electricity 	123 	2025
+47005306627 	AUGUSTINE MICHAEL 	47005306627 	Electricity 	RESIDENTIAL 	2026
+47005306643 	LUKA IWA 	47005306643 	Electricity 	RESIDENTIAL 	2026
+47005306668 	HABILA ABAKA 	47005306668 	Electricity 	RESIDENTIAL 	2026
+47005306676 	AUDU AGIDI 	47005306676 	Electricity 	RESIDENTIAL 	2026
+47005306684 	SARAH SUNDAY 	47005306684 	Electricity 	RESIDENTIAL 	2026
+20/page 	1
+Actions
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Dashboard / Token Generate / Set Maximum Power Limit Token 	ACB(admin)
+Dashboard 	Set Maximum Power Limit Token 
+Meter System
+Dashboard
+Token Generate
+
+Credit Token
+Clear Tamper Token
+Clear Credit Token
+Set Maximum Power Limit Token
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 20 of 27 --
+
+ 	 Search 	 Reset
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Meter Type  	Tariff Id  	Crea
+ 	
+
+
+123 	test 	47005346144 	Electricity 	123 	2025
+123 	test 	47300482016 	Electricity 	123 	2025
+123 	test 	47005346136 	Electricity 	123 	2025
+47005306627 	AUGUSTINE MICHAEL 	47005306627 	Electricity 	RESIDENTIAL 	2026
+47005306643 	LUKA IWA 	47005306643 	Electricity 	RESIDENTIAL 	2026
+47005306668 	HABILA ABAKA 	47005306668 	Electricity 	RESIDENTIAL 	2026
+47005306676 	AUDU AGIDI 	47005306676 	Electricity 	RESIDENTIAL 	2026
+47005306684 	SARAH SUNDAY 	47005306684 	Electricity 	RESIDENTIAL 	2026
+20/page 	1
+Actions
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Dashboard / Token Generate / Clear Credit Token 	ACB(admin)
+Dashboard 	Clear Credit Token 
+Meter System
+Dashboard
+Token Generate
+
+Credit Token
+Clear Tamper Token
+Clear Credit Token
+Set Maximum Power Limit Token
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 21 of 27 --
+
+ 	 Search 	 Reset
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Meter Type  	Tariff Id  	Crea
+ 	
+
+
+123 	test 	47005346144 	Electricity 	123 	2025
+123 	test 	47300482016 	Electricity 	123 	2025
+123 	test 	47005346136 	Electricity 	123 	2025
+47005306627 	AUGUSTINE MICHAEL 	47005306627 	Electricity 	RESIDENTIAL 	2026
+47005306643 	LUKA IWA 	47005306643 	Electricity 	RESIDENTIAL 	2026
+47005306668 	HABILA ABAKA 	47005306668 	Electricity 	RESIDENTIAL 	2026
+47005306676 	AUDU AGIDI 	47005306676 	Electricity 	RESIDENTIAL 	2026
+47005306684 	SARAH SUNDAY 	47005306684 	Electricity 	RESIDENTIAL 	2026
+20/page 	1
+Actions
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Generate Token
+Dashboard / Token Generate / Clear Tamper Token 	ACB(admin)
+Dashboard 	Clear Tamper Token 
+Meter System
+Dashboard
+Token Generate
+
+Credit Token
+Clear Tamper Token
+Clear Credit Token
+Set Maximum Power Limit Token
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 22 of 27 --
+
+ 	 Search 	 Reset 	Quota(kwh): 0/0
+Total 1653 	 	1 	2 	3 	4 	5 	6 	 83  	Go to
+Search Term
+Customer Id  	Customer Name  	Meter Id  	Meter Type  	Tariff Id  	Protoco
+ 	
+
+
+123 	test 	47005346144 	Electricity 	123
+123 	test 	47300482016 	Electricity 	123
+123 	test 	47005346136 	Electricity 	123
+47005306627 	AUGUSTINE MICHAEL 	47005306627 	Electricity 	RESIDENTIAL
+47005306643 	LUKA IWA 	47005306643 	Electricity 	RESIDENTIAL
+47005306668 	HABILA ABAKA 	47005306668 	Electricity 	RESIDENTIAL
+47005306676 	AUDU AGIDI 	47005306676 	Electricity 	RESIDENTIAL
+47005306684 	SARAH SUNDAY 	47005306684 	Electricity 	RESIDENTIAL
+20/page 	1
+Actions
+Recharge
+Recharge
+Recharge
+Recharge
+Recharge
+Recharge
+Recharge
+Recharge
+Dashboard / Token Generate / Credit Token 	ACB(admin)
+Dashboard 	Credit Token 
+Meter System
+Dashboard
+Token Generate
+
+Credit Token
+Clear Tamper Token
+Clear Credit Token
+Set Maximum Power Limit Token
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 23 of 27 --
+
+Account Count
+0
+Purchase Times
+0
+Purchase Unit
+0
+Purchase Money
+0
+Dashboard 	ACB(admin)
+Dashboard
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 24 of 27 --
+
+Dashboard 	ACB(admin)
+Dashboard
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 25 of 27 --
+
+more >
+Daily
+Dashboard 	ACB(admin)
+Dashboard
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 26 of 27 --
+
+Dashboard 	ACB(admin)
+Dashboard
+Meter System
+Dashboard
+Token Generate 	
+Token Record 	
+Remote Operation 	
+Remote Operation Task 
+Data Report 	
+Management 	
+DEMO WATERMARK
+
+-- 27 of 27 --
+

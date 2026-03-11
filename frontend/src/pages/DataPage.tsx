@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { DataTable } from "../components/common/DataTable";
 import { FormModal } from "../components/common/FormModal";
 import { SearchBar } from "../components/common/SearchBar";
 import { useDataTable } from "../hooks/useDataTable";
 import { runPageAction } from "../services/api";
+import { downloadRowsAsCsv, printRowDetails } from "../services/client-table-actions";
 import { buildActionPayload } from "../services/payload-mapper";
 import type { ActionConfig, DataPageConfig, DataRow } from "../types";
 
@@ -14,10 +15,24 @@ interface PendingAction {
   isBulk?: boolean;
 }
 
-export function DataPage({ page }: { page: DataPageConfig }) {
+export interface DataPageSnapshot {
+  rows: DataRow[];
+  total: number;
+  loading: boolean;
+  error: string | null;
+  appliedFilters: Record<string, string>;
+}
+
+interface DataPageProps {
+  page: DataPageConfig;
+  onTableStateChange?: (snapshot: DataPageSnapshot) => void;
+}
+
+export function DataPage({ page, onTableStateChange }: DataPageProps) {
   const {
     draftFilters,
     setDraftFilters,
+    appliedFilters,
     rows,
     total,
     loading,
@@ -37,6 +52,16 @@ export function DataPage({ page }: { page: DataPageConfig }) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
+  useEffect(() => {
+    onTableStateChange?.({
+      rows,
+      total,
+      loading,
+      error,
+      appliedFilters,
+    });
+  }, [appliedFilters, error, loading, onTableStateChange, rows, total]);
+
   const executeAction = async (
     action: ActionConfig,
     options: {
@@ -45,6 +70,22 @@ export function DataPage({ page }: { page: DataPageConfig }) {
       values?: Record<string, string>;
     } = {},
   ) => {
+    if (action.operationKind === "client-export") {
+      downloadRowsAsCsv(page.title, page.columns, rows);
+      setFeedback(`Exported ${rows.length} row(s) from ${page.menuLabel}.`);
+      return;
+    }
+
+    if (action.operationKind === "client-print") {
+      if (!options.row) {
+        throw new Error(`${action.label} requires a selected row`);
+      }
+
+      printRowDetails(`${page.menuLabel} Print`, page.columns, options.row);
+      setFeedback(`Opened print preview for ${page.menuLabel}.`);
+      return;
+    }
+
     const mapping = buildActionPayload(action, {
       row: options.row,
       values: options.values,
@@ -53,6 +94,20 @@ export function DataPage({ page }: { page: DataPageConfig }) {
 
     if (!mapping.ok || !mapping.payload) {
       throw new Error(mapping.message ?? "Invalid action payload");
+    }
+
+    if (action.operationKind === "management-import") {
+      const records = Array.isArray(mapping.payload.records)
+        ? (mapping.payload.records as Record<string, unknown>[])
+        : [];
+
+      for (const record of records) {
+        await runPageAction(action.endpoint, record);
+      }
+
+      setFeedback(`Imported ${records.length} record(s) into ${page.menuLabel}.`);
+      await refresh();
+      return;
     }
 
     const result = await runPageAction(action.endpoint, mapping.payload);
@@ -80,24 +135,31 @@ export function DataPage({ page }: { page: DataPageConfig }) {
 
   return (
     <section className="page-stack">
-      <SearchBar
-        fields={page.filters}
-        onChange={(key, value) =>
-          setDraftFilters((current) => ({
-            ...current,
-            [key]: value,
-          }))
-        }
-        onReset={() => {
-          setFeedback(null);
-          reset();
-        }}
-        onSearch={() => {
-          setFeedback(null);
-          search();
-        }}
-        values={draftFilters}
-      />
+      <div className="data-page-toolbar">
+        <SearchBar
+          fields={page.filters}
+          onChange={(key, value) =>
+            setDraftFilters((current) => ({
+              ...current,
+              [key]: value,
+            }))
+          }
+          onReset={() => {
+            setFeedback(null);
+            reset();
+          }}
+          onSearch={() => {
+            setFeedback(null);
+            search();
+          }}
+          values={draftFilters}
+        />
+        {page.showQuota ? (
+          <div className="data-page-quota">
+            Quota(kwh): 0/0
+          </div>
+        ) : null}
+      </div>
 
       <div className="action-strip">
         {(page.toolbarActions ?? []).map((action) => (
@@ -143,11 +205,20 @@ export function DataPage({ page }: { page: DataPageConfig }) {
         rows={rows}
         selectedKeys={selectedKeys}
         total={total}
+        columnFilters={draftFilters}
+        onColumnFilterChange={(key, value) => {
+          setDraftFilters(curr => ({ ...curr, [key]: value }));
+        }}
+        onColumnSearch={() => {
+          setFeedback(null);
+          search();
+        }}
       />
 
       {pendingAction?.action.fields?.length ? (
         <FormModal
           action={pendingAction.action}
+          row={pendingAction.row}
           onCancel={() => setPendingAction(null)}
           onSubmit={(values) => {
             void executeAction(pendingAction.action, {

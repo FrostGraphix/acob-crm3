@@ -126,6 +126,7 @@ export function useDataTable(page: DataPageConfig) {
   return {
     draftFilters,
     setDraftFilters,
+    appliedFilters,
     rows,
     total,
     loading,

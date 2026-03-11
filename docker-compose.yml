@@ -1,17 +1,29 @@
 services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    depends_on:
+      - redis
     environment:
       PORT: 3000
       NODE_ENV: production
-      USE_MOCK_ONLY: "true"
-      MOCK_FALLBACK_ON_ERROR: "true"
       UPSTREAM_API_URL: "http://8.208.16.168:9311"
       UPSTREAM_USERNAME: "admin"
       UPSTREAM_PASSWORD: "ACOB_admin"
       JWT_SECRET: "change-me-in-production"
+      SESSION_STORE_MODE: "redis"
+      REDIS_URL: "redis://redis:6379"
+      REDIS_KEY_PREFIX: "acob:session:"
+      STRICT_DEPENDENCY_STARTUP: "true"
     ports:
       - "3000:3000"
 
@@ -23,3 +35,6 @@ services:
       - backend
     ports:
       - "8080:80"
+
+volumes:
+  redis-data:

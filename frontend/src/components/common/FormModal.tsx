@@ -1,25 +1,20 @@
 import { useEffect, useState } from "react";
-import type { ActionConfig } from "../../types";
+import type { ActionConfig, DataRow } from "../../types";
+import { createInitialFormValues } from "../../services/form-values";
 
 interface FormModalProps {
   action: ActionConfig;
+  row?: DataRow;
   onCancel: () => void;
   onSubmit: (values: Record<string, string>) => void;
 }
 
-function createInitialValues(action: ActionConfig) {
-  return (action.fields ?? []).reduce<Record<string, string>>((accumulator, field) => {
-    accumulator[field.key] = "";
-    return accumulator;
-  }, {});
-}
-
-export function FormModal({ action, onCancel, onSubmit }: FormModalProps) {
-  const [values, setValues] = useState<Record<string, string>>(createInitialValues(action));
+export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
+  const [values, setValues] = useState<Record<string, string>>(createInitialFormValues(action, row));
 
   useEffect(() => {
-    setValues(createInitialValues(action));
-  }, [action]);
+    setValues(createInitialFormValues(action, row));
+  }, [action, row]);
 
   return (
     <div className="modal-backdrop">
@@ -37,17 +32,31 @@ export function FormModal({ action, onCancel, onSubmit }: FormModalProps) {
           {(action.fields ?? []).map((field) => (
             <label className="field" key={field.key}>
               <span>{field.label}</span>
-              <input
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    [field.key]: event.target.value,
-                  }))
-                }
-                placeholder={field.placeholder}
-                type={field.type ?? "text"}
-                value={values[field.key] ?? ""}
-              />
+              {field.type === "textarea" ? (
+                <textarea
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                  rows={8}
+                  value={values[field.key] ?? ""}
+                />
+              ) : (
+                <input
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                  type={field.type ?? "text"}
+                  value={values[field.key] ?? ""}
+                />
+              )}
             </label>
           ))}
         </div>

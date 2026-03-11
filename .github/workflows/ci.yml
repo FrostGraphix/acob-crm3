@@ -33,6 +33,9 @@ jobs:
       - name: Backend typecheck
         run: npm run typecheck --prefix backend
 
+      - name: Backend dependency health smoke
+        run: npm run test:health --prefix backend
+
       - name: Unit tests
         run: npm test
 

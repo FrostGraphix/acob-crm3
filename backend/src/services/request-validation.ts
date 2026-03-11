@@ -84,6 +84,17 @@ function validatePaging(body: Record<string, unknown>): ValidationResult {
   return { valid: true };
 }
 
+function stripEmptyReadValues(body: Record<string, unknown>) {
+  return Object.entries(body).reduce<Record<string, unknown>>((accumulator, [key, value]) => {
+    if (typeof value === "string" && value.length === 0) {
+      return accumulator;
+    }
+
+    accumulator[key] = value;
+    return accumulator;
+  }, {});
+}
+
 export function sanitizeRequestBody(body: unknown) {
   return toRecord(body);
 }
@@ -92,7 +103,10 @@ export function mapRequestBodyByOperation(
   operation: OperationKind,
   body: Record<string, unknown>,
 ) {
-  const mapped = { ...body };
+  const mapped =
+    operation === "read" || operation === "task-read" || operation === "drilldown"
+      ? stripEmptyReadValues(body)
+      : { ...body };
 
   if (
     operation === "read" ||
@@ -147,7 +161,7 @@ export function validateRequestBodyByOperation(
 
   if (operation === "crud-update") {
     const row = toRecord(body.row);
-    if (!hasRowIdentifier(row) && !isPlainObject(body)) {
+    if (!hasRowIdentifier(row) && !hasRowIdentifier(body)) {
       return { valid: false, message: "update action requires a target row" };
     }
   }

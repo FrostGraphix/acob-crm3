@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
-import { env } from "../services/env.js";
+import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { resolveEndpointPolicy } from "../services/endpoint-registry.js";
-import { mockApiResponse } from "../services/mock-data.js";
 import {
   mapRequestBodyByOperation,
   sanitizeRequestBody,
@@ -15,11 +14,23 @@ function getRequestPath(request: Request) {
   return new URL(originalUrl, "http://localhost").pathname;
 }
 
-function shouldUseMock(statusCode: number) {
-  return env.mockFallbackOnError && statusCode >= 500;
+function applyUpstreamDefaults(pathname: string, body: Record<string, unknown>) {
+  const nextBody = { ...body };
+  const requiresLang =
+    pathname.startsWith("/API/PrepayReport/") || pathname.startsWith("/api/DailyDataMeter/");
+
+  if (requiresLang) {
+    const currentLang = typeof nextBody.Lang === "string" ? nextBody.Lang.trim() : "";
+    if (currentLang.length === 0) {
+      nextBody.Lang = "en";
+    }
+  }
+
+  return nextBody;
 }
 
 export async function proxyHandler(request: Request, response: Response) {
+  const authRequest = request as AuthenticatedRequest;
   const pathname = getRequestPath(request);
   const policy = resolveEndpointPolicy(pathname);
 
@@ -41,11 +52,9 @@ export async function proxyHandler(request: Request, response: Response) {
     return;
   }
 
-  const body = mapped.body;
-
-  if (env.useMockOnly) {
-    const payload = mockApiResponse(pathname, body);
-    response.status(200).json(payload);
+  const body = applyUpstreamDefaults(policy.pathname, mapped.body);
+  if (!authRequest.upstreamCookie) {
+    sendEnvelope(response, 401, null, "Upstream session expired or invalid", 1);
     return;
   }
 
@@ -53,23 +62,11 @@ export async function proxyHandler(request: Request, response: Response) {
     const upstreamResult = await forwardToUpstream(
       policy.pathname,
       body,
-      request.headers.cookie,
+      authRequest.upstreamCookie,
     );
-
-    if (shouldUseMock(upstreamResult.statusCode)) {
-      const payload = mockApiResponse(policy.pathname, body);
-      response.status(200).json(payload);
-      return;
-    }
 
     response.status(upstreamResult.statusCode).json(upstreamResult.payload);
   } catch (error) {
-    if (env.mockFallbackOnError) {
-      const payload = mockApiResponse(policy.pathname, body);
-      response.status(200).json(payload);
-      return;
-    }
-
     const message = error instanceof Error ? error.message : "Upstream request failed";
     sendEnvelope(response, 502, null, message, 1);
   }

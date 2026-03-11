@@ -12,6 +12,38 @@ interface MappingResult {
   message?: string;
 }
 
+function parseDelimitedLine(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  cells.push(current.trim());
+  return cells;
+}
+
 function sanitizeString(value: string) {
   let output = "";
 
@@ -52,6 +84,24 @@ function sanitizeRecord(record: Record<string, unknown>) {
   return sanitizeValue(record) as Record<string, unknown>;
 }
 
+function filterFilledValues(
+  record: Record<string, unknown>,
+  options: { keepEmptyStrings?: boolean } = {},
+) {
+  return Object.entries(record).reduce<Record<string, unknown>>((accumulator, [key, value]) => {
+    if (value === null || value === undefined) {
+      return accumulator;
+    }
+
+    if (typeof value === "string" && value.length === 0 && !options.keepEmptyStrings) {
+      return accumulator;
+    }
+
+    accumulator[key] = value;
+    return accumulator;
+  }, {});
+}
+
 function toNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -80,6 +130,48 @@ function compactRow(row: DataRow | undefined) {
   }, {});
 }
 
+function parseImportRecords(input: string) {
+  const trimmed = sanitizeString(input);
+
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const records = Array.isArray(parsed) ? parsed : [parsed];
+
+    return records
+      .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+      .map((entry) => filterFilledValues(sanitizeRecord(entry)));
+  }
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const headers = parseDelimitedLine(lines[0]).map((header) => sanitizeString(header));
+
+  return lines.slice(1).map((line) => {
+    const values = parseDelimitedLine(line);
+    const record = headers.reduce<Record<string, unknown>>((accumulator, header, index) => {
+      if (!header) {
+        return accumulator;
+      }
+
+      accumulator[header] = values[index] ?? "";
+      return accumulator;
+    }, {});
+
+    return filterFilledValues(sanitizeRecord(record));
+  });
+}
+
 function ensureValidDateRange(
   fromDate: unknown,
   toDate: unknown,
@@ -100,6 +192,42 @@ function ensureValidDateRange(
   }
 
   return null;
+}
+
+function normalizeReadFilters(
+  page: DataPageConfig,
+  filters: Record<string, string>,
+): MappingResult {
+  const payload: Record<string, unknown> = {};
+
+  for (const filter of page.filters) {
+    const rawValue = filters[filter.key];
+    if (rawValue === undefined) {
+      continue;
+    }
+
+    const value = sanitizeString(rawValue);
+    if (value.length === 0) {
+      continue;
+    }
+
+    if (filter.type === "number") {
+      const parsed = toNumber(value);
+      if (parsed === null) {
+        return {
+          ok: false,
+          message: `${filter.label} must be a valid number`,
+        };
+      }
+
+      payload[filter.key] = parsed;
+      continue;
+    }
+
+    payload[filter.key] = value;
+  }
+
+  return { ok: true, payload };
 }
 
 function mapReadOperationKind(
@@ -138,8 +266,13 @@ export function buildReadPayload(
   pageNumber: number,
   pageSize: number,
 ): MappingResult {
+  const normalizedFilters = normalizeReadFilters(page, filters);
+  if (!normalizedFilters.ok) {
+    return normalizedFilters;
+  }
+
   const payload = sanitizeRecord({
-    ...filters,
+    ...(normalizedFilters.payload ?? {}),
     pageNumber,
     pageSize,
   });
@@ -219,16 +352,13 @@ function mapActionByKind(
   }
 
   if (operationKind === "management-create" || operationKind === "management-update") {
-    const nameRaw = values.name;
-    const name = typeof nameRaw === "string" ? sanitizeString(nameRaw) : "";
-    if (!name) {
-      return { ok: false, message: "Name is required" };
-    }
+    const payload = filterFilledValues(values, {
+      keepEmptyStrings: operationKind === "management-update",
+    });
 
-    const payload: Record<string, unknown> = {
-      name,
-      remark: values.remark,
-    };
+    if (Object.keys(payload).length === 0) {
+      return { ok: false, message: "At least one field is required" };
+    }
 
     if (operationKind === "management-update") {
       if (!row) {
@@ -238,6 +368,34 @@ function mapActionByKind(
     }
 
     return { ok: true, payload };
+  }
+
+  if (operationKind === "management-import") {
+    const importDataRaw = values.importData;
+    const importData = typeof importDataRaw === "string" ? importDataRaw : "";
+
+    try {
+      const records = parseImportRecords(importData).filter((record) => Object.keys(record).length > 0);
+
+      if (records.length === 0) {
+        return {
+          ok: false,
+          message: "Import data must contain at least one valid CSV row or JSON object",
+        };
+      }
+
+      return {
+        ok: true,
+        payload: {
+          records,
+        },
+      };
+    } catch {
+      return {
+        ok: false,
+        message: "Import data must be valid CSV or JSON",
+      };
+    }
   }
 
   if (operationKind === "management-delete" || operationKind === "record-cancel") {
