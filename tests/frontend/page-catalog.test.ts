@@ -43,7 +43,7 @@ test("critical pages exist in catalog", () => {
   assert.equal(paths.has("/dashboard"), true);
   assert.equal(paths.has("/token-generate/credit-token"), true);
   assert.equal(paths.has("/management/customer"), true);
-  assert.equal(paths.has("/remote-operation/meter-setting"), true);
+  assert.equal(paths.has("/remote-operation/meter-reading"), true);
   assert.equal(paths.has("/data-report/interval-data"), true);
 });
 

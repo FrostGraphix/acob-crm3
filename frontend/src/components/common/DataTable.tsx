@@ -21,9 +21,23 @@ interface DataTableProps {
   onColumnSearch?: () => void;
 }
 
-function renderValue(value: DataRow[string]): React.ReactNode {
+function renderValue(value: DataRow[string], columnKey: string): React.ReactNode {
   if (value === null || value === undefined) {
     return <span style={{ opacity: 0.4 }}>--</span>;
+  }
+
+  const stringValue = String(value);
+
+  // Status Badge Logic
+  const statusKeys = ["status", "relayStatus", "energyStatus", "magneticStatus", "terminalCover", "upperOpen", "currentReverse", "currentUnbalance"];
+  if (statusKeys.includes(columnKey)) {
+    const lower = stringValue.toLowerCase();
+    let type = "neutral";
+    if (lower.includes("success") || lower.includes("open") || lower.includes("on") || lower === "0") type = "success";
+    if (lower.includes("fail") || lower.includes("close") || lower.includes("off") || lower === "1") type = "danger";
+    if (lower.includes("pend") || lower.includes("wait")) type = "warning";
+    
+    return <span className={`badge badge-${type}`}>{stringValue}</span>;
   }
 
   if (typeof value === "string" && value.trim().length === 0) {
@@ -35,7 +49,7 @@ function renderValue(value: DataRow[string]): React.ReactNode {
     return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
   }
 
-  return String(value);
+  return stringValue;
 }
 
 export function DataTable({
@@ -86,12 +100,20 @@ export function DataTable({
           <thead>
             <tr>
               <th>
-                <input checked={allVisibleSelected} onChange={onToggleAll} type="checkbox" />
+                <input checked={allVisibleSelected} className="data-table-checkbox" onChange={onToggleAll} type="checkbox" />
               </th>
               {columns.map((column) => (
                 <th key={column.key}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                     <span>{column.label}</span>
+                    <span className="sort-indicator">
+                      <svg fill="currentColor" height="6" viewBox="0 0 10 6" width="10" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 0L10 6H0L5 0Z" />
+                      </svg>
+                      <svg fill="currentColor" height="6" style={{ marginTop: '2px' }} viewBox="0 0 10 6" width="10" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 6L0 0H10L5 6Z" />
+                      </svg>
+                    </span>
                     {column.searchable ? (
                       <ColumnFilter
                         value={columnFilters[column.key] ?? ""}
@@ -109,7 +131,10 @@ export function DataTable({
             {loading ? (
               <tr>
                 <td className="table-empty" colSpan={columns.length + 2}>
-                  Loading records...
+                  <div className="loading-pulse">
+                    <div className="pulse-circle"></div>
+                    <span>Loading Premium Data...</span>
+                  </div>
                 </td>
               </tr>
             ) : rows.length === 0 ? (
@@ -121,12 +146,14 @@ export function DataTable({
             ) : (
               rows.map((row) => {
                 const rowKey = getRowKey(row);
+                const isSelected = selectedKeys.includes(rowKey);
 
                 return (
-                  <tr key={rowKey}>
+                  <tr className={isSelected ? "selected" : ""} key={rowKey}>
                     <td>
                       <input
-                        checked={selectedKeys.includes(rowKey)}
+                        checked={isSelected}
+                        className="data-table-checkbox"
                         onChange={() => onToggleRow(row)}
                         type="checkbox"
                       />
@@ -136,11 +163,11 @@ export function DataTable({
                         className={`cell-align-${column.align ?? "start"}`}
                         key={`${rowKey}-${column.key}`}
                       >
-                        {renderValue(row[column.key])}
+                        {renderValue(row[column.key], column.key)}
                       </td>
                     ))}
                     {rowActions.length > 0 ? (
-                      <td className="row-actions">
+                      <td className="row-actions" style={{ whiteSpace: 'nowrap' }}>
                         {rowActions.map((action) => (
                           <button
                             className={`mini-button mini-button-${action.tone ?? "neutral"}`}
@@ -161,8 +188,8 @@ export function DataTable({
         </table>
       </div>
 
-      <div className="table-meta">
-        <strong>Total {total}</strong>
+      <div className="table-meta" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', background: 'color-mix(in srgb, var(--panel-glass) 96%, transparent)' }}>
+        <strong style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total {total}</strong>
         <div className="table-pagination">
           <label className="pagination-page-size">
             <span>Rows:</span>

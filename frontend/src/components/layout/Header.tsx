@@ -12,6 +12,24 @@ interface HeaderProps {
   onToggleSidebarCollapse: () => void;
 }
 
+const UserIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+  </svg>
+);
+
+const LogoutIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+  </svg>
+);
+
+const MenuIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6h16M4 12h16m-7 6h7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+  </svg>
+);
+
 export function Header({
   currentPage,
   isSidebarCollapsed,
@@ -32,43 +50,55 @@ export function Header({
           aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="20" height="20">
+          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="18" height="18">
             {isSidebarCollapsed ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             )}
           </svg>
         </button>
+        
         <button
           className="button-icon-only mobile-menu-toggle"
+          style={{ display: 'none' }}
           onClick={onToggleMenu}
           type="button"
-          aria-label="Toggle menu"
         >
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="24" height="24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <MenuIcon />
         </button>
+
         <div className="header-copy">
-          <p className="eyebrow">Operations Center</p>
           <h1>{currentPage.title}</h1>
-          <p className="page-description">{currentPage.description}</p>
         </div>
       </div>
+
       <div className="header-controls">
         <ThemeToggle />
         <NotificationBell />
+        
         <div className="header-user">
-          <button className="button button-ghost" onClick={() => onNavigate("/profile")} type="button">
-            Profile
-          </button>
           <div className="header-user-copy">
             <strong>{user?.displayName ?? "Operator"}</strong>
             <span>{user?.role ?? "Administrator"}</span>
           </div>
-          <button className="button button-ghost" onClick={() => void onLogout()} type="button">
-            Log out
+
+          <button 
+            className="header-icon-button" 
+            onClick={() => onNavigate("/profile")} 
+            title="Profile"
+            type="button"
+          >
+            <UserIcon />
+          </button>
+
+          <button 
+            className="header-icon-button" 
+            onClick={() => void onLogout()} 
+            title="Log out"
+            type="button"
+          >
+            <LogoutIcon />
           </button>
         </div>
       </div>

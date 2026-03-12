@@ -1,10 +1,10 @@
 # ACOB CRM3 Architecture
 
 ## Overview
-ACOB CRM3 is a custom customer relationship management platform that acts as a frontend replacement for the existing "Meter System" platform (`8.208.16.168:9311`). The architecture consists of 3 distinct domains:
+ACOB CRM3 is a custom customer relationship management platform that acts as a frontend replacement for the existing "Meter System" platform (`8.208.16.168:9310`). The architecture consists of 3 distinct domains:
 
 1. **Frontend (Vite + React + TypeScript + Vanilla CSS + ECharts)**: A modern, performant React application providing a completely responsive and visually stunning UI.
-2. **Backend (Node.js + Express + TypeScript)**: A proxy server that mediates all traffic to the upstream API (`8.208.16.168:9311`). This ensures cookies and credentials are never exposed directly to the browser.
+2. **Backend (Node.js + Express + TypeScript)**: A proxy server that mediates all traffic to the upstream API (`8.208.16.168:9310`). This ensures cookies and credentials are never exposed directly to the browser.
 3. **Common (`/common/types/`)**: Shared TypeScript models defining the API request/response structures.
 
 ## Directory Structure
