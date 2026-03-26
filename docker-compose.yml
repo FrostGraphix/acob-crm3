@@ -16,7 +16,7 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
-      UPSTREAM_API_URL: "http://8.208.16.168:9311"
+      UPSTREAM_API_URL: "http://8.208.16.168:9310"
       UPSTREAM_USERNAME: "admin"
       UPSTREAM_PASSWORD: "ACOB_admin"
       JWT_SECRET: "change-me-in-production"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { NavigationSection, SidebarIconKey } from "../../types";
 
 interface SidebarProps {
@@ -9,18 +9,7 @@ interface SidebarProps {
   isCollapsed?: boolean;
 }
 
-function getCompactLabel(label: string) {
-  const words = label
-    .split(/\s+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 
-  if (words.length >= 2) {
-    return `${words[0][0] ?? ""}${words[1][0] ?? ""}`.toUpperCase();
-  }
-
-  return label.slice(0, 2).toUpperCase();
-}
 
 function renderSectionIcon(iconKey: SidebarIconKey) {
   const className = "sidebar-section-icon";
@@ -28,45 +17,48 @@ function renderSectionIcon(iconKey: SidebarIconKey) {
   switch (iconKey) {
     case "dashboard":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M4 13h6V4H4zm10 7h6V4h-6zM4 20h6v-5H4zm10 0h6v-9h-6z" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M3 3h7v9H3V3zm11 0h7v5h-7V3zm0 9h7v9h-7v-9zM3 16h7v5H3v-5z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "token-generate":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M12 3v18M7 8h7.5a3.5 3.5 0 010 7H9.5a3.5 3.5 0 000 7H17" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "token-record":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M7 4h8l4 4v12H7z" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M15 4v4h4M10 12h5M10 16h5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 12h6M9 16h6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "remote-operation":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "remote-operation-task":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M9 6h10M9 12h10M9 18h10M5 6h.01M5 12h.01M5 18h.01" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 14l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "data-report":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "management":
       return (
-        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path d="M12 8a3 3 0 100-6 3 3 0 000 6zm0 0a8 8 0 00-8 8v2h16v-2a8 8 0 00-8-8z" strokeLinecap="round" strokeLinejoin="round" />
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
   }
@@ -78,10 +70,10 @@ function renderChevron(expanded: boolean) {
       className={`sidebar-chevron ${expanded ? "expanded" : ""}`}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.5}
       viewBox="0 0 24 24"
     >
-      <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -93,26 +85,73 @@ export function Sidebar({
   isOpen,
   isCollapsed = false,
 }: SidebarProps) {
-  const [openSectionKey, setOpenSectionKey] = useState<string>(() => {
-    const activeSection = sections.find((section) =>
-      section.items.some((item) => item.path === currentPath),
-    );
+  const [openSectionKey, setOpenSectionKey] = useState<string>("");
+  const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
+  const [flyoutOffset, setFlyoutOffset] = useState<React.CSSProperties>({});
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
-    return activeSection?.key ?? sections[0]?.key ?? "";
-  });
+  // Handle click outside to close flyout
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        setOpenSectionKey("");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, sectionKey: string) => {
+    if (!isCollapsed) return;
+    if (hoverTimeout) window.clearTimeout(hoverTimeout);
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBottomHalf = rect.top > window.innerHeight / 2;
+    
+    if (isBottomHalf) {
+      setFlyoutOffset({ bottom: `${window.innerHeight - rect.bottom}px`, top: 'auto' });
+    } else {
+      setFlyoutOffset({ top: `${rect.top}px`, bottom: 'auto' });
+    }
+    
+    setOpenSectionKey(sectionKey);
+  };
+
+  const handleMouseLeave = () => {
+    if (!isCollapsed) return;
+    const timeout = window.setTimeout(() => {
+      setOpenSectionKey("");
+    }, 3000);
+    setHoverTimeout(timeout as unknown as number);
+  };
 
   const toggleSection = (sectionKey: string) => {
+    if (isCollapsed) return;
     setOpenSectionKey((current) => (current === sectionKey ? "" : sectionKey));
   };
 
   return (
-    <aside className={`sidebar ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
+    <aside 
+      className={`sidebar ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}
+      ref={sidebarRef}
+    >
       <div className="sidebar-scroll-shell">
-        <div className="sidebar-brand">
-          <span className="sidebar-brand-mark">A</span>
-          <div className="sidebar-brand-copy">
-            <strong>ACOB CRM3</strong>
-            <p>Meter system control</p>
+        <div className="sidebar-brand-area">
+          <div className="sidebar-brand">
+            <div className="sidebar-logo-mark">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="sidebar-brand-text">
+              <span className="brand-title">ACOB <strong>CRM3</strong></span>
+            </div>
+          </div>
+          
+          <div className="sidebar-site-dropdown">
+            <button className="site-drop-btn" title="Switch Site" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
           </div>
         </div>
 
@@ -131,6 +170,8 @@ export function Sidebar({
                   aria-expanded={isExpanded}
                   className={`sidebar-section-toggle ${isExpanded ? "expanded" : ""}`}
                   onClick={() => toggleSection(section.key)}
+                  onMouseEnter={(e) => handleMouseEnter(e, section.key)}
+                  onMouseLeave={handleMouseLeave}
                   title={isCollapsed ? section.label : undefined}
                   type="button"
                 >
@@ -141,7 +182,6 @@ export function Sidebar({
                     <span className="sidebar-section-label">{section.label}</span>
                   </span>
                   <span className="sidebar-section-meta">
-                    <span className="sidebar-section-count">{section.items.length}</span>
                     {renderChevron(isExpanded)}
                   </span>
                 </button>
@@ -149,12 +189,14 @@ export function Sidebar({
                 {isExpanded ? (
                   <div
                     className={`sidebar-section-body ${isCollapsed ? "sidebar-section-body-flyout" : ""}`}
+                    onMouseEnter={() => isCollapsed && hoverTimeout && window.clearTimeout(hoverTimeout)}
+                    onMouseLeave={handleMouseLeave}
+                    style={isCollapsed ? flyoutOffset : undefined}
                   >
                     {isCollapsed ? (
                       <div className="sidebar-flyout-card">
                         <div className="sidebar-flyout-header">
                           <strong className="sidebar-flyout-title">{section.label}</strong>
-                          <span className="sidebar-section-count">{section.items.length}</span>
                         </div>
                         <div className="sidebar-links">
                           {section.items.map((item) => (
@@ -169,8 +211,8 @@ export function Sidebar({
                               title={item.menuLabel}
                               type="button"
                             >
-                              <span className="sidebar-link-label">{item.menuLabel}</span>
                               <span className="sidebar-link-glow" />
+                              <span className="sidebar-link-label">{item.menuLabel}</span>
                             </button>
                           ))}
                         </div>
@@ -189,11 +231,8 @@ export function Sidebar({
                             title={isCollapsed ? item.menuLabel : undefined}
                             type="button"
                           >
-                            <span className="sidebar-link-compact">
-                              {getCompactLabel(item.menuLabel)}
-                            </span>
-                            <span className="sidebar-link-label">{item.menuLabel}</span>
                             <span className="sidebar-link-glow" />
+                            <span className="sidebar-link-label">{item.menuLabel}</span>
                           </button>
                         ))}
                       </div>

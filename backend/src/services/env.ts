@@ -87,7 +87,7 @@ export const env: AppEnv = {
       : "development",
   port: parsePort(process.env.PORT, 3000),
   corsOrigins: parseCsv(process.env.CORS_ORIGINS, ["http://localhost:5173"]),
-  upstreamApiUrl: process.env.UPSTREAM_API_URL ?? "http://8.208.16.168:9311",
+  upstreamApiUrl: process.env.UPSTREAM_API_URL ?? "http://8.208.16.168:9310",
   upstreamUsername: process.env.UPSTREAM_USERNAME ?? "admin",
   upstreamPassword: process.env.UPSTREAM_PASSWORD ?? "",
   jwtSecret: process.env.JWT_SECRET ?? randomUUID(),

@@ -156,7 +156,8 @@ test.before(async () => {
 
     if (
       pathname === "/API/PrepayReport/LowPurchaseSituation" ||
-      pathname === "/api/DailyDataMeter/read"
+      pathname === "/api/DailyDataMeter/read" ||
+      pathname === "/API/RemoteMeterTask/GetReadingTask"
     ) {
       upstreamState.lastRequestBodies[pathname] = body;
 
@@ -526,4 +527,16 @@ test("report and daily data proxy requests inject upstream Lang parameter", asyn
   });
   assert.equal(dailyDataResponse.status, 200);
   assert.equal(upstreamState.lastRequestBodies["/api/DailyDataMeter/read"].Lang, "en");
+
+  const readingTaskResponse = await fetch(`${baseUrl}/API/RemoteMeterTask/GetReadingTask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 10 }),
+  });
+  assert.equal(readingTaskResponse.status, 200);
+  assert.equal(upstreamState.lastRequestBodies["/API/RemoteMeterTask/GetReadingTask"].Lang, "en");
 });

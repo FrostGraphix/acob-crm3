@@ -1,12 +1,12 @@
 # ACOB CRM3 — Full Platform Replication
 
-Build a complete CRM platform that replicates every feature of the third-party Meter System at `http://8.208.16.168:9311`. The new platform will use the existing API as its data source, giving ACOB full control of their data, UI, and user experience.
+Build a complete CRM platform that replicates every feature of the third-party Meter System at `http://8.208.16.168:9310`. The new platform will use the existing API as its data source, giving ACOB full control of their data, UI, and user experience.
 
 ## User Review Required
 
 > [!IMPORTANT]
 > **Architecture Decision: Vite + React + TypeScript with a Node.js/Express backend proxy.**
-> The backend acts as a proxy to the third-party API (`8.208.16.168:9311`), so credentials and the upstream URL are never exposed to the browser. All data flows through our backend.
+> The backend acts as a proxy to the third-party API (`8.208.16.168:9310`), so credentials and the upstream URL are never exposed to the browser. All data flows through our backend.
 
 > [!WARNING]
 > **This is a large project (~20+ pages, 144 API endpoints).** The plan below covers the complete replication. We will build it phase by phase, with the first deliverable being a working dashboard + navigation + auth flow.
@@ -145,7 +145,7 @@ acob-crm3/
 #### [NEW] [index.ts](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/backend/src/index.ts)
 - Express server with CORS, JSON body parser, cookie-parser
 - Mounts all API route groups
-- Proxies all `/api/*` requests to upstream `8.208.16.168:9311`
+- Proxies all `/api/*` requests to upstream `8.208.16.168:9310`
 - Stores auth token in HTTP-only cookie
 
 #### [NEW] [upstream.ts](file:///c:/Users/ACOB/Desktop/VS%20Code/acob-crm3/backend/src/services/upstream.ts)

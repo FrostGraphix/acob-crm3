@@ -18,8 +18,9 @@ function applyUpstreamDefaults(pathname: string, body: Record<string, unknown>) 
   const nextBody = { ...body };
   const requiresLang =
     pathname.startsWith("/API/PrepayReport/") || pathname.startsWith("/api/DailyDataMeter/");
+  const requiresTaskLang = pathname.startsWith("/API/RemoteMeterTask/Get");
 
-  if (requiresLang) {
+  if (requiresLang || requiresTaskLang) {
     const currentLang = typeof nextBody.Lang === "string" ? nextBody.Lang.trim() : "";
     if (currentLang.length === 0) {
       nextBody.Lang = "en";

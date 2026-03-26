@@ -135,57 +135,62 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
 
   return (
     <section className="page-stack">
-      <div className="data-page-toolbar">
-        <SearchBar
-          fields={page.filters}
-          onChange={(key, value) =>
-            setDraftFilters((current) => ({
-              ...current,
-              [key]: value,
-            }))
-          }
-          onReset={() => {
-            setFeedback(null);
-            reset();
-          }}
-          onSearch={() => {
-            setFeedback(null);
-            search();
-          }}
-          values={draftFilters}
-        />
+      <div className="data-view-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <SearchBar
+            fields={page.filters}
+            onChange={(key, value) =>
+              setDraftFilters((current) => ({
+                ...current,
+                [key]: value,
+              }))
+            }
+            onReset={() => {
+              setFeedback(null);
+              reset();
+            }}
+            onSearch={() => {
+              setFeedback(null);
+              search();
+            }}
+            values={draftFilters}
+          />
+          
+          <div className="action-strip" style={{ margin: 0, padding: 0, border: 'none', background: 'none' }}>
+            {(page.toolbarActions ?? []).map((action) => (
+              <button
+                className={`button ${action.tone === "primary" ? "button-primary" : "button-ghost"}`}
+                style={{ borderRadius: '999px' }}
+                key={action.key}
+                onClick={() => void handleAction(action)}
+                type="button"
+              >
+                {action.label}
+              </button>
+            ))}
+            {(page.bulkActions ?? []).map((action) => (
+              <button
+                className={`button ${action.tone === "danger" ? "button-danger" : "button-ghost"}`}
+                style={{ borderRadius: '999px' }}
+                key={action.key}
+                onClick={() => void handleAction(action, undefined, true)}
+                type="button"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {page.showQuota ? (
-          <div className="data-page-quota">
-            Quota(kwh): 0/0
+          <div className="data-page-quota" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Quota(kw/h): 0/0
           </div>
         ) : null}
-      </div>
 
-      <div className="action-strip">
-        {(page.toolbarActions ?? []).map((action) => (
-          <button
-            className={`button ${action.tone === "primary" ? "button-primary" : "button-ghost"}`}
-            key={action.key}
-            onClick={() => void handleAction(action)}
-            type="button"
-          >
-            {action.label}
-          </button>
-        ))}
-        {(page.bulkActions ?? []).map((action) => (
-          <button
-            className={`button ${action.tone === "danger" ? "button-danger" : "button-ghost"}`}
-            key={action.key}
-            onClick={() => void handleAction(action, undefined, true)}
-            type="button"
-          >
-            {action.label}
-          </button>
-        ))}
+        {feedback ? <p className="status-banner" style={{ marginTop: '0.5rem' }}>{feedback}</p> : null}
+        {error ? <p className="status-banner status-banner-error" style={{ marginTop: '0.5rem' }}>{error}</p> : null}
       </div>
-
-      {feedback ? <p className="status-banner">{feedback}</p> : null}
-      {error ? <p className="status-banner status-banner-error">{error}</p> : null}
 
       <DataTable
         columns={page.columns}

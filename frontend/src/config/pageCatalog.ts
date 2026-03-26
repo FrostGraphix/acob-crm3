@@ -436,48 +436,6 @@ interface TaskPageOptions {
   description?: string;
 }
 
-function createTaskPage(
-  path: string,
-  title: string,
-  menuLabel: string,
-  readEndpoint: string,
-  updateEndpoint: string,
-  options: TaskPageOptions = {},
-): DataPageConfig {
-  const rowActions: ActionConfig[] = [
-    {
-      key: "update",
-      label: "Update Task",
-      endpoint: updateEndpoint,
-      tone: "primary",
-      operationKind: "task-update",
-      fields: [
-        {
-          key: "remark",
-          label: "Remark",
-          placeholder: "Update remark",
-        },
-      ],
-    },
-    ...(options.rowActions ?? []),
-  ];
-
-  return {
-    kind: "data",
-    path,
-    title,
-    menuLabel,
-    description: options.description ?? `${title} for monitoring and updating queued operations.`,
-    sectionKey: "remote-operation-task",
-    readEndpoint,
-    readOperationKind: "task-read",
-    filters: options.filters ?? [searchFilter, ...dateRangeFilters],
-    columns: options.columns ?? genericTaskColumns,
-    toolbarActions: [createClientExportAction(readEndpoint), ...(options.toolbarActions ?? [])],
-    rowActions,
-  };
-}
-
 function createReadOnlyTaskPage(
   path: string,
   title: string,
@@ -688,18 +646,6 @@ const pages: AppPageConfig[] = [
     "Meter Token",
     "/API/RemoteMeterTask/CreateTokenTask",
   ),
-  createRemoteOperationPage(
-    "/remote-operation/meter-setting",
-    "Meter Setting",
-    "Meter Setting",
-    "/API/RemoteMeterTask/CreateSettingTask",
-  ),
-  createRemoteOperationPage(
-    "/remote-operation/transparent-forwarding",
-    "Transparent Forwarding",
-    "Transparent Forwarding",
-    "/API/RemoteMeterTask/CreateTransparentForwardingTask",
-  ),
   createReadOnlyTaskPage(
     "/remote-operation-task/meter-reading-task",
     "Meter Reading Task",
@@ -729,19 +675,6 @@ const pages: AppPageConfig[] = [
       columns: meterTokenTaskColumns,
       filters: [searchFilter],
     },
-  ),
-  createTaskPage(
-    "/remote-operation-task/meter-setting-task",
-    "Meter Setting Task",
-    "Meter Setting Task",
-    "/API/RemoteMeterTask/GetSettingTask",
-    "/API/RemoteMeterTask/UpdateSettingTask",
-  ),
-  createReadOnlyTaskPage(
-    "/remote-operation-task/transparent-forwarding-task",
-    "Transparent Forwarding Task",
-    "Transparent Forwarding Task",
-    "/API/RemoteMeterTask/GetTransparentForwardingTask",
   ),
   {
     kind: "data",
