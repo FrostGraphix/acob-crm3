@@ -5,6 +5,7 @@ import type {
   AuthUser,
   DashboardData,
   Envelope,
+  RuntimeEngineCollection,
 } from "../types";
 import { mapDashboardData } from "./dashboard-mapper";
 import { normalizeTableData } from "./table-data";
@@ -173,4 +174,31 @@ export async function loadTableData(path: string, body: Record<string, unknown>)
 
 export function runPageAction(path: string, body: Record<string, unknown>) {
   return request<ActionResponse>(path, { body });
+}
+
+export function loadRuntimeEngines() {
+  return request<{ engines: RuntimeEngineCollection }>("/api/runtime/engines", {
+    method: "GET",
+  });
+}
+
+export function startRuntimeEngine(engine: "analysis" | "site-consumption") {
+  return request<{ status: unknown }>(`/api/runtime/engines/${engine}/start`, {
+    body: {},
+  });
+}
+
+export function stopRuntimeEngine(engine: "analysis" | "site-consumption") {
+  return request<{ status: unknown }>(`/api/runtime/engines/${engine}/stop`, {
+    body: {},
+  });
+}
+
+export function runRuntimeEngine(engine: "analysis" | "site-consumption") {
+  return request<{ status: unknown; runResult: { accepted: boolean; reason: string } }>(
+    `/api/runtime/engines/${engine}/run`,
+    {
+      body: {},
+    },
+  );
 }

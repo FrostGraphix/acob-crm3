@@ -28,6 +28,13 @@ function renderValue(value: DataRow[string], columnKey: string): React.ReactNode
 
   const stringValue = String(value);
 
+  if (
+    columnKey === "consumption" &&
+    ((typeof value === "number" && value === -1) || stringValue.trim() === "-1")
+  ) {
+    return <span style={{ opacity: 0.4 }}>--</span>;
+  }
+
   // Status Badge Logic
   const statusKeys = ["status", "relayStatus", "energyStatus", "magneticStatus", "terminalCover", "upperOpen", "currentReverse", "currentUnbalance"];
   if (statusKeys.includes(columnKey)) {

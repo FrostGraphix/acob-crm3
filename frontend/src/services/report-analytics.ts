@@ -1,4 +1,4 @@
-import type { DataPageConfig, DataRow } from "../types";
+import type { DataPageConfig, DataRow, ReportChartData } from "../types";
 
 export interface ReportStat {
   label: string;
@@ -6,20 +6,18 @@ export interface ReportStat {
   accent: "teal" | "blue" | "green" | "orange";
 }
 
-export interface ReportChartData {
-  labels: string[];
-  values: number[];
-  type: "line" | "bar";
+function isSentinelNumber(value: number) {
+  return value === -1;
 }
 
 function toNumber(value: DataRow[string]) {
   if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
+    return isSentinelNumber(value) ? null : value;
   }
 
   if (typeof value === "string" && value.trim().length > 0) {
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) && !isSentinelNumber(parsed) ? parsed : null;
   }
 
   return null;
@@ -86,10 +84,18 @@ function groupSeries(
     limit?: number;
     dateMode?: "daily" | "monthly";
     chartType?: "line" | "bar";
+    averageValue?: number;
+    seriesName?: string;
   } = {},
 ): ReportChartData | null {
-  const { limit = 10, dateMode, chartType = "bar" } = options;
+  const {
+    limit = 10,
+    dateMode,
+    chartType = "bar",
+    seriesName = "Series",
+  } = options;
   const buckets = new Map<string, number>();
+  const validValues: number[] = [];
   const valueKeys = Array.isArray(valueKeyOrKeys) ? valueKeyOrKeys : [valueKeyOrKeys];
 
   for (const row of rows) {
@@ -105,6 +111,7 @@ function groupSeries(
       continue;
     }
 
+    validValues.push(value);
     buckets.set(label, (buckets.get(label) ?? 0) + value);
   }
 
@@ -118,6 +125,11 @@ function groupSeries(
     labels: entries.map(([label]) => label),
     values: entries.map(([, value]) => value),
     type: chartType,
+    averageValue:
+      validValues.length > 0
+        ? validValues.reduce((total, value) => total + value, 0) / validValues.length
+        : undefined,
+    seriesName,
   };
 }
 
@@ -145,6 +157,7 @@ export function buildReportAnalytics(
       chartData: groupSeries(rows, ["collectionDate", "meterId"], "totalEnergy", {
         limit: 8,
         chartType: "line",
+        seriesName: "Energy",
       }),
     };
   }
@@ -160,6 +173,7 @@ export function buildReportAnalytics(
         limit: 12,
         dateMode: trendMode,
         chartType: "line",
+        seriesName: "Consumption",
       }),
     };
   }

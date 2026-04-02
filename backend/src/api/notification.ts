@@ -5,41 +5,28 @@ import { sendEnvelope } from "../services/response.js";
 export const notificationRouter = Router();
 
 notificationRouter.get("/", (_request, res) => {
-  sendEnvelope(
-    res,
-    200,
-    analysisEngine.notifications.filter((notification) => !notification.read),
-    "success",
-  );
+  sendEnvelope(res, 200, analysisEngine.getUnreadNotifications(), "success");
 });
 
 notificationRouter.post("/dismiss", (req, res) => {
-  const { ids } = req.body as { ids: string[] };
+  const { ids } = req.body as { ids: unknown };
 
   if (!Array.isArray(ids)) {
     sendEnvelope(res, 400, null, "Array of ids required", 1);
     return;
   }
 
-  let dismissedCount = 0;
-  for (const notif of analysisEngine.notifications) {
-    if (ids.includes(notif.id) && !notif.read) {
-      notif.read = true;
-      dismissedCount++;
-    }
+  const normalizedIds = ids.filter((id): id is string => typeof id === "string" && id.length > 0);
+  if (normalizedIds.length === 0) {
+    sendEnvelope(res, 400, null, "Array of ids required", 1);
+    return;
   }
 
+  const dismissedCount = analysisEngine.dismissNotifications(normalizedIds);
   sendEnvelope(res, 200, { dismissedCount }, "success");
 });
 
 notificationRouter.post("/dismiss-all", (req, res) => {
-  let dismissedCount = 0;
-  for (const notif of analysisEngine.notifications) {
-    if (!notif.read) {
-      notif.read = true;
-      dismissedCount++;
-    }
-  }
-
+  const dismissedCount = analysisEngine.dismissAllNotifications();
   sendEnvelope(res, 200, { dismissedCount }, "success");
 });

@@ -73,7 +73,7 @@ export function DualConsumptionChart({
         color: "var(--text-muted)",
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         fontSize: 11,
-        formatter: (val: number) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val),
+        formatter: (val: number) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : String(val)),
       },
       splitLine: {
         lineStyle: { color: "var(--border-subtle)", type: "dashed" },

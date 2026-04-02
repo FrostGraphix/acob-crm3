@@ -22,6 +22,7 @@ import {
   revokeSupabaseSession,
   signInWithSupabasePassword,
 } from "../services/supabase.js";
+import { extractUpstreamPermissions } from "../services/upstream-permissions.js";
 import { loginToUpstream, logoutFromUpstream } from "../services/upstream.js";
 
 interface LoginBody {
@@ -33,11 +34,13 @@ const LEGACY_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 const SUPABASE_REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const CSRF_MAX_AGE_MS = LEGACY_SESSION_MAX_AGE_MS;
 
-function createLegacyUser(username: string): AuthUser {
+function createLegacyUser(username: string, permissions: string[] = []): AuthUser {
   return {
     username,
     displayName: username === "admin" ? "ACOB Admin" : username,
     role: "Administrator",
+    permissions,
+    email: username.includes("@") ? username : undefined,
   };
 }
 
@@ -84,7 +87,11 @@ function firstString(record: Record<string, unknown>, keys: string[]) {
   return null;
 }
 
-function mapUpstreamUser(result: unknown, fallbackUsername: string): AuthUser {
+function mapUpstreamUser(
+  result: unknown,
+  fallbackUsername: string,
+  permissions: string[] = [],
+): AuthUser {
   const root = asRecord(result);
   const nestedUser = asRecord(root.user);
   const source = Object.keys(nestedUser).length > 0 ? nestedUser : root;
@@ -98,16 +105,74 @@ function mapUpstreamUser(result: unknown, fallbackUsername: string): AuthUser {
   const role =
     firstString(source, ["role", "roleName", "userRole"]) ??
     "Administrator";
+  const email = firstString(source, ["email", "emailAddress", "mail"]);
+  const phone = firstString(source, ["phone", "phoneNumber", "mobile", "mobilePhone"]);
+  const address = firstString(source, ["address", "customerAddress", "location"]);
+  const remark = firstString(source, ["remark", "note", "description"]);
 
   return {
     username,
     displayName,
     role,
+    permissions,
+    email: email ?? undefined,
+    phone: phone ?? undefined,
+    address: address ?? undefined,
+    remark: remark ?? undefined,
   };
 }
 
 function createCsrfToken() {
   return randomUUID().replace(/-/g, "");
+}
+
+function canUseDegradedLegacyLogin(username: string, password: string) {
+  const configuredUsername = env.upstreamUsername.trim();
+  const configuredPassword = env.upstreamPassword.trim();
+
+  return (
+    !env.strictDependencyStartup &&
+    configuredUsername.length > 0 &&
+    configuredPassword.length > 0 &&
+    username === configuredUsername &&
+    password === configuredPassword
+  );
+}
+
+async function sendLegacyLoginSuccess(
+  response: Parameters<typeof sendEnvelope>[0],
+  user: AuthUser,
+  upstreamCookie?: string,
+) {
+  const sessionId = randomUUID();
+  const csrfToken = createCsrfToken();
+
+  try {
+    await createSession(sessionId, {
+      upstreamCookie,
+      csrfToken,
+    });
+  } catch {
+    sendEnvelope(response, 503, null, "Session store unavailable", 1);
+    return;
+  }
+
+  const token = signLegacySession(user, sessionId);
+
+  response.cookie(
+    SESSION_COOKIE_NAME,
+    token,
+    buildSessionCookieOptions(LEGACY_SESSION_MAX_AGE_MS),
+  );
+  response.cookie(
+    CSRF_COOKIE_NAME,
+    csrfToken,
+    buildCsrfCookieOptions(CSRF_MAX_AGE_MS),
+  );
+  response.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+  response.clearCookie(UPSTREAM_SESSION_COOKIE_NAME, { path: "/" });
+
+  sendEnvelope(response, 200, { user, token, csrfToken });
 }
 
 function resolveSupabaseUpstreamCredentials(username: string, password: string) {
@@ -171,6 +236,7 @@ authRouter.post("/login", async (request, response) => {
     }
 
     let upstreamCookie: string;
+    let upstreamPermissions: string[] = [];
     try {
       const upstreamCredentials = resolveSupabaseUpstreamCredentials(username, password);
       const upstreamLogin = await loginToUpstream(upstreamCredentials);
@@ -191,6 +257,7 @@ authRouter.post("/login", async (request, response) => {
       }
 
       upstreamCookie = upstreamLogin.upstreamCookie;
+      upstreamPermissions = extractUpstreamPermissions(upstreamCookie);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upstream login failed";
       sendEnvelope(response, 502, null, message, 1);
@@ -237,7 +304,10 @@ authRouter.post("/login", async (request, response) => {
     }
 
     sendEnvelope(response, 200, {
-      user: supabaseSession.user,
+      user: {
+        ...supabaseSession.user,
+        permissions: upstreamPermissions,
+      },
       token: supabaseSession.accessToken,
       csrfToken,
     });
@@ -246,7 +316,9 @@ authRouter.post("/login", async (request, response) => {
 
   const username = parseUsername(body, "admin");
 
-  let upstreamCookie: string;
+  const degradedLoginAllowed = canUseDegradedLegacyLogin(username, password);
+  let upstreamCookie: string | undefined;
+  let upstreamPermissions: string[] = [];
   let upstreamLoginResult: unknown;
   try {
     const upstreamLogin = await loginToUpstream({ username, password });
@@ -256,53 +328,33 @@ authRouter.post("/login", async (request, response) => {
       typeof upstreamLogin.upstreamCookie === "string";
 
     if (!authenticated || !upstreamLogin.upstreamCookie) {
-      sendEnvelope(
-        response,
-        401,
-        null,
-        upstreamLogin.payload.reason || "Invalid upstream credentials",
-        1,
-      );
+      if (!degradedLoginAllowed) {
+        sendEnvelope(
+          response,
+          401,
+          null,
+          upstreamLogin.payload.reason || "Invalid upstream credentials",
+          1,
+        );
+        return;
+      }
+    } else {
+      upstreamCookie = upstreamLogin.upstreamCookie;
+      upstreamPermissions = extractUpstreamPermissions(upstreamCookie);
+      upstreamLoginResult = upstreamLogin.payload.result;
+    }
+  } catch (error) {
+    if (!degradedLoginAllowed) {
+      const message = error instanceof Error ? error.message : "Upstream login failed";
+      sendEnvelope(response, 502, null, message, 1);
       return;
     }
-
-    upstreamCookie = upstreamLogin.upstreamCookie;
-    upstreamLoginResult = upstreamLogin.payload.result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Upstream login failed";
-    sendEnvelope(response, 502, null, message, 1);
-    return;
   }
 
-  const sessionId = randomUUID();
-  const csrfToken = createCsrfToken();
-  try {
-    await createSession(sessionId, {
-      upstreamCookie,
-      csrfToken,
-    });
-  } catch {
-    sendEnvelope(response, 503, null, "Session store unavailable", 1);
-    return;
-  }
-
-  const user = mapUpstreamUser(upstreamLoginResult, username) ?? createLegacyUser(username);
-  const token = signLegacySession(user, sessionId);
-
-  response.cookie(
-    SESSION_COOKIE_NAME,
-    token,
-    buildSessionCookieOptions(LEGACY_SESSION_MAX_AGE_MS),
-  );
-  response.cookie(
-    CSRF_COOKIE_NAME,
-    csrfToken,
-    buildCsrfCookieOptions(CSRF_MAX_AGE_MS),
-  );
-  response.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
-  response.clearCookie(UPSTREAM_SESSION_COOKIE_NAME, { path: "/" });
-
-  sendEnvelope(response, 200, { user, token, csrfToken });
+  const user = upstreamLoginResult
+    ? mapUpstreamUser(upstreamLoginResult, username, upstreamPermissions)
+    : createLegacyUser(username, upstreamPermissions);
+  await sendLegacyLoginSuccess(response, user, upstreamCookie);
 });
 
 authRouter.get("/info", requireAuth, (request, response) => {

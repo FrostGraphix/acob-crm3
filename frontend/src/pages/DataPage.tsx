@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { DataTable } from "../components/common/DataTable";
 import { FormModal } from "../components/common/FormModal";
-import { SearchBar } from "../components/common/SearchBar";
+import { DataPageToolbar } from "../components/data/DataPageToolbar";
 import { useDataTable } from "../hooks/useDataTable";
 import { runPageAction } from "../services/api";
 import { downloadRowsAsCsv, printRowDetails } from "../services/client-table-actions";
@@ -81,8 +81,8 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
         throw new Error(`${action.label} requires a selected row`);
       }
 
-      printRowDetails(`${page.menuLabel} Print`, page.columns, options.row);
-      setFeedback(`Opened print preview for ${page.menuLabel}.`);
+      await printRowDetails(`${page.menuLabel} Print`, page.columns, options.row);
+      setFeedback(`Opened print dialog for ${page.menuLabel}.`);
       return;
     }
 
@@ -101,11 +101,8 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
         ? (mapping.payload.records as Record<string, unknown>[])
         : [];
 
-      for (const record of records) {
-        await runPageAction(action.endpoint, record);
-      }
-
-      setFeedback(`Imported ${records.length} record(s) into ${page.menuLabel}.`);
+      const result = await runPageAction(action.endpoint, { records });
+      setFeedback(result.message ?? `Imported ${records.length} record(s) into ${page.menuLabel}.`);
       await refresh();
       return;
     }
@@ -135,62 +132,28 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
 
   return (
     <section className="page-stack">
-      <div className="data-view-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <SearchBar
-            fields={page.filters}
-            onChange={(key, value) =>
-              setDraftFilters((current) => ({
-                ...current,
-                [key]: value,
-              }))
-            }
-            onReset={() => {
-              setFeedback(null);
-              reset();
-            }}
-            onSearch={() => {
-              setFeedback(null);
-              search();
-            }}
-            values={draftFilters}
-          />
-          
-          <div className="action-strip" style={{ margin: 0, padding: 0, border: 'none', background: 'none' }}>
-            {(page.toolbarActions ?? []).map((action) => (
-              <button
-                className={`button ${action.tone === "primary" ? "button-primary" : "button-ghost"}`}
-                style={{ borderRadius: '999px' }}
-                key={action.key}
-                onClick={() => void handleAction(action)}
-                type="button"
-              >
-                {action.label}
-              </button>
-            ))}
-            {(page.bulkActions ?? []).map((action) => (
-              <button
-                className={`button ${action.tone === "danger" ? "button-danger" : "button-ghost"}`}
-                style={{ borderRadius: '999px' }}
-                key={action.key}
-                onClick={() => void handleAction(action, undefined, true)}
-                type="button"
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {page.showQuota ? (
-          <div className="data-page-quota" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Quota(kw/h): 0/0
-          </div>
-        ) : null}
-
-        {feedback ? <p className="status-banner" style={{ marginTop: '0.5rem' }}>{feedback}</p> : null}
-        {error ? <p className="status-banner status-banner-error" style={{ marginTop: '0.5rem' }}>{error}</p> : null}
-      </div>
+      <DataPageToolbar
+        draftFilters={draftFilters}
+        error={error}
+        feedback={feedback}
+        onBulkAction={(action) => void handleAction(action, undefined, true)}
+        onFilterChange={(key, value) =>
+          setDraftFilters((current) => ({
+            ...current,
+            [key]: value,
+          }))
+        }
+        onReset={() => {
+          setFeedback(null);
+          reset();
+        }}
+        onSearch={() => {
+          setFeedback(null);
+          search();
+        }}
+        onToolbarAction={(action) => void handleAction(action)}
+        page={page}
+      />
 
       <DataTable
         columns={page.columns}

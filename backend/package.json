@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run build && node dist/backend/src/index.js",
+    "dev": "nodemon --watch src --ext ts --exec \"npm run build && node dist/backend/src/index.js\"",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:unit": "npm run build && node --test --test-isolation=none ../tests/backend/auth-proxy.integration.test.mjs && node --test --test-isolation=none ../tests/backend/dependency-health.integration.test.mjs && node --test --test-isolation=none ../tests/backend/endpoint-registry.integration.test.mjs && node --test --test-isolation=none ../tests/backend/metrics.integration.test.mjs && node --test --test-isolation=none ../tests/backend/supabase.integration.test.mjs && node --test --test-isolation=none ../tests/frontend/**/*.test.ts",
-    "test:health": "npm run build && node --test --test-isolation=none ../tests/backend/dependency-health.integration.test.mjs",
-    "test:supabase": "npm run build && node --test --test-isolation=none ../tests/backend/supabase.integration.test.mjs",
+    "test:unit": "npm run build && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/runtime-hardening.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/auth-proxy.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/upstream-session-recovery.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/dependency-health.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/endpoint-registry.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/upstream-request-adapters.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/metrics.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/notification-state.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/runtime-state-store.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/runtime-engine-admin.integration.test.mjs && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/supabase.integration.test.mjs",
+    "test:health": "npm run build && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/dependency-health.integration.test.mjs",
+    "test:supabase": "npm run build && node --disable-warning=DEP0040 --test --test-isolation=none ../tests/backend/supabase.integration.test.mjs",
     "start": "node dist/backend/src/index.js"
   },
   "version": "1.0.0",

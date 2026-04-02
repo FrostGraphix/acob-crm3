@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import type { AuthUser } from "../types";
 import {
   changeAuthorizationPassword,
   changeLoginPassword,
@@ -28,13 +29,13 @@ const profileTabs: Array<{ key: ProfileTabKey; label: string }> = [
   { key: "authorization-password", label: "Authorization Password" },
 ];
 
-function createInformationState(displayName: string): InformationFormState {
+function createInformationState(user?: AuthUser | null): InformationFormState {
   return {
-    displayName,
-    email: "",
-    phone: "",
-    address: "",
-    remark: "",
+    displayName: user?.displayName ?? "",
+    email: user?.email ?? "",
+    phone: user?.phone ?? "",
+    address: user?.address ?? "",
+    remark: user?.remark ?? "",
   };
 }
 
@@ -60,7 +61,7 @@ export function ProfilePage() {
   const { user, refreshUser, replaceUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTabKey>("information");
   const [informationForm, setInformationForm] = useState<InformationFormState>(
-    createInformationState(user?.displayName ?? ""),
+    createInformationState(user),
   );
   const [loginPasswordForm, setLoginPasswordForm] = useState<PasswordFormState>(
     createPasswordState(),
@@ -73,11 +74,8 @@ export function ProfilePage() {
   const [submittingTab, setSubmittingTab] = useState<ProfileTabKey | null>(null);
 
   useEffect(() => {
-    setInformationForm((current) => ({
-      ...current,
-      displayName: user?.displayName ?? "",
-    }));
-  }, [user?.displayName]);
+    setInformationForm(createInformationState(user));
+  }, [user]);
 
   const handleInformationSubmit = async () => {
     const payload = sanitizeEntries({
@@ -102,10 +100,7 @@ export function ProfilePage() {
       const nextUser = result.user ?? (await refreshUser());
       if (nextUser) {
         replaceUser(nextUser);
-        setInformationForm((current) => ({
-          ...current,
-          displayName: nextUser.displayName,
-        }));
+        setInformationForm(createInformationState(nextUser));
       }
       setStatusMessage(result.message || "Profile updated.");
     } catch (error) {

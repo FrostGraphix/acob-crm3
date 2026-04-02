@@ -247,6 +247,7 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
       return {
         meterId: meterIdAliases,
         gatewayId: gatewayIdAliases,
+        stationId: stationIdAliases,
         collectionDate: [
           "collectionDate",
           "collectDate",
@@ -254,6 +255,15 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
           "readDate",
           "collectionTime",
           "currentDate",
+        ],
+        consumption: [
+          "consumption",
+          "totalEnergy",
+          "total1",
+          "energy",
+          "kwh",
+          "usage1",
+          "usage",
         ],
         customerId: customerIdAliases,
         customerName: customerNameAliases,

@@ -1,0 +1,110 @@
+{
+  "snapshot": {
+    "generatedAt": "2026-03-31T17:43:08.167Z",
+    "sourceWindow": {
+      "fromDate": "2025-01-01",
+      "toDate": "2026-03-31"
+    },
+    "summary": [
+      {
+        "site": "Musha",
+        "totalConsumption": 0
+      },
+      {
+        "site": "Ogufa",
+        "totalConsumption": 0
+      },
+      {
+        "site": "Umaisha",
+        "totalConsumption": 0
+      },
+      {
+        "site": "Tunga",
+        "totalConsumption": 0
+      },
+      {
+        "site": "Kyakale",
+        "totalConsumption": 0
+      }
+    ],
+    "daily": {
+      "labels": [],
+      "series": [
+        {
+          "site": "Musha",
+          "values": []
+        },
+        {
+          "site": "Ogufa",
+          "values": []
+        },
+        {
+          "site": "Umaisha",
+          "values": []
+        },
+        {
+          "site": "Tunga",
+          "values": []
+        },
+        {
+          "site": "Kyakale",
+          "values": []
+        }
+      ]
+    },
+    "monthly": {
+      "labels": [],
+      "series": [
+        {
+          "site": "Musha",
+          "values": []
+        },
+        {
+          "site": "Ogufa",
+          "values": []
+        },
+        {
+          "site": "Umaisha",
+          "values": []
+        },
+        {
+          "site": "Tunga",
+          "values": []
+        },
+        {
+          "site": "Kyakale",
+          "values": []
+        }
+      ]
+    },
+    "yearly": {
+      "labels": [],
+      "series": [
+        {
+          "site": "Musha",
+          "values": []
+        },
+        {
+          "site": "Ogufa",
+          "values": []
+        },
+        {
+          "site": "Umaisha",
+          "values": []
+        },
+        {
+          "site": "Tunga",
+          "values": []
+        },
+        {
+          "site": "Kyakale",
+          "values": []
+        }
+      ]
+    }
+  },
+  "lastUpdatedAt": "2026-03-31T17:43:08.167Z",
+  "lastAttemptAt": "2026-04-02T11:06:57.977Z",
+  "lastError": "timeout of 30000ms exceeded",
+  "refreshing": false
+}

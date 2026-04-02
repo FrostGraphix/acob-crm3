@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "node --test --test-isolation=none ../tests/frontend/page-catalog.test.ts ../tests/frontend/page-catalog-report-filters.test.ts ../tests/frontend/page-endpoints.test.ts ../tests/frontend/report-analytics.test.ts ../tests/frontend/table-data.test.ts ../tests/frontend/payload-mapper.test.ts ../tests/frontend/dashboard-mapper.test.ts ../tests/frontend/form-modal.test.ts ../tests/frontend/app-shell-state.test.ts",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -39,6 +39,7 @@ export function Header({
   onToggleSidebarCollapse,
 }: HeaderProps) {
   const { user } = useAuth();
+  const isAdmin = user?.role?.toLowerCase().includes("admin") ?? false;
 
   return (
     <header className="crm-header">
@@ -82,6 +83,19 @@ export function Header({
             <strong>{user?.displayName ?? "Operator"}</strong>
             <span>{user?.role ?? "Administrator"}</span>
           </div>
+
+          {isAdmin ? (
+            <button
+              className="header-icon-button"
+              onClick={() => onNavigate("/system/runtime")}
+              title="Runtime operations"
+              type="button"
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 3v6m0 6v6m9-9h-6M9 12H3m15.364-6.364l-4.243 4.243M9.88 14.12l-4.244 4.244m0-12.728l4.244 4.243m8.484 8.485l-4.243-4.244" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+              </svg>
+            </button>
+          ) : null}
 
           <button 
             className="header-icon-button" 

@@ -27,7 +27,7 @@ test("endpoint registry classifies representative upstream paths", () => {
     ["/API/RemoteMeterTask/CreateSettingTask", "task-create"],
     ["/API/RemoteMeterTask/CreateTransparentForwardingTask", "task-create"],
     ["/API/RemoteMeterTask/GetSettingTask", "task-read"],
-    ["/API/File/Upload", "import"],
+    ["/API/File/Upload", "file-upload"],
     ["/api/token/setMaximumPowerLimitToken/generate", "token-generate"],
     ["/api/user/info", "read"],
     ["/api/user/updateInfo", "crud-update"],

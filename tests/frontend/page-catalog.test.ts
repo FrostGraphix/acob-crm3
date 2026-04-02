@@ -9,8 +9,11 @@ function getDataPage(path: string) {
   return page;
 }
 
-test("navigation contains all seven top-level sections", () => {
-  assert.equal(navigationSections.length, 7);
+test("navigation contains the expanded top-level sections", () => {
+  assert.equal(navigationSections.length >= 7, true);
+  assert.equal(navigationSections.some((section) => section.key === "dashboard"), true);
+  assert.equal(navigationSections.some((section) => section.key === "data-report"), true);
+  assert.equal(navigationSections.some((section) => section.key === "management"), true);
 });
 
 test("all pages are assigned to a navigation section", () => {

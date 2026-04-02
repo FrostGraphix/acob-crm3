@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { env } from "../services/env.js";
 import { sendEnvelope } from "../services/response.js";
 
 interface RateLimitBucket {
@@ -6,22 +7,55 @@ interface RateLimitBucket {
   resetAt: number;
 }
 
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 240;
+const WINDOW_MS = env.rateLimitWindowMs;
+const MAX_REQUESTS_PER_WINDOW = env.rateLimitMaxRequestsPerWindow;
 const buckets = new Map<string, RateLimitBucket>();
+const MAX_TRACKED_BUCKETS = 10_000;
+
+function normalizeClientKey(value: string) {
+  return value.trim().slice(0, 128);
+}
+
+function pruneExpiredBuckets(now: number) {
+  for (const [key, bucket] of buckets.entries()) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(key);
+    }
+  }
+}
+
+function trimBucketCache() {
+  while (buckets.size > MAX_TRACKED_BUCKETS) {
+    const oldestKey = buckets.keys().next().value as string | undefined;
+    if (!oldestKey) {
+      return;
+    }
+
+    buckets.delete(oldestKey);
+  }
+}
 
 function getClientKey(request: Request) {
-  const forwarded = request.headers["x-forwarded-for"];
+  if (env.rateLimitTrustForwardedFor) {
+    const forwarded = request.headers["x-forwarded-for"];
 
-  if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return forwarded[0] ?? "unknown";
+    if (Array.isArray(forwarded) && forwarded.length > 0) {
+      const candidate = forwarded[0] ?? "";
+      const normalized = normalizeClientKey(candidate.split(",")[0] ?? "");
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+
+    if (typeof forwarded === "string" && forwarded.length > 0) {
+      const normalized = normalizeClientKey(forwarded.split(",")[0] ?? "");
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
   }
 
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0]?.trim() ?? "unknown";
-  }
-
-  return request.ip || "unknown";
+  return normalizeClientKey(request.ip || "unknown");
 }
 
 export function rateLimitMiddleware(
@@ -30,6 +64,7 @@ export function rateLimitMiddleware(
   next: NextFunction,
 ) {
   const now = Date.now();
+  pruneExpiredBuckets(now);
   const key = getClientKey(request);
   const current = buckets.get(key);
 
@@ -38,6 +73,7 @@ export function rateLimitMiddleware(
       count: 1,
       resetAt: now + WINDOW_MS,
     });
+    trimBucketCache();
     next();
     return;
   }

@@ -32,8 +32,36 @@ test("report analytics groups consumption rows by month when monthly mode is sel
     labels: ["2026-01", "2026-02"],
     values: [20, 3],
     type: "line",
+    averageValue: 23 / 3,
+    seriesName: "Consumption",
   });
   assert.equal(result.stats[0]?.value, "3");
+});
+
+test("report analytics excludes sentinel consumption values from stats and charts", () => {
+  const result = buildReportAnalytics(
+    basePage,
+    [
+      { collectionDate: "2026-03-01", consumption: -1 },
+      { collectionDate: "2026-03-02", consumption: 8 },
+      { collectionDate: "2026-03-03", totalEnergy: "-1" },
+      { collectionDate: "2026-03-04", totalEnergy: 4 },
+    ],
+    4,
+    {},
+    "daily",
+  );
+
+  assert.equal(result.stats[0]?.value, "4");
+  assert.equal(result.stats[1]?.value, "12.00");
+  assert.equal(result.stats[2]?.value, "6.00");
+  assert.deepEqual(result.chartData, {
+    labels: ["2026-03-02", "2026-03-04"],
+    values: [8, 4],
+    type: "line",
+    averageValue: 6,
+    seriesName: "Consumption",
+  });
 });
 
 test("report analytics uses low limit filter to count critically low balances", () => {

@@ -61,6 +61,53 @@ function renderSectionIcon(iconKey: SidebarIconKey) {
           <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
+    case "meter":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 100 20 10 10 0 000-20z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "debt":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M2 7h20M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7M9 12h6M12 12v4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "protocol":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M4 6h16M4 10h16M4 14h10M4 18h6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M18 14l2 2-2 2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "load-profile":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 16l4-6 4 4 5-8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "log":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M14 2v6h6M8 13h8M8 17h6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "event":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "file-upload":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
   }
 }
 
@@ -162,31 +209,46 @@ export function Sidebar({
 
         <nav className="sidebar-nav">
           {sections.map((section) => {
-            const isExpanded = openSectionKey === section.key;
+            const singleItem = section.items.length === 1 ? section.items[0] : null;
+            const isExpanded = !singleItem && openSectionKey === section.key;
+            const isDirectActive = singleItem?.path === currentPath;
 
             return (
-              <div className={`sidebar-section ${isExpanded ? "expanded" : ""}`} key={section.key}>
+              <div
+                className={`sidebar-section ${isExpanded || isDirectActive ? "expanded" : ""}`}
+                key={section.key}
+              >
                 <button
-                  aria-expanded={isExpanded}
-                  className={`sidebar-section-toggle ${isExpanded ? "expanded" : ""}`}
-                  onClick={() => toggleSection(section.key)}
-                  onMouseEnter={(e) => handleMouseEnter(e, section.key)}
-                  onMouseLeave={handleMouseLeave}
-                  title={isCollapsed ? section.label : undefined}
+                  aria-current={isDirectActive ? "page" : undefined}
+                  aria-expanded={singleItem ? undefined : isExpanded}
+                  className={`sidebar-section-toggle ${isExpanded || isDirectActive ? "expanded" : ""}`}
+                  onClick={() => {
+                    if (singleItem) {
+                      setOpenSectionKey("");
+                      onNavigate(singleItem.path);
+                      return;
+                    }
+                    toggleSection(section.key);
+                  }}
+                  onMouseEnter={singleItem ? undefined : (e) => handleMouseEnter(e, section.key)}
+                  onMouseLeave={singleItem ? undefined : handleMouseLeave}
+                  title={isCollapsed ? (singleItem?.menuLabel ?? section.label) : undefined}
                   type="button"
                 >
                   <span className="sidebar-section-main">
                     <span className="sidebar-section-icon-wrap">
                       {renderSectionIcon(section.iconKey)}
                     </span>
-                    <span className="sidebar-section-label">{section.label}</span>
+                    <span className="sidebar-section-label">{singleItem?.menuLabel ?? section.label}</span>
                   </span>
-                  <span className="sidebar-section-meta">
-                    {renderChevron(isExpanded)}
-                  </span>
+                  {!singleItem ? (
+                    <span className="sidebar-section-meta">
+                      {renderChevron(isExpanded)}
+                    </span>
+                  ) : null}
                 </button>
 
-                {isExpanded ? (
+                {!singleItem && isExpanded ? (
                   <div
                     className={`sidebar-section-body ${isCollapsed ? "sidebar-section-body-flyout" : ""}`}
                     onMouseEnter={() => isCollapsed && hoverTimeout && window.clearTimeout(hoverTimeout)}

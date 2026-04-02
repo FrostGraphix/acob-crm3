@@ -1,20 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BarChart } from "../components/charts/BarChart";
+import { LineChart } from "../components/charts/LineChart";
+import { PieChart } from "../components/charts/PieChart";
 import { loadDashboard } from "../services/api";
-import type { DashboardData } from "../types";
-import { DualConsumptionChart } from "../components/charts/DualConsumptionChart";
+import type { DashboardData, PieSlice } from "../types";
 
-function PremiumStatCard({ 
-  label, 
-  value, 
-  subtext, 
-  icon, 
-  accent 
-}: { 
-  label: string, 
-  value: string | number, 
-  subtext?: string, 
-  icon: React.ReactNode, 
-  accent: "emerald" | "sapphire" | "amber" | "amethyst" 
+function PremiumStatCard({
+  label,
+  value,
+  subtext,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  subtext?: string;
+  icon: ReactNode;
+  accent: "emerald" | "sapphire" | "amber" | "amethyst";
 }) {
   return (
     <div className="premium-card">
@@ -22,14 +24,89 @@ function PremiumStatCard({
         <div className="stat-info">
           <span className="stat-label-tiny">{label}</span>
           <strong className="stat-value-huge">{value}</strong>
-          {subtext && <span className="stat-subtext">{subtext}</span>}
+          {subtext ? <span className="stat-subtext">{subtext}</span> : null}
         </div>
-        <div className={`stat-icon-square ${accent}`}>
-          {icon}
-        </div>
+        <div className={`stat-icon-square ${accent}`}>{icon}</div>
       </div>
     </div>
   );
+}
+
+function ChartCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="premium-chart-card">
+      <div className="chart-header">
+        <h3 className="chart-title">{title}</h3>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{description}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function EmptyChartState({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        minHeight: "300px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        textAlign: "center",
+        padding: "2rem",
+        borderRadius: "1rem",
+        border: "1px dashed var(--border-subtle)",
+        background: "rgba(255, 255, 255, 0.02)",
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+function StatIcon({ accent }: { accent: "emerald" | "sapphire" | "amber" | "amethyst" }) {
+  switch (accent) {
+    case "emerald":
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19V5M8 19V9M12 19V12M16 19V7M20 19V3" />
+        </svg>
+      );
+    case "sapphire":
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <line x1="2" y1="10" x2="22" y2="10" />
+        </svg>
+      );
+    case "amber":
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2 2 22h20L12 2z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
+    case "amethyst":
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+      );
+  }
+}
+
+function countAlarmSlices(slices: PieSlice[]) {
+  return slices.reduce((sum, slice) => sum + slice.value, 0);
 }
 
 export function DashboardPage() {
@@ -37,114 +114,147 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+    if (!isBackground) {
+      setLoading(true);
+    }
+
     try {
       const payload = await loadDashboard();
       setDashboard(payload);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
-      if (!isBackground) setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void fetchDashboard();
-    const interval = setInterval(() => void fetchDashboard(true), 60000);
+    const interval = setInterval(() => void fetchDashboard(true), 60_000);
     return () => clearInterval(interval);
   }, []);
 
   if (loading && !dashboard) {
     return (
-      <div className="loading-screen" style={{ color: "var(--acob-green)", background: "var(--bg-app)", minHeight: "100vh" }}>
-        <p style={{ fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>Initializing Odyssey CRM3...</p>
+      <div
+        className="loading-screen"
+        style={{
+          color: "var(--acob-green)",
+          background: "var(--bg-app)",
+          minHeight: "100vh",
+        }}
+      >
+        <p style={{ fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          Loading live dashboard data...
+        </p>
       </div>
     );
   }
 
-  if (!dashboard) return null;
+  if (!dashboard) {
+    return null;
+  }
 
-  // Map data from dashboard payload
-  const purchaseMoneyTotal = dashboard.panels.find(p => p.label === "Purchase Money")?.value || "NGN 0";
-  const purchaseUnits = dashboard.panels.find(p => p.label === "Purchase Unit")?.value || "0";
-  const totalMeters = dashboard.panels.find(p => p.label === "Account Count")?.value || "0";
-  
-  // Mocking Night usage for the dual chart demo (as seen in Image 4)
-  const dayUsage = dashboard.consumption.daily;
-  const nightUsage = dayUsage.map(v => Math.max(0, v * (0.6 + Math.random() * 0.4)));
+  const hasPurchaseMoney = dashboard.purchaseMoney.labels.length > 0 && dashboard.purchaseMoney.values.length > 0;
+  const hasSuccessRate = dashboard.successRate.labels.length > 0 && dashboard.successRate.values.length > 0;
+  const hasAlarms = dashboard.alarms.length > 0;
+  const hasDailyConsumption = dashboard.consumption.daily.length > 0;
+  const hasMonthlyConsumption = dashboard.consumption.monthly.length > 0;
+
+  const panelAccents: Array<"emerald" | "sapphire" | "amethyst" | "amber"> = [
+    "emerald",
+    "sapphire",
+    "amethyst",
+    "amber",
+  ];
 
   return (
     <div className="premium-dashboard">
-
       <div className="premium-stat-grid">
-        <PremiumStatCard 
-          label="Total Stocked" 
-          value="12,605" 
-          subtext="Generated this month"
-          accent="emerald"
-          icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>}
-        />
-        <PremiumStatCard 
-          label="Total Revenue" 
-          value={purchaseMoneyTotal} 
-          subtext="Income collection"
-          accent="sapphire"
-          icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>}
-        />
-        <PremiumStatCard 
-          label="Energy Consumed" 
-          value={`${purchaseUnits} kWh`} 
-          subtext="Total load loss"
-          accent="amethyst"
-          icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
-        />
-        <PremiumStatCard 
-          label="Active Meters" 
-          value={totalMeters} 
-          accent="amber"
-          subtext="Network footprint"
-          icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}
-        />
+        {dashboard.panels.map((panel, index) => (
+          <PremiumStatCard
+            key={panel.label}
+            label={panel.label}
+            value={panel.value}
+            subtext="Live upstream summary"
+            accent={panelAccents[index % panelAccents.length]}
+            icon={<StatIcon accent={panelAccents[index % panelAccents.length]} />}
+          />
+        ))}
       </div>
 
       <div className="premium-chart-grid">
-        <DualConsumptionChart 
-          labels={dashboard.consumption.labels}
-          dayValues={dayUsage}
-          nightValues={nightUsage}
-        />
-        
-        <div className="premium-chart-card">
-          <div className="chart-header">
-            <h3 className="chart-title">Revenue by Site</h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Top 5 Sites • Last 30 Days</span>
-          </div>
-          {/* Reusing existing EmsAreaChart logic or simple bar placeholder for now */}
-          <div style={{ height: '300px', display: 'flex', alignItems: 'flex-end', gap: '1rem', padding: '0 1rem' }}>
-            <div style={{ flex: 1, background: 'var(--emerald)', height: '30%', borderRadius: '4px 4px 0 0', position: 'relative' }}><span style={{ position: 'absolute', bottom: '-20px', left: 0, fontSize: '10px' }}>Site A</span></div>
-            <div style={{ flex: 1, background: 'var(--sapphire)', height: '45%', borderRadius: '4px 4px 0 0', position: 'relative' }}><span style={{ position: 'absolute', bottom: '-20px', left: 0, fontSize: '10px' }}>Site B</span></div>
-            <div style={{ flex: 1, background: 'var(--amber)', height: '90%', borderRadius: '4px 4px 0 0', position: 'relative' }}><span style={{ position: 'absolute', bottom: '-20px', left: 0, fontSize: '10px' }}>Site C</span></div>
-            <div style={{ flex: 1, background: 'var(--amethyst)', height: '70%', borderRadius: '4px 4px 0 0', position: 'relative' }}><span style={{ position: 'absolute', bottom: '-20px', left: 0, fontSize: '10px' }}>Site D</span></div>
-            <div style={{ flex: 1, background: '#ef4444', height: '40%', borderRadius: '4px 4px 0 0', position: 'relative' }}><span style={{ position: 'absolute', bottom: '-20px', left: 0, fontSize: '10px' }}>Site E</span></div>
-          </div>
-        </div>
+        <ChartCard title="Purchase Money" description="Upstream chart series">
+          {hasPurchaseMoney ? (
+            <BarChart labels={dashboard.purchaseMoney.labels} values={dashboard.purchaseMoney.values} />
+          ) : (
+            <EmptyChartState message="No purchase money series was returned by the upstream API." />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Hourly Success Rate" description="Upstream chart series">
+          {hasSuccessRate ? (
+            <LineChart labels={dashboard.successRate.labels} values={dashboard.successRate.values} />
+          ) : (
+            <EmptyChartState message="No success rate series was returned by the upstream API." />
+          )}
+        </ChartCard>
       </div>
-      
-      <div className="premium-card" style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 className="chart-title">System Activity</h3>
-          <span style={{ color: 'var(--emerald)', fontSize: '0.75rem', fontWeight: 600 }}>SYNCED JUST NOW</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '3px solid var(--emerald)', fontSize: '0.85rem' }}>
-            <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>[Live]</span> STS Gateway token generation sequence finalized.
+
+      <div className="premium-chart-grid" style={{ marginTop: "1rem" }}>
+        <ChartCard
+          title="Abnormal Alarm"
+          description={hasAlarms ? `${countAlarmSlices(dashboard.alarms)} total alarm events` : "Upstream alarm distribution"}
+        >
+          {hasAlarms ? (
+            <PieChart slices={dashboard.alarms} />
+          ) : (
+            <EmptyChartState message="No alarm breakdown was returned by the upstream API." />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Consumption Trends" description="Daily and monthly upstream series">
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <section>
+              <div className="chart-header" style={{ marginBottom: "0.75rem" }}>
+                <h4 className="chart-title" style={{ fontSize: "1rem" }}>
+                  Daily Consumption
+                </h4>
+              </div>
+              {hasDailyConsumption ? (
+                <BarChart labels={dashboard.consumption.labels} values={dashboard.consumption.daily} />
+              ) : (
+                <EmptyChartState message="No daily consumption series was returned by the upstream API." />
+              )}
+            </section>
+
+            <section>
+              <div className="chart-header" style={{ marginBottom: "0.75rem" }}>
+                <h4 className="chart-title" style={{ fontSize: "1rem" }}>
+                  Monthly Consumption
+                </h4>
+              </div>
+              {hasMonthlyConsumption ? (
+                <LineChart labels={dashboard.consumption.labels} values={dashboard.consumption.monthly} />
+              ) : (
+                <EmptyChartState message="No monthly consumption series was returned by the upstream API." />
+              )}
+            </section>
           </div>
-          <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '3px solid var(--amber)', fontSize: '0.85rem' }}>
-            <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>[09:20]</span> Network Sync: 12 legacy meters updated to STS phase 2.
-          </div>
+        </ChartCard>
+      </div>
+
+      <div className="premium-card" style={{ marginTop: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h3 className="chart-title">Live Status</h3>
+          <span style={{ color: "var(--emerald)", fontSize: "0.75rem", fontWeight: 600 }}>UPSTREAM ONLY</span>
         </div>
+        <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.6 }}>
+          This dashboard now reflects only data returned by the upstream API. If a section is empty, the upstream service did not expose that series yet.
+        </p>
       </div>
     </div>
   );
 }
-

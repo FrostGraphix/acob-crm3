@@ -24,6 +24,14 @@ export interface PieSlice {
   value: number;
 }
 
+export interface ReportChartData {
+  labels: string[];
+  values: number[];
+  type: "line" | "bar";
+  averageValue?: number;
+  seriesName: string;
+}
+
 export interface DashboardData {
   panels: DashboardPanel[];
   purchaseMoney: SeriesData;
@@ -34,6 +42,35 @@ export interface DashboardData {
     daily: number[];
     monthly: number[];
   };
+}
+
+export interface EngineLeaderStatus {
+  coordinationMode: "redis" | "single-instance";
+  isLeader: boolean;
+  leaseKey: string;
+  instanceId: string;
+  lastLeadershipChangeAt: string | null;
+  lastLeadershipError: string | null;
+}
+
+export interface RuntimeEngineStatus {
+  name: string;
+  enabledByConfig: boolean;
+  schedulerRunning: boolean;
+  leader: EngineLeaderStatus;
+  lastRunStartedAt: string | null;
+  lastRunCompletedAt: string | null;
+  lastRunDurationMs: number | null;
+  lastError: string | null;
+  sourceWindow?: {
+    fromDate: string;
+    toDate: string;
+  };
+}
+
+export interface RuntimeEngineCollection {
+  analysis: RuntimeEngineStatus;
+  siteConsumption: RuntimeEngineStatus;
 }
 
 export interface ApiDataResponse {
@@ -78,6 +115,7 @@ export type ActionOperationKind =
   | "report-export"
   | "client-export"
   | "client-print"
+  | "file-upload"
   | "generic";
 
 export interface ActionConfig {
@@ -93,13 +131,15 @@ export interface ActionConfig {
 export type ReadOperationKind = "table-read" | "report-read" | "task-read";
 
 export interface BasePageConfig {
-  kind: "dashboard" | "data" | "profile";
+  kind: "dashboard" | "data" | "profile" | "site-consumption" | "runtime-admin";
   path: string;
   title: string;
   menuLabel: string;
   description: string;
   sectionKey: string;
   includeInNavigation?: boolean;
+  requiredRole?: string;
+  requiredPermissions?: string[];
 }
 
 export interface DashboardPageConfig extends BasePageConfig {
@@ -112,6 +152,9 @@ export interface DataPageConfig extends BasePageConfig {
   readOperationKind?: ReadOperationKind;
   columns: TableColumn[];
   filters: FilterField[];
+  requiredReadFilters?: string[];
+  omitReadPaging?: boolean;
+  requestDateFormat?: "iso" | "day-first";
   toolbarActions?: ActionConfig[];
   rowActions?: ActionConfig[];
   bulkActions?: ActionConfig[];
@@ -122,7 +165,20 @@ export interface ProfilePageConfig extends BasePageConfig {
   kind: "profile";
 }
 
-export type AppPageConfig = DashboardPageConfig | DataPageConfig | ProfilePageConfig;
+export interface SiteConsumptionPageConfig extends BasePageConfig {
+  kind: "site-consumption";
+}
+
+export interface RuntimeAdminPageConfig extends BasePageConfig {
+  kind: "runtime-admin";
+}
+
+export type AppPageConfig =
+  | DashboardPageConfig
+  | DataPageConfig
+  | ProfilePageConfig
+  | SiteConsumptionPageConfig
+  | RuntimeAdminPageConfig;
 
 export type SidebarIconKey =
   | "dashboard"
@@ -131,7 +187,14 @@ export type SidebarIconKey =
   | "remote-operation"
   | "remote-operation-task"
   | "data-report"
-  | "management";
+  | "management"
+  | "meter"
+  | "debt"
+  | "protocol"
+  | "load-profile"
+  | "log"
+  | "event"
+  | "file-upload";
 
 export interface NavigationSection {
   key: string;

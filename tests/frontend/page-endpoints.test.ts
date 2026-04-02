@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { allPages } from "../../frontend/src/config/pageCatalog.ts";
 
 function loadSwaggerPaths() {
-  const filePath = path.resolve(process.cwd(), "..", "swagger_paths.txt");
+  const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const filePath = path.resolve(testDirectory, "..", "..", "swagger_paths.txt");
   return new Set(
     readFileSync(filePath, "utf8")
       .split(/\r?\n/)

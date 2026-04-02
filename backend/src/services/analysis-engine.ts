@@ -1,99 +1,32 @@
 import { randomUUID } from "node:crypto";
 import cron from "node-cron";
+import {
+  extractRows,
+  readNumber,
+  readString,
+  type ReportRow,
+} from "../lib/upstream-data.js";
 import { env as config } from "./env.js";
+import {
+  loadRuntimeState,
+  saveRuntimeState,
+  type AnalysisNotificationRecord,
+  type AnalysisStateSnapshot,
+} from "./runtime-state-store.js";
+import { SchedulerLeader, type SchedulerLeaderStatus } from "./scheduler-leader.js";
 import { forwardToUpstream, loginToUpstream } from "./upstream.js";
 
-interface NotificationItem {
-  id: string;
-  type: "warning" | "critical" | "info";
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  meterId?: string;
-}
+type NotificationItem = AnalysisNotificationRecord;
 
-type ReportRow = Record<string, unknown>;
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function asRecordArray(value: unknown): ReportRow[] {
-  return Array.isArray(value)
-    ? value.filter(
-        (entry): entry is ReportRow =>
-          typeof entry === "object" && entry !== null && !Array.isArray(entry),
-      )
-    : [];
-}
-
-function firstAvailableRows(candidates: unknown[]) {
-  let fallback: ReportRow[] = [];
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      const rows = asRecordArray(candidate);
-      if (rows.length > 0) {
-        return rows;
-      }
-
-      fallback = rows;
-    }
-  }
-
-  return fallback;
-}
-
-function extractRows(result: unknown): ReportRow[] {
-  if (Array.isArray(result)) {
-    return asRecordArray(result);
-  }
-
-  const root = asRecord(result);
-  const page = asRecord(root.page);
-
-  return firstAvailableRows([
-    root.rows,
-    root.list,
-    root.data,
-    root.records,
-    page.rows,
-    page.list,
-    page.data,
-    page.records,
-  ]);
-}
-
-function readString(record: ReportRow, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-
-  return undefined;
-}
-
-function readNumber(record: ReportRow, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-  }
-
-  return undefined;
+export interface ManagedEngineStatus {
+  name: string;
+  enabledByConfig: boolean;
+  schedulerRunning: boolean;
+  leader: SchedulerLeaderStatus;
+  lastRunStartedAt: string | null;
+  lastRunCompletedAt: string | null;
+  lastRunDurationMs: number | null;
+  lastError: string | null;
 }
 
 function buildAlertKey(prefix: string, meterId: string, dateBucket: string) {
@@ -114,10 +47,34 @@ function getCustomerLabel(row: ReportRow) {
   );
 }
 
+const persistedState = await loadRuntimeState<AnalysisStateSnapshot>("analysis");
+
 class AnalysisEngine {
   private cronJob: cron.ScheduledTask | null = null;
-  private knownAlerts = new Set<string>();
-  public notifications: NotificationItem[] = [];
+  private schedulerRunning = false;
+  private readonly leader = new SchedulerLeader("analysis-engine", {
+    onLeadershipAcquired: () => {
+      this.ensureCronSchedule();
+      this.scheduleImmediateRun(5_000);
+    },
+    onLeadershipLost: () => {
+      this.stopCronSchedule();
+    },
+  });
+  private knownAlerts = new Set<string>(persistedState?.knownAlerts ?? []);
+  public notifications: NotificationItem[] = persistedState?.notifications ?? [];
+  private lastRunStartedAt: string | null = null;
+  private lastRunCompletedAt: string | null = null;
+  private lastRunDurationMs: number | null = null;
+  private lastError: string | null = null;
+
+  private async persistState() {
+    await saveRuntimeState("analysis", {
+      notifications: this.notifications,
+      knownAlerts: Array.from(this.knownAlerts),
+      savedAt: new Date().toISOString(),
+    });
+  }
 
   private async getUpstreamAuth() {
     if (!config.upstreamPassword.trim()) {
@@ -168,14 +125,19 @@ class AnalysisEngine {
   }
 
   public async runAnalysisCycle() {
+    const startedAt = Date.now();
+    this.lastRunStartedAt = new Date(startedAt).toISOString();
+    this.lastError = null;
     console.log("[AnalysisEngine] Starting scheduled analysis cycle...");
     const authToken = await this.getUpstreamAuth();
 
     if (!authToken) {
+      this.lastError = "Upstream authentication failed";
       console.error("[AnalysisEngine] Aborting cycle because upstream authentication failed.");
       return;
     }
 
+    let stateChanged = false;
     const dateBucket = new Date().toISOString().slice(0, 10);
 
     const lowPurchaseData = await this.fetchUpstreamReport(
@@ -205,6 +167,7 @@ class AnalysisEngine {
           meterId,
         });
         this.knownAlerts.add(alertKey);
+        stateChanged = true;
       }
     }
 
@@ -236,12 +199,21 @@ class AnalysisEngine {
           meterId,
         });
         this.knownAlerts.add(alertKey);
+        stateChanged = true;
       }
     }
 
     if (this.knownAlerts.size > 5000) {
       this.knownAlerts.clear();
+      stateChanged = true;
     }
+
+    if (stateChanged) {
+      await this.persistState();
+    }
+
+    this.lastRunCompletedAt = new Date().toISOString();
+    this.lastRunDurationMs = Date.now() - startedAt;
 
     console.log(
       `[AnalysisEngine] Cycle complete. Active notifications: ${this.notifications.filter((notification) => !notification.read).length}`,
@@ -263,7 +235,96 @@ class AnalysisEngine {
     }
   }
 
+  public getUnreadNotifications() {
+    return this.notifications.filter((notification) => !notification.read);
+  }
+
+  public dismissNotifications(ids: string[]) {
+    const idSet = new Set(ids);
+    let dismissedCount = 0;
+
+    for (const notification of this.notifications) {
+      if (idSet.has(notification.id) && !notification.read) {
+        notification.read = true;
+        dismissedCount++;
+      }
+    }
+
+    if (dismissedCount > 0) {
+      void this.persistState();
+    }
+
+    return dismissedCount;
+  }
+
+  public dismissAllNotifications() {
+    let dismissedCount = 0;
+
+    for (const notification of this.notifications) {
+      if (!notification.read) {
+        notification.read = true;
+        dismissedCount++;
+      }
+    }
+
+    if (dismissedCount > 0) {
+      void this.persistState();
+    }
+
+    return dismissedCount;
+  }
+
   public start() {
+    if (this.schedulerRunning) {
+      return;
+    }
+
+    this.schedulerRunning = true;
+    this.leader.start();
+    if (config.nodeEnv !== "test") {
+      console.log("[AnalysisEngine] Background service initialized (15m schedule).");
+    }
+  }
+
+  public async stop() {
+    if (!this.schedulerRunning) {
+      return;
+    }
+
+    this.schedulerRunning = false;
+    this.stopCronSchedule();
+    await this.leader.stop();
+  }
+
+  public getStatus(): ManagedEngineStatus {
+    return {
+      name: "analysis-engine",
+      enabledByConfig: config.enableAnalysisEngine,
+      schedulerRunning: this.schedulerRunning,
+      leader: this.leader.getStatus(),
+      lastRunStartedAt: this.lastRunStartedAt,
+      lastRunCompletedAt: this.lastRunCompletedAt,
+      lastRunDurationMs: this.lastRunDurationMs,
+      lastError: this.lastError,
+    };
+  }
+
+  public async runNow() {
+    if (!this.leader.currentlyLeads()) {
+      return {
+        accepted: false,
+        reason: "This replica is not the active leader for analysis-engine.",
+      };
+    }
+
+    await this.runAnalysisCycle();
+    return {
+      accepted: true,
+      reason: "Analysis cycle completed on the active leader.",
+    };
+  }
+
+  private ensureCronSchedule() {
     if (this.cronJob) {
       return;
     }
@@ -271,21 +332,23 @@ class AnalysisEngine {
     this.cronJob = cron.schedule("*/15 * * * *", () => {
       void this.runAnalysisCycle();
     });
-
-    setTimeout(() => {
-      void this.runAnalysisCycle();
-    }, 5000);
-
-    console.log("[AnalysisEngine] Background service initialized (15m schedule).");
   }
 
-  public stop() {
+  private stopCronSchedule() {
     if (!this.cronJob) {
       return;
     }
 
     this.cronJob.stop();
     this.cronJob = null;
+  }
+
+  private scheduleImmediateRun(delayMs: number) {
+    setTimeout(() => {
+      if (this.schedulerRunning && this.leader.currentlyLeads()) {
+        void this.runAnalysisCycle();
+      }
+    }, delayMs);
   }
 }
 

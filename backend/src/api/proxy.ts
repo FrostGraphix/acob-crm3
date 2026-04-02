@@ -7,27 +7,16 @@ import {
   validateRequestBodyByOperation,
 } from "../services/request-validation.js";
 import { sendEnvelope } from "../services/response.js";
+import {
+  forwardWithUpstreamSessionRecovery,
+  UpstreamSessionError,
+} from "../services/upstream-session.js";
+import { buildUpstreamRequestPlan } from "../services/upstream-request-adapters.js";
 import { forwardToUpstream } from "../services/upstream.js";
 
 function getRequestPath(request: Request) {
   const originalUrl = request.originalUrl || request.url;
   return new URL(originalUrl, "http://localhost").pathname;
-}
-
-function applyUpstreamDefaults(pathname: string, body: Record<string, unknown>) {
-  const nextBody = { ...body };
-  const requiresLang =
-    pathname.startsWith("/API/PrepayReport/") || pathname.startsWith("/api/DailyDataMeter/");
-  const requiresTaskLang = pathname.startsWith("/API/RemoteMeterTask/Get");
-
-  if (requiresLang || requiresTaskLang) {
-    const currentLang = typeof nextBody.Lang === "string" ? nextBody.Lang.trim() : "";
-    if (currentLang.length === 0) {
-      nextBody.Lang = "en";
-    }
-  }
-
-  return nextBody;
 }
 
 export async function proxyHandler(request: Request, response: Response) {
@@ -53,21 +42,52 @@ export async function proxyHandler(request: Request, response: Response) {
     return;
   }
 
-  const body = applyUpstreamDefaults(policy.pathname, mapped.body);
-  if (!authRequest.upstreamCookie) {
-    sendEnvelope(response, 401, null, "Upstream session expired or invalid", 1);
-    return;
-  }
+  const requestPlan = buildUpstreamRequestPlan(policy.pathname, mapped.body);
 
   try {
-    const upstreamResult = await forwardToUpstream(
-      policy.pathname,
-      body,
-      authRequest.upstreamCookie,
+    const [firstCandidate, ...fallbackCandidates] = requestPlan.candidateBodies;
+
+    const upstreamResult = await forwardWithUpstreamSessionRecovery(
+      authRequest,
+      response,
+      async (upstreamCookie) => {
+        let result = await forwardToUpstream(
+          policy.pathname,
+          firstCandidate ?? requestPlan.body,
+          upstreamCookie,
+          { timeoutMs: requestPlan.timeoutMs },
+        );
+
+        if (
+          policy.pathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
+          policy.pathname === "/API/PrepayReport/ConsumptionStatistics" ||
+          policy.pathname === "/api/DailyDataMeter/read"
+        ) {
+          for (const candidateBody of fallbackCandidates) {
+            if (result.statusCode < 400 && result.payload.code === 0) {
+              break;
+            }
+
+            result = await forwardToUpstream(
+              policy.pathname,
+              candidateBody,
+              upstreamCookie,
+              { timeoutMs: requestPlan.timeoutMs },
+            );
+          }
+        }
+
+        return result;
+      },
     );
 
     response.status(upstreamResult.statusCode).json(upstreamResult.payload);
   } catch (error) {
+    if (error instanceof UpstreamSessionError) {
+      sendEnvelope(response, 401, null, error.message, 1);
+      return;
+    }
+
     const message = error instanceof Error ? error.message : "Upstream request failed";
     sendEnvelope(response, 502, null, message, 1);
   }

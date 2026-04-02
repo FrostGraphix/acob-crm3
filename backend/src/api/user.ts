@@ -9,6 +9,10 @@ import {
 import { env } from "../services/env.js";
 import { sendEnvelope } from "../services/response.js";
 import { sanitizeRequestBody } from "../services/request-validation.js";
+import {
+  forwardWithUpstreamSessionRecovery,
+  UpstreamSessionError,
+} from "../services/upstream-session.js";
 import { forwardToUpstream } from "../services/upstream.js";
 
 export const userRouter = Router();
@@ -46,11 +50,32 @@ function buildUpdatedUser(
       "nickname",
     ]) ??
     currentUser.displayName;
+  const email =
+    pickFirstString(body, ["email", "emailAddress", "mail"]) ??
+    currentUser.email ??
+    undefined;
+  const phone =
+    pickFirstString(body, ["phone", "phoneNumber", "mobile", "mobilePhone"]) ??
+    currentUser.phone ??
+    undefined;
+  const address =
+    pickFirstString(body, ["address", "customerAddress", "location"]) ??
+    currentUser.address ??
+    undefined;
+  const remark =
+    pickFirstString(body, ["remark", "note", "description"]) ??
+    currentUser.remark ??
+    undefined;
 
   return {
     username,
     displayName,
     role: currentUser.role,
+    permissions: currentUser.permissions,
+    email,
+    phone,
+    address,
+    remark,
   };
 }
 
@@ -96,11 +121,6 @@ async function forwardUserMutation(
     successMessage: string;
   },
 ) {
-  if (!request.upstreamCookie) {
-    sendEnvelope(response, 401, null, "Upstream session expired or invalid", 1);
-    return;
-  }
-
   const body = sanitizeRequestBody(request.body);
   if (Object.keys(body).length === 0) {
     sendEnvelope(response, 400, null, "At least one field is required", 1);
@@ -108,7 +128,11 @@ async function forwardUserMutation(
   }
 
   try {
-    const upstreamResult = await forwardToUpstream(pathname, body, request.upstreamCookie);
+    const upstreamResult = await forwardWithUpstreamSessionRecovery(
+      request,
+      response,
+      (upstreamCookie) => forwardToUpstream(pathname, body, upstreamCookie),
+    );
 
     let user: AuthUser | undefined;
     if (
@@ -132,6 +156,11 @@ async function forwardUserMutation(
       upstreamResult.payload.code,
     );
   } catch (error) {
+    if (error instanceof UpstreamSessionError) {
+      sendEnvelope(response, 401, null, error.message, 1);
+      return;
+    }
+
     const message = error instanceof Error ? error.message : "Upstream request failed";
     sendEnvelope(response, 502, null, message, 1);
   }

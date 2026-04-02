@@ -1,10 +1,20 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { SkeletonTable } from "./components/common/LoadingSkeleton";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { allPages, defaultPath, navigationSections, pagesByPath } from "./config/pageCatalog";
 import { useAuth } from "./hooks/useAuth";
+import {
+  closeTabAndResolveNextPath,
+  ensureCurrentTabVisible,
+  filterNavigationSectionsForUser,
+  filterPagesForUser,
+  resolveAccessiblePage,
+  syncOpenedTabsWithUserAccess,
+} from "./services/app-shell-state";
 import { LoginPage } from "./pages/LoginPage";
 import type { AppPageConfig } from "./types";
 
@@ -23,31 +33,53 @@ const ReportsPage = lazy(async () => {
   return { default: module.ReportsPage };
 });
 
+const SiteConsumptionPage = lazy(async () => {
+  const module = await import("./pages/SiteConsumptionPage");
+  return { default: module.SiteConsumptionPage };
+});
+
 const ProfilePage = lazy(async () => {
   const module = await import("./pages/ProfilePage");
   return { default: module.ProfilePage };
 });
+const RuntimeAdminPage = lazy(async () => {
+  const module = await import("./pages/RuntimeAdminPage");
+  return { default: module.RuntimeAdminPage };
+});
 
-function resolveCurrentPage(pathname: string) {
-  return pagesByPath[pathname] ?? pagesByPath[defaultPath] ?? allPages[0];
-}
-
-function ensureCurrentTabVisible(tabs: AppPageConfig[], currentPage: AppPageConfig) {
-  if (tabs.some((tab) => tab.path === currentPage.path)) {
-    return tabs;
-  }
-
-  return [...tabs, currentPage];
+function LoadingFallback() {
+  return (
+    <div style={{ padding: "2rem" }}>
+      <SkeletonTable rows={6} columns={5} />
+    </div>
+  );
 }
 
 function renderPage(page: AppPageConfig) {
   return (
-    <Suspense fallback={<div className="loading-screen" style={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading page...</div>}>
-      {page.kind === "dashboard" ? <DashboardPage /> : null}
-      {page.kind === "data" && page.sectionKey === "data-report" ? <ReportsPage /> : null}
-      {page.kind === "data" && page.sectionKey !== "data-report" ? <DataPage page={page} /> : null}
-      {page.kind === "profile" ? <ProfilePage /> : null}
-    </Suspense>
+    <ErrorBoundary fallbackTitle={`Error loading ${page.title}`}>
+      <Suspense fallback={<LoadingFallback />}>
+        {page.kind === "dashboard" ? <DashboardPage /> : null}
+        {page.kind === "data" && page.sectionKey === "data-report" ? <ReportsPage /> : null}
+        {page.kind === "data" && page.sectionKey !== "data-report" ? <DataPage page={page} /> : null}
+        {page.kind === "site-consumption" ? <SiteConsumptionPage /> : null}
+        {page.kind === "profile" ? <ProfilePage /> : null}
+        {page.kind === "runtime-admin" ? <RuntimeAdminPage /> : null}
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+
+function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate replace to={defaultPath} />} />
+      <Route path="/login" element={<Navigate replace to={defaultPath} />} />
+      {pages.map((page) => (
+        <Route key={page.path} path={page.path} element={renderPage(page)} />
+      ))}
+      <Route path="*" element={<Navigate replace to={defaultPath} />} />
+    </Routes>
   );
 }
 
@@ -56,10 +88,14 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
-  const currentPage = resolveCurrentPage(pathname);
+  const accessiblePages = filterPagesForUser(allPages, user);
+  const fallbackPage = accessiblePages.find((page) => page.path === defaultPath) ?? accessiblePages[0] ?? allPages[0];
+  const currentPage = resolveAccessiblePage(pathname, pagesByPath, fallbackPage, user);
+  const accessibleSections = filterNavigationSectionsForUser(navigationSections, user);
 
   const [openedTabs, setOpenedTabs] = useState<AppPageConfig[]>([pagesByPath[defaultPath]]);
-  const visibleTabs = ensureCurrentTabVisible(openedTabs, currentPage);
+  const visibleTabs =
+    pathname === "/login" ? openedTabs : ensureCurrentTabVisible(openedTabs, currentPage);
 
   useEffect(() => {
     if (loading) return;
@@ -69,15 +105,20 @@ function AppContent() {
       return;
     }
 
+    if (user && !accessiblePages.some((page) => page.path === pathname) && pathname !== "/login") {
+      navigate(fallbackPage.path, { replace: true });
+      return;
+    }
+
     if (user && pathname === "/login") {
       navigate(defaultPath, { replace: true });
     }
-  }, [loading, navigate, pathname, user]);
+  }, [accessiblePages, fallbackPage.path, loading, navigate, pathname, user]);
 
   useEffect(() => {
     if (loading || !user || pathname === "/login") return;
 
-    const page = pagesByPath[pathname];
+    const page = accessiblePages.find((entry) => entry.path === pathname);
     if (page) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenedTabs((prev: AppPageConfig[]) => {
@@ -87,16 +128,23 @@ function AppContent() {
         return prev;
       });
     }
-  }, [pathname, loading, user]);
+  }, [accessiblePages, pathname, loading, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setOpenedTabs((prev) => syncOpenedTabsWithUserAccess(prev, accessiblePages, fallbackPage));
+  }, [accessiblePages, fallbackPage, user]);
 
   const handleCloseTab = (path: string) => {
     setOpenedTabs((prev: AppPageConfig[]) => {
-      const filtered = prev.filter((t: AppPageConfig) => t.path !== path);
-      if (path === pathname) {
-        const nextPath = filtered.length > 0 ? filtered[filtered.length - 1].path : defaultPath;
+      const { nextTabs, nextPath } = closeTabAndResolveNextPath(prev, path, pathname, defaultPath);
+      if (nextPath !== pathname) {
         navigate(nextPath);
       }
-      return filtered.length > 0 ? filtered : [pagesByPath[defaultPath]];
+      return nextTabs;
     });
   };
 
@@ -124,32 +172,11 @@ function AppContent() {
         navigate("/login", { replace: true });
       }}
       onNavigate={(path) => navigate(path)}
-      sections={navigationSections}
+      sections={accessibleSections}
       tabs={visibleTabs}
       onCloseTab={handleCloseTab}
     >
-      <Routes>
-        <Route path="/" element={<Navigate replace to={defaultPath} />} />
-        <Route path="/login" element={<Navigate replace to={defaultPath} />} />
-      </Routes>
-      
-      {user && pathname !== "/login" && (
-        <>
-          {visibleTabs.map((tab: AppPageConfig) => (
-            <div
-              key={tab.path}
-              style={{
-                display: tab.path === pathname ? "block" : "none",
-                height: "100%",
-                flex: "1 1 auto",
-                overflow: "hidden"
-              }}
-            >
-              {renderPage(tab)}
-            </div>
-          ))}
-        </>
-      )}
+      <AppRoutes pages={accessiblePages} />
     </AppLayout>
   );
 }

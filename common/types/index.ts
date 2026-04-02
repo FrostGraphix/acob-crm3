@@ -15,6 +15,11 @@ export interface AuthUser {
   username: string;
   displayName: string;
   role: string;
+  permissions?: string[];
+  email?: string;
+  phone?: string;
+  address?: string;
+  remark?: string;
 }
 
 export interface AuthSessionToken {

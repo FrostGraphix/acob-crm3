@@ -16,15 +16,33 @@ import {
   isSupabaseAuthEnabled,
   refreshSupabaseAccessToken,
 } from "../services/supabase.js";
+import { extractUpstreamPermissions } from "../services/upstream-permissions.js";
+import { ensureUpstreamSession, UpstreamSessionError } from "../services/upstream-session.js";
 
 export interface AuthenticatedRequest extends Request {
   authSession?: AuthSessionToken;
+  authProvider?: "legacy" | "supabase";
   upstreamCookie?: string;
+  upstreamSessionId?: string;
   csrfToken?: string;
 }
 
 function isPublicPath(pathname: string) {
   return pathname === "/api/user/login";
+}
+
+function resolvePathname(request: Request) {
+  const originalUrl = request.originalUrl || request.url || "/";
+
+  try {
+    return new URL(originalUrl, "http://localhost").pathname;
+  } catch {
+    return "/";
+  }
+}
+
+function shouldForceRefreshUpstream(pathname: string) {
+  return pathname !== "/api/user/info" && pathname !== "/api/user/logout";
 }
 
 const SUPABASE_REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -86,8 +104,20 @@ export async function requireAuth(
       return;
     }
 
-    request.authSession = legacySession;
+    const permissions =
+      legacySession.user.permissions && legacySession.user.permissions.length > 0
+        ? legacySession.user.permissions
+        : extractUpstreamPermissions(storedSession.upstreamCookie);
+    request.authSession = {
+      ...legacySession,
+      user: {
+        ...legacySession.user,
+        permissions,
+      },
+    };
+    request.authProvider = "legacy";
     request.upstreamCookie = storedSession.upstreamCookie;
+    request.upstreamSessionId = legacySession.sessionId;
     request.csrfToken = storedSession.csrfToken;
     next();
     return;
@@ -127,22 +157,38 @@ export async function requireAuth(
   }
 
   if (upstreamSessionId && !upstreamSession) {
-    sendEnvelope(response, 401, null, "Upstream session expired or invalid", 1);
-    return;
+    request.upstreamSessionId = upstreamSessionId;
   }
 
-  if (!upstreamSession?.upstreamCookie) {
-    sendEnvelope(response, 401, null, "Upstream session expired or invalid", 1);
-    return;
-  }
-
+  request.upstreamCookie = upstreamSession?.upstreamCookie;
+  request.upstreamSessionId = upstreamSessionId;
+  request.csrfToken = upstreamSession?.csrfToken;
   request.authSession = {
-    user,
+    user: {
+      ...user,
+      permissions: extractUpstreamPermissions(request.upstreamCookie),
+    },
     sessionId: upstreamSessionId ?? `supabase:${user.username}`,
     issuedAt: Date.now(),
   };
-  request.upstreamCookie = upstreamSession?.upstreamCookie;
-  request.csrfToken = upstreamSession?.csrfToken;
+  request.authProvider = "supabase";
+
+  try {
+    await ensureUpstreamSession(request, response, {
+      forceRefresh: shouldForceRefreshUpstream(resolvePathname(request)),
+    });
+  } catch (error) {
+    const message =
+      error instanceof UpstreamSessionError
+        ? error.message
+        : "Upstream session expired or invalid";
+    sendEnvelope(response, 401, null, message, 1);
+    return;
+  }
+
+  if (request.authSession) {
+    request.authSession.user.permissions = extractUpstreamPermissions(request.upstreamCookie);
+  }
 
   next();
 }

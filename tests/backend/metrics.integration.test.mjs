@@ -10,6 +10,7 @@ test.before(async () => {
   process.env.SESSION_STORE_MODE = "memory";
   process.env.SUPABASE_AUTH_ENABLED = "false";
   process.env.SUPABASE_STORAGE_ENABLED = "false";
+  process.env.UPSTREAM_API_URL = "http://127.0.0.1:1";
 
   const { createApp } = await import("../../backend/dist/backend/src/app.js");
   const app = createApp();
@@ -36,6 +37,9 @@ test("health and metrics endpoints expose runtime snapshot", async () => {
   assert.equal(healthResponse.status, 200);
   const healthPayload = await healthResponse.json();
   assert.equal(healthPayload.status, "ok");
+  assert.equal(healthPayload.runtime.service, "acob-crm3-backend");
+  assert.equal(healthPayload.runtime.sessionStoreMode, "memory");
+  assert.equal(typeof healthPayload.runtime.backgroundServices.analysisEngine.enabled, "boolean");
 
   const metricsResponse = await fetch(`${baseUrl}/metrics`);
   assert.equal(metricsResponse.status, 200);
@@ -55,6 +59,7 @@ test("dependency health endpoint reports degraded when upstream is unreachable",
 
   const payload = await response.json();
   assert.equal(payload.status, "degraded");
+  assert.equal(payload.runtime.service, "acob-crm3-backend");
   assert.equal(payload.dependencies.sessionStore.ok, true);
   assert.equal(payload.dependencies.sessionStore.mode, "memory");
   assert.equal(payload.dependencies.upstream.ok, false);

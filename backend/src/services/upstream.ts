@@ -73,6 +73,7 @@ export async function forwardToUpstream(
   pathname: string,
   body: Record<string, unknown>,
   authToken: string | undefined,
+  options: { timeoutMs?: number } = {},
 ): Promise<UpstreamResult> {
   const headers: Record<string, string> = {};
   if (authToken) {
@@ -85,6 +86,7 @@ export async function forwardToUpstream(
 
   const response = await upstreamClient.post(pathname, body, {
     headers,
+    timeout: options.timeoutMs,
     validateStatus: () => true,
   });
 

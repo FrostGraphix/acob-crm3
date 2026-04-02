@@ -80,6 +80,74 @@ test("read payload mapper rejects invalid numeric report filters", () => {
   assert.equal(mapped.message, "Low Limit must be a valid number");
 });
 
+test("consumption statistics payload mapper formats dates and omits paging", () => {
+  const page: DataPageConfig = {
+    ...basePage,
+    path: "/data-report/consumption-statistics",
+    readEndpoint: "/API/PrepayReport/ConsumptionStatistics",
+    requiredReadFilters: ["fromDate", "toDate"],
+    omitReadPaging: true,
+    requestDateFormat: "day-first",
+    filters: [
+      { key: "customerId", label: "Customer Id", placeholder: "Customer id", type: "text" },
+      { key: "meterId", label: "Meter Id", placeholder: "Meter id", type: "text" },
+      { key: "fromDate", label: "From Date", placeholder: "From date", type: "date" },
+      { key: "toDate", label: "To Date", placeholder: "To date", type: "date" },
+    ],
+  };
+
+  const mapped = buildReadPayload(
+    page,
+    {
+      customerId: " C-100 ",
+      meterId: " M-100 ",
+      fromDate: "2026-03-01",
+      toDate: "2026-03-31",
+    },
+    3,
+    50,
+  );
+
+  assert.equal(mapped.ok, true);
+  assert.deepEqual(mapped.payload, {
+    customerId: "C-100",
+    meterId: "M-100",
+    fromDate: "01/03/2026",
+    toDate: "31/03/2026",
+  });
+});
+
+test("consumption statistics payload mapper requires both dates", () => {
+  const page: DataPageConfig = {
+    ...basePage,
+    path: "/data-report/consumption-statistics",
+    readEndpoint: "/API/PrepayReport/ConsumptionStatistics",
+    requiredReadFilters: ["fromDate", "toDate"],
+    omitReadPaging: true,
+    requestDateFormat: "day-first",
+    filters: [
+      { key: "customerId", label: "Customer Id", placeholder: "Customer id", type: "text" },
+      { key: "meterId", label: "Meter Id", placeholder: "Meter id", type: "text" },
+      { key: "fromDate", label: "Start Date", placeholder: "From date", type: "date" },
+      { key: "toDate", label: "End Date", placeholder: "To date", type: "date" },
+    ],
+  };
+
+  const mapped = buildReadPayload(
+    page,
+    {
+      meterId: "470005343133",
+      fromDate: "",
+      toDate: "",
+    },
+    1,
+    10,
+  );
+
+  assert.equal(mapped.ok, false);
+  assert.equal(mapped.message, "Start Date is required");
+});
+
 test("action payload mapper validates token generation numbers", () => {
   const action: ActionConfig = {
     key: "generate",

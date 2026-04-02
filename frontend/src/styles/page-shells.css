@@ -1,0 +1,270 @@
+.data-page-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.data-page-action-strip {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.data-page-action-strip .button {
+  border-radius: 999px;
+}
+
+.data-page-quota-muted {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.reports-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.reports-hero-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.reports-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.reports-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.reports-hero .button {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reports-tab-strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.reports-tab-strip .button {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+}
+
+.reports-control-panel {
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.reports-control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.reports-control-groups {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reports-control-panel .mini-button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+
+.reports-record-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.reports-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.reports-stat-card {
+  padding: 0.9rem 1rem;
+}
+
+.reports-stat-value {
+  font-size: 1.35rem;
+}
+
+.reports-content-panel {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-empty-state,
+.reports-chart-placeholder {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.reports-empty-state svg {
+  opacity: 0.3;
+  margin-bottom: 1rem;
+}
+
+.reports-panel-body {
+  flex: 1;
+}
+
+.reports-panel-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.reports-chart-view {
+  padding: 1rem 0 0;
+}
+
+.runtime-admin-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.runtime-admin-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.runtime-admin-copy {
+  max-width: 48rem;
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.runtime-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.runtime-engine-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--panel-glass) 92%, transparent);
+  box-shadow: var(--shadow-panel);
+}
+
+.runtime-engine-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.runtime-engine-card__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--acob-green);
+}
+
+.runtime-engine-card__title {
+  margin: 0.2rem 0 0;
+  font-size: 1.1rem;
+}
+
+.runtime-engine-badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-glass-strong) 82%, transparent);
+  border: 1px solid var(--border-light);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.runtime-engine-badge.is-leader {
+  background: var(--acob-green-subtle);
+  color: var(--acob-green);
+}
+
+.runtime-engine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+
+.runtime-engine-grid > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.runtime-engine-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.runtime-engine-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.runtime-engine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .data-page-toolbar-row,
+  .reports-hero,
+  .reports-control-row,
+  .runtime-admin-hero {
+    align-items: stretch;
+  }
+}

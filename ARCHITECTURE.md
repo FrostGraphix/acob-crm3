@@ -160,3 +160,108 @@ acob-crm3/
 - Dashboard data mapping now prefers real upstream series only:
   - `frontend/src/services/dashboard-mapper.ts`
   - empty charts remain empty when upstream does not provide the corresponding series.
+
+## Additional Structure (April 2026 Runtime Hardening Update)
+- Production runtime config now fails fast when `JWT_SECRET` is missing outside `NODE_ENV=test`.
+- Background schedulers are opt-in through backend env flags:
+  - `ENABLE_ANALYSIS_ENGINE`
+  - `ENABLE_SITE_CONSUMPTION_ENGINE`
+- Request throttling is now configurable and safer by default:
+  - `RATE_LIMIT_WINDOW_MS`
+  - `RATE_LIMIT_MAX_REQUESTS_PER_WINDOW`
+  - `RATE_LIMIT_TRUST_FORWARDED_FOR`
+- Backend package test ownership now stays backend-only:
+  - runtime hardening tests live in `tests/backend/runtime-hardening.integration.test.mjs`
+  - frontend contract tests are no longer run from `backend/package.json`
+
+## Additional Structure (April 2026 Catalog & Proxy Decomposition Update)
+- Frontend page configuration is now modularized by product domain under `frontend/src/config/`:
+  - `page-catalog-shared.ts` for shared columns, filters, and page factories
+  - `token-pages.ts`
+  - `remote-pages.ts`
+  - `report-pages.ts`
+  - `management-pages.ts`
+  - `pageCatalog.ts` remains the composition/export layer consumed by the app shell
+- Backend proxy orchestration now delegates endpoint-specific request-shape adaptation to:
+  - `backend/src/services/upstream-request-adapters.ts`
+- `backend/src/api/proxy.ts` remains the authenticated proxy entrypoint, but no longer owns report- and daily-data-specific fallback body builders inline.
+- Frontend and backend test ownership is now explicit at the package level:
+  - `frontend/package.json` owns frontend contract tests under `tests/frontend/`
+  - `backend/package.json` owns backend runtime/integration tests under `tests/backend/`
+- Adapter decomposition is covered directly by `tests/backend/upstream-request-adapters.integration.test.mjs` so proxy request-shape fallbacks remain verified independently of the controller.
+
+## Additional Structure (April 2026 Runtime State Persistence Update)
+- Analysis notifications and site-consumption snapshots now persist through a dedicated runtime-state service:
+  - `backend/src/services/runtime-state-store.ts`
+  - `backend/src/services/redis-client.ts`
+- Runtime state now uses the same Redis-first / memory-fallback pattern as sessions and no longer relies on `tmp/*.json` as the primary persistence path.
+- `backend/src/services/session-store.ts` is now session-only, while `backend/src/services/site-consumption-store.ts` keeps site-consumption data normalization and delegates persistence to the runtime-state service.
+- Backend coverage now includes state-reload tests for both analysis notifications and site-consumption snapshots:
+  - `tests/backend/notification-state.integration.test.mjs`
+  - `tests/backend/runtime-state-store.integration.test.mjs`
+
+## Additional Structure (April 2026 Runtime Diagnostics & DX Update)
+- Backend runtime diagnostics are now exposed consistently from:
+  - `backend/src/services/runtime-diagnostics.ts`
+  - `GET /health`
+  - `GET /health/dependencies`
+- Production/runtime mode is now observable without reading environment files directly:
+  - session store mode
+  - background engine enablement
+  - rate-limit policy
+  - Supabase feature flags
+- Backend local development now uses a watch-based loop again through `backend/package.json` with `nodemon`, reducing rebuild friction during refactors.
+
+## Additional Structure (April 2026 Frontend Styles Modularization Update)
+- `frontend/src/index.css` now carries the foundational tokens, shell, dashboard, and workspace styles.
+- Larger interaction-heavy blocks were extracted into dedicated style layers under `frontend/src/styles/` and imported from `frontend/src/main.tsx` in cascade order:
+  - `surface-enhancements.css`
+  - `feedback.css`
+  - `auth.css`
+  - `modal.css`
+  - `chart-enhancements.css`
+- The split preserves the current visual identity while making the style surface easier to extend without reopening the full monolith.
+
+## Additional Structure (April 2026 Scheduler Leadership & Runtime Operations Update)
+- Background schedulers now support replica-safe leadership coordination through:
+  - `backend/src/services/scheduler-leader.ts`
+  - `SCHEDULER_COORDINATION_MODE`
+  - `SCHEDULER_LEADER_KEY_PREFIX`
+  - `SCHEDULER_LEADER_LEASE_MS`
+  - `SCHEDULER_LEADER_HEARTBEAT_MS`
+- Production runtime policy now enforces Redis-backed coordination and runtime state:
+  - `RUNTIME_STATE_STORE_MODE` must resolve to `redis`
+  - `SCHEDULER_COORDINATION_MODE` must resolve to `redis`
+- Shared Redis connectivity for sessions, runtime state, and scheduler leases is centralized in:
+  - `backend/src/services/redis-client.ts`
+  - `REDIS_CONNECT_TIMEOUT_MS`
+- Analysis and site-consumption engines now expose richer scheduler/admin status from:
+  - `backend/src/services/analysis-engine.ts`
+  - `backend/src/services/site-consumption-engine.ts`
+- Runtime operations are available through an admin-only backend API:
+  - `backend/src/api/runtime.ts`
+  - `GET /api/runtime/engines`
+  - `POST /api/runtime/engines/:engine/start`
+  - `POST /api/runtime/engines/:engine/stop`
+  - `POST /api/runtime/engines/:engine/run`
+- Runtime admin coverage is verified in:
+  - `tests/backend/runtime-engine-admin.integration.test.mjs`
+
+## Additional Structure (April 2026 App Shell Access, Page Decomposition, and Runtime UI Update)
+- App-shell authorization and tab/routing state are now handled through dedicated frontend helpers:
+  - `frontend/src/services/app-shell-state.ts`
+- The app shell now filters inaccessible pages before rendering navigation or tab state, preventing stale admin-only routes from remaining mounted.
+- Remaining large page surfaces were split into focused UI components:
+  - `frontend/src/components/data/DataPageToolbar.tsx`
+  - `frontend/src/components/reports/ReportTabStrip.tsx`
+  - `frontend/src/components/reports/ReportControlPanel.tsx`
+  - `frontend/src/components/reports/ReportContentPanel.tsx`
+- Operational control is now exposed inside the frontend through:
+  - `frontend/src/pages/RuntimeAdminPage.tsx`
+  - `frontend/src/config/management-pages.ts` (`/system/runtime`, admin-only)
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/services/api.ts` runtime-engine client methods
+- New page-shell-specific styling lives in:
+  - `frontend/src/styles/page-shells.css`
+- Frontend routing/auth/tab regression coverage is now exercised in:
+  - `tests/frontend/app-shell-state.test.ts`

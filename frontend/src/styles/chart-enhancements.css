@@ -1,0 +1,150 @@
+/* ========================================================================= */
+
+.data-table tbody tr {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(6, 134, 18, 0.06);
+}
+
+.data-table tbody tr:hover td {
+  background: var(--bg-panel-hover);
+}
+
+.data-table tbody tr.selected td {
+  background: var(--acob-green-subtle);
+}
+
+/* Enhanced column header sort indicator */
+.sort-indicator {
+  display: inline-flex;
+  flex-direction: column;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+.data-table th:hover .sort-indicator {
+  opacity: 0.6;
+}
+
+/* Enhanced badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-success {
+  background: rgba(6, 134, 18, 0.12);
+  color: var(--acob-green);
+  border: 1px solid rgba(6, 134, 18, 0.2);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-neutral {
+  background: color-mix(in srgb, var(--panel-glass-strong) 70%, transparent);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+/* Enhanced mini-buttons on table rows */
+.mini-button {
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.mini-button:hover {
+  transform: translateY(-1px);
+}
+
+.mini-button-primary {
+  color: #ffffff;
+  background: linear-gradient(145deg, var(--acob-green), #0ea31b);
+  box-shadow: 0 4px 12px rgba(6, 134, 18, 0.2);
+}
+
+.mini-button-neutral {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--panel-glass-strong) 82%, transparent);
+  border-color: var(--border-light);
+}
+
+.mini-button-danger {
+  color: #ffffff;
+  background: var(--error);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* ========================================================================= */
+/* ENHANCED: Chart Cards & ECharts Canvas                                     */
+/* ========================================================================= */
+
+.chart-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--acob-green-subtle), transparent);
+}
+
+.echart-canvas {
+  width: 100%;
+  height: clamp(16rem, 28vw, 20rem) !important;
+  transition: opacity 0.3s ease;
+}
+
+.pie-echart-canvas {
+  height: clamp(18rem, 30vw, 22rem) !important;
+}
+
+/* Loading state overlay for charts */
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.chart-loading::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  margin-right: 0.75rem;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--acob-green);
+  border-radius: 50%;
+  animation: loginSpin 0.8s linear infinite;
+}

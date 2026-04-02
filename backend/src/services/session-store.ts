@@ -1,5 +1,5 @@
-import { createClient, type RedisClientType } from "redis";
 import { env } from "./env.js";
+import { getRedisClient } from "./redis-client.js";
 
 export interface SessionRecord {
   upstreamCookie?: string;
@@ -14,8 +14,6 @@ interface MemorySessionEntry {
 }
 
 const memorySessions = new Map<string, MemorySessionEntry>();
-let redisClient: RedisClientType | null = null;
-let redisConnectPromise: Promise<unknown> | null = null;
 
 function getExpiryEpochMs() {
   return Date.now() + SESSION_TTL_SECONDS * 1000;
@@ -32,30 +30,6 @@ function pruneMemorySessions() {
 
 function toRedisKey(sessionId: string) {
   return `${env.redisKeyPrefix}${sessionId}`;
-}
-
-async function getRedisClient() {
-  if (env.sessionStoreMode !== "redis") {
-    return null;
-  }
-
-  if (!redisClient) {
-    redisClient = createClient({
-      url: env.redisUrl,
-    });
-  }
-
-  if (!redisClient.isOpen) {
-    if (!redisConnectPromise) {
-      redisConnectPromise = redisClient.connect().finally(() => {
-        redisConnectPromise = null;
-      });
-    }
-
-    await redisConnectPromise;
-  }
-
-  return redisClient;
 }
 
 function parseRedisRecord(value: string): SessionRecord | null {

@@ -9,19 +9,25 @@ let upstreamBaseUrl;
 let baseUrl;
 
 const upstreamState = {
+  forceLoginFailure: false,
   userProfile: {
     username: "admin",
     displayName: "ACOB Admin",
     role: "Administrator",
+    email: "admin@example.com",
   },
   lastRequestBodies: {},
-  customers: Array.from({ length: 40 }, (_, index) => ({
+  customers: createCustomers(),
+};
+
+function createCustomers() {
+  return Array.from({ length: 40 }, (_, index) => ({
     id: `CUSTOMER-${String(index + 1).padStart(4, "0")}`,
     name: `Customer ${index + 1}`,
     stationId: "STATION-001",
     createTime: "2026-03-01 10:00",
-  })),
-};
+  }));
+}
 
 function parseJsonBody(request) {
   return new Promise((resolve, reject) => {
@@ -87,6 +93,15 @@ function buildCookieHeader(...cookies) {
   return cookies.filter((value) => typeof value === "string" && value.length > 0).join("; ");
 }
 
+function decodeJwtPayload(token) {
+  const [, payload] = token.split(".");
+  if (!payload) {
+    throw new Error("Invalid JWT token");
+  }
+
+  return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+}
+
 test.before(async () => {
   upstreamServer = createServer(async (request, response) => {
     if (request.method !== "POST") {
@@ -98,7 +113,11 @@ test.before(async () => {
     const body = await parseJsonBody(request);
 
     if (pathname === "/api/user/login") {
-      if (body.username !== "admin" || body.password !== "ACOB_admin") {
+      if (
+        upstreamState.forceLoginFailure ||
+        body.username !== "admin" ||
+        body.password !== "ACOB_admin"
+      ) {
         sendUpstreamEnvelope(response, 401, null, "Invalid credentials");
         return;
       }
@@ -156,6 +175,7 @@ test.before(async () => {
 
     if (
       pathname === "/API/PrepayReport/LowPurchaseSituation" ||
+      pathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
       pathname === "/api/DailyDataMeter/read" ||
       pathname === "/API/RemoteMeterTask/GetReadingTask"
     ) {
@@ -176,6 +196,30 @@ test.before(async () => {
           }),
         );
         return;
+      }
+
+      if (pathname === "/API/PrepayReport/LongNonpurchaseSituation") {
+        const hasExpectedAliases =
+          typeof body.page === "number" &&
+          typeof body.limit === "number" &&
+          typeof body.consumerId === "string" &&
+          typeof body.meterNo === "string" &&
+          typeof body.daysStart === "number" &&
+          typeof body.daysEnd === "number";
+
+        if (!hasExpectedAliases) {
+          response.writeHead(400, {
+            "Content-Type": "application/json",
+          });
+          response.end(
+            JSON.stringify({
+              code: 1,
+              reason: "LongNonpurchase payload mismatch",
+              result: null,
+            }),
+          );
+          return;
+        }
       }
 
       sendUpstreamEnvelope(response, 200, {
@@ -302,6 +346,119 @@ test("login issues cookie and allows authenticated proxy calls", async () => {
   assert.ok(Array.isArray(readPayload.result.rows));
 });
 
+test("legacy login falls back to configured local credentials when upstream auth fails", async () => {
+  upstreamState.forceLoginFailure = true;
+
+  try {
+    const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: "admin",
+        password: "ACOB_admin",
+      }),
+    });
+
+    assert.equal(loginResponse.status, 200);
+    const loginPayload = await loginResponse.json();
+    const csrfToken = loginPayload?.result?.csrfToken;
+    assert.equal(typeof csrfToken, "string");
+    assert.equal(loginPayload?.result?.user?.displayName, "ACOB Admin");
+
+    const sessionCookie = getCookieByName(loginResponse, "acob_session");
+    const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+    assert.ok(sessionCookie);
+    assert.ok(csrfCookie);
+
+    const infoResponse = await fetch(`${baseUrl}/api/user/info`, {
+      headers: {
+        Cookie: buildCookieHeader(sessionCookie, csrfCookie),
+      },
+    });
+    assert.equal(infoResponse.status, 200);
+
+    const readResponse = await fetch(`${baseUrl}/api/customer/read`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: buildCookieHeader(sessionCookie, csrfCookie),
+        "x-csrf-token": csrfToken,
+      },
+      body: JSON.stringify({ pageNumber: 1, pageSize: 10 }),
+    });
+    assert.equal(readResponse.status, 401);
+    const readPayload = await readResponse.json();
+    assert.equal(readPayload.reason, "Invalid credentials");
+  } finally {
+    upstreamState.forceLoginFailure = false;
+  }
+});
+
+test.beforeEach(() => {
+  upstreamState.forceLoginFailure = false;
+  upstreamState.userProfile = {
+    username: "admin",
+    displayName: "ACOB Admin",
+    role: "Administrator",
+    email: "admin@example.com",
+  };
+  upstreamState.lastRequestBodies = {};
+  upstreamState.customers = createCustomers();
+});
+
+test("legacy proxy requests recover a stale upstream session when service credentials are configured", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+
+  assert.equal(loginResponse.status, 200);
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+
+  const token = sessionCookie.split("=")[1];
+  const decoded = decodeJwtPayload(token);
+  const { createSession, getSession } = await import(
+    "../../backend/dist/backend/src/services/session-store.js"
+  );
+
+  await createSession(decoded.sessionId, {
+    upstreamCookie: "JSESSIONID=stale-upstream-session",
+    csrfToken,
+  });
+
+  const readResponse = await fetch(`${baseUrl}/api/customer/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: buildCookieHeader(sessionCookie, csrfCookie),
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 10 }),
+  });
+
+  assert.equal(readResponse.status, 200);
+  const readPayload = await readResponse.json();
+  assert.equal(readPayload.code, 0);
+
+  const refreshedSession = await getSession(decoded.sessionId);
+  assert.equal(refreshedSession?.upstreamCookie, "JSESSIONID=upstream-session");
+});
+
 test("csrf protection rejects authenticated requests with missing token", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
     method: "POST",
@@ -389,6 +546,70 @@ test("authenticated create request mutates dataset", async () => {
   assert.equal(afterPayload.result.total, beforeTotal + 1);
 });
 
+test("management import batches records through the backend import endpoint", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+  const cookieHeader = buildCookieHeader(sessionCookie, csrfCookie);
+
+  const beforeResponse = await fetch(`${baseUrl}/api/customer/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 50 }),
+  });
+  const beforePayload = await beforeResponse.json();
+  const beforeTotal = beforePayload.result.total;
+
+  const importResponse = await fetch(`${baseUrl}/api/customer/import`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      records: [
+        { name: "Imported Customer 1", remark: "bulk-import" },
+        { name: "Imported Customer 2", remark: "bulk-import" },
+      ],
+    }),
+  });
+  assert.equal(importResponse.status, 200);
+  const importPayload = await importResponse.json();
+  assert.equal(importPayload.result.importedCount, 2);
+
+  const afterResponse = await fetch(`${baseUrl}/api/customer/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 50 }),
+  });
+  const afterPayload = await afterResponse.json();
+  assert.equal(afterPayload.result.total, beforeTotal + 2);
+});
+
 test("profile update refreshes the authenticated user session", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
     method: "POST",
@@ -418,6 +639,10 @@ test("profile update refreshes the authenticated user session", async () => {
     },
     body: JSON.stringify({
       displayName: "Updated Integration Admin",
+      email: "updated@example.com",
+      phone: "08000000000",
+      address: "12 Marina Road",
+      remark: "Updated from integration test",
     }),
   });
 
@@ -436,6 +661,10 @@ test("profile update refreshes the authenticated user session", async () => {
   assert.equal(infoResponse.status, 200);
   const infoPayload = await infoResponse.json();
   assert.equal(infoPayload.result.displayName, "Updated Integration Admin");
+  assert.equal(infoPayload.result.email, "updated@example.com");
+  assert.equal(infoPayload.result.phone, "08000000000");
+  assert.equal(infoPayload.result.address, "12 Marina Road");
+  assert.equal(infoPayload.result.remark, "Updated from integration test");
 });
 
 test("logout clears session and protected endpoint returns 401", async () => {
@@ -539,4 +768,52 @@ test("report and daily data proxy requests inject upstream Lang parameter", asyn
   });
   assert.equal(readingTaskResponse.status, 200);
   assert.equal(upstreamState.lastRequestBodies["/API/RemoteMeterTask/GetReadingTask"].Lang, "en");
+});
+
+test("long nonpurchase report retries with paging and upstream field aliases", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+  const cookieHeader = buildCookieHeader(sessionCookie, csrfCookie);
+
+  const reportResponse = await fetch(`${baseUrl}/API/PrepayReport/LongNonpurchaseSituation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      customerId: "C-001",
+      meterId: "M-001",
+      nonpurchaseDaysStart: 30,
+      nonpurchaseDaysEnd: 90,
+      pageNumber: 1,
+      pageSize: 10,
+    }),
+  });
+
+  assert.equal(reportResponse.status, 200);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].Lang, "en");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].page, 1);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].limit, 10);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].consumerId, "C-001");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].meterNo, "M-001");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].daysStart, 30);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].daysEnd, 90);
 });

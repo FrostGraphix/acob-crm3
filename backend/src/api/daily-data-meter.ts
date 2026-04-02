@@ -4,5 +4,6 @@ import { proxyHandler } from "./proxy.js";
 export const dailyDataMeterRouter = Router();
 
 dailyDataMeterRouter.post("/read", proxyHandler);
+dailyDataMeterRouter.post("/readMore", proxyHandler);
 dailyDataMeterRouter.post("/readHourly", proxyHandler);
 dailyDataMeterRouter.post("/readMonthly", proxyHandler);

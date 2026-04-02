@@ -58,6 +58,50 @@ function sanitizeString(value: string) {
   return output.trim();
 }
 
+function parseDateValue(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = sanitizeString(value);
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const parsed = new Date(`${trimmed}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const dayFirstMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (dayFirstMatch) {
+    const [, day, month, year] = dayFirstMatch;
+    const parsed = new Date(`${year}-${month}-${day}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+}
+
+function formatDateValue(
+  value: string,
+  format: DataPageConfig["requestDateFormat"] = "iso",
+) {
+  if (format !== "day-first") {
+    return value;
+  }
+
+  const trimmed = sanitizeString(value);
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!isoMatch) {
+    return trimmed;
+  }
+
+  const [, year, month, day] = isoMatch;
+  return `${day}/${month}/${year}`;
+}
+
 function sanitizeValue(value: unknown): unknown {
   if (typeof value === "string") {
     return sanitizeString(value);
@@ -184,7 +228,14 @@ function ensureValidDateRange(
     return null;
   }
 
-  if (fromDate > toDate) {
+  const from = parseDateValue(fromDate);
+  const to = parseDateValue(toDate);
+
+  if (!from || !to) {
+    return null;
+  }
+
+  if (from.getTime() > to.getTime()) {
     return {
       ok: false,
       message: "From date cannot be after to date",
@@ -199,6 +250,8 @@ function normalizeReadFilters(
   filters: Record<string, string>,
 ): MappingResult {
   const payload: Record<string, unknown> = {};
+  const requiredKeys = new Set(page.requiredReadFilters ?? []);
+  const filterByKey = new Map(page.filters.map((filter) => [filter.key, filter]));
 
   for (const filter of page.filters) {
     const rawValue = filters[filter.key];
@@ -224,7 +277,26 @@ function normalizeReadFilters(
       continue;
     }
 
-    payload[filter.key] = value;
+    payload[filter.key] =
+      filter.type === "date"
+        ? formatDateValue(value, page.requestDateFormat)
+        : value;
+  }
+
+  for (const requiredKey of requiredKeys) {
+    const value = payload[requiredKey];
+    const filter = filterByKey.get(requiredKey);
+
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value.trim().length === 0)
+    ) {
+      return {
+        ok: false,
+        message: `${filter?.label ?? requiredKey} is required`,
+      };
+    }
   }
 
   return { ok: true, payload };
@@ -273,8 +345,7 @@ export function buildReadPayload(
 
   const payload = sanitizeRecord({
     ...(normalizedFilters.payload ?? {}),
-    pageNumber,
-    pageSize,
+    ...(page.omitReadPaging ? {} : { pageNumber, pageSize }),
   });
 
   return mapReadOperationKind(page.readOperationKind ?? "table-read", payload);

@@ -16,10 +16,10 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
-      UPSTREAM_API_URL: "http://8.208.16.168:9310"
-      UPSTREAM_USERNAME: "admin"
-      UPSTREAM_PASSWORD: "ACOB_admin"
-      JWT_SECRET: "change-me-in-production"
+      UPSTREAM_API_URL: "${UPSTREAM_API_URL:?set UPSTREAM_API_URL in your .env file}"
+      UPSTREAM_USERNAME: "${UPSTREAM_USERNAME:?set UPSTREAM_USERNAME in your .env file}"
+      UPSTREAM_PASSWORD: "${UPSTREAM_PASSWORD:?set UPSTREAM_PASSWORD in your .env file}"
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in your .env file}"
       SESSION_STORE_MODE: "redis"
       REDIS_URL: "redis://redis:6379"
       REDIS_KEY_PREFIX: "acob:session:"

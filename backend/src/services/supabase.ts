@@ -30,11 +30,23 @@ function mapSupabaseUser(user: User): AuthUser {
     readString(appMetadata.role) ??
     readString(metadata.role) ??
     "User";
+  const email = readString(user.email) ?? readString(metadata.email);
+  const phone = readString(user.phone) ?? readString(metadata.phone);
+  const address =
+    readString(metadata.address) ??
+    readString(metadata.location);
+  const remark =
+    readString(metadata.remark) ??
+    readString(metadata.note);
 
   return {
     username,
     displayName,
     role,
+    email: email ?? undefined,
+    phone: phone ?? undefined,
+    address: address ?? undefined,
+    remark: remark ?? undefined,
   };
 }
 
