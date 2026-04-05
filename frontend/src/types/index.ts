@@ -191,6 +191,7 @@ export type SidebarIconKey =
   | "meter"
   | "debt"
   | "protocol"
+  | "runtime-ops"
   | "load-profile"
   | "log"
   | "event"

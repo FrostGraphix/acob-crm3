@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildReadPayload } from "../services/payload-mapper";
 import { loadTableData } from "../services/api";
+import { createInitialFilters } from "../services/filter-defaults.ts";
 import type { DataPageConfig, DataRow } from "../types";
-
-function createInitialFilters(page: DataPageConfig) {
-  return page.filters.reduce<Record<string, string>>((accumulator, filter) => {
-    accumulator[filter.key] = "";
-    return accumulator;
-  }, {});
-}
 
 function getRowKeyValue(row: DataRow) {
   const candidate =

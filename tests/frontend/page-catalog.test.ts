@@ -14,6 +14,7 @@ test("navigation contains the expanded top-level sections", () => {
   assert.equal(navigationSections.some((section) => section.key === "dashboard"), true);
   assert.equal(navigationSections.some((section) => section.key === "data-report"), true);
   assert.equal(navigationSections.some((section) => section.key === "management"), true);
+  assert.equal(navigationSections.some((section) => section.key === "runtime-ops"), true);
 });
 
 test("all pages are assigned to a navigation section", () => {
@@ -48,6 +49,7 @@ test("critical pages exist in catalog", () => {
   assert.equal(paths.has("/management/customer"), true);
   assert.equal(paths.has("/remote-operation/meter-reading"), true);
   assert.equal(paths.has("/data-report/interval-data"), true);
+  assert.equal(paths.has("/system/runtime"), true);
 });
 
 test("token generate pages match PDF action labels and quota visibility", () => {
@@ -190,9 +192,10 @@ test("report pages use PDF-specific filters and columns", () => {
       "customerId",
       "customerName",
       "meterId",
-      "tariffId",
+      "tariff",
       "totalUnit",
       "totalPaid",
+      "remainingBalance",
       "customerAddress",
     ],
   );

@@ -166,7 +166,7 @@ export const managementPages: AppPageConfig[] = [
     title: "Runtime Operations",
     menuLabel: "Runtime Ops",
     description: "Operational controls for background engines and scheduler leadership.",
-    sectionKey: "log",
+    sectionKey: "runtime-ops",
     requiredRole: "admin",
   },
 ];

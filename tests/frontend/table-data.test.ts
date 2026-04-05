@@ -212,6 +212,277 @@ test("normalizeTableData maps gateway aliases into the management table keys", (
   });
 });
 
+test("normalizeTableData maps meter aliases into the management table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          meterNo: "M-321",
+          meterCategory: "STS",
+          consumerId: "C-321",
+          consumerName: "Amina",
+          commWay: "GPRS",
+          protocol: "DLMS",
+          collectorId: "GW-321",
+          stationCode: "ABJ-7",
+          meterStatus: "Online",
+          createDate: "2026-03-14 10:10",
+          notes: "Field-installed",
+        },
+      ],
+      total: 1,
+    },
+    "/api/meter/read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    meterNo: "M-321",
+    meterCategory: "STS",
+    consumerId: "C-321",
+    consumerName: "Amina",
+    commWay: "GPRS",
+    protocol: "DLMS",
+    collectorId: "GW-321",
+    stationCode: "ABJ-7",
+    meterStatus: "Online",
+    createDate: "2026-03-14 10:10",
+    notes: "Field-installed",
+    status: "Online",
+    customerId: "C-321",
+    customerName: "Amina",
+    meterId: "M-321",
+    meterType: "STS",
+    communicationWay: "GPRS",
+    protocolVersion: "DLMS",
+    gatewayId: "GW-321",
+    remark: "Field-installed",
+    createTime: "2026-03-14 10:10",
+    stationId: "ABJ-7",
+  });
+});
+
+test("normalizeTableData maps debt aliases into the management table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          debtNo: "D-500",
+          consumerId: "C-500",
+          consumerName: "Usman",
+          meterNo: "M-500",
+          debtAmount: 4200,
+          debtStatus: "Open",
+          description: "Outstanding postpaid bill",
+          createDate: "2026-03-01 08:00",
+          modifyTime: "2026-03-03 09:15",
+        },
+      ],
+      total: 1,
+    },
+    "/api/debt/read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    debtNo: "D-500",
+    consumerId: "C-500",
+    consumerName: "Usman",
+    meterNo: "M-500",
+    debtAmount: 4200,
+    debtStatus: "Open",
+    description: "Outstanding postpaid bill",
+    createDate: "2026-03-01 08:00",
+    modifyTime: "2026-03-03 09:15",
+    id: "D-500",
+    customerId: "C-500",
+    customerName: "Usman",
+    meterId: "M-500",
+    amount: 4200,
+    status: "Open",
+    remark: "Outstanding postpaid bill",
+    createTime: "2026-03-01 08:00",
+    updateTime: "2026-03-03 09:15",
+  });
+});
+
+test("normalizeTableData maps DLMS aliases into the protocol table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          itemId: "DLMS-01",
+          objectName: "Voltage Reading",
+          obis: "1.0.32.7.0.255",
+          interfaceClass: "3",
+          attrIndex: "2",
+          valueType: "integer",
+          notes: "Instantaneous voltage",
+        },
+      ],
+      total: 1,
+    },
+    "/api/dlms/Read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    itemId: "DLMS-01",
+    objectName: "Voltage Reading",
+    obis: "1.0.32.7.0.255",
+    interfaceClass: "3",
+    attrIndex: "2",
+    valueType: "integer",
+    notes: "Instantaneous voltage",
+    id: "DLMS-01",
+    name: "Voltage Reading",
+    obisCode: "1.0.32.7.0.255",
+    classId: "3",
+    attributeIndex: "2",
+    dataType: "integer",
+    remark: "Instantaneous voltage",
+  });
+});
+
+test("normalizeTableData maps DLT645 aliases into the protocol table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          itemId: "645-01",
+          itemName: "Forward Active Energy",
+          di: "00010000",
+          dataLen: "4",
+          valueType: "BCD",
+          notes: "Primary energy register",
+        },
+      ],
+      total: 1,
+    },
+    "/api/dlt645/read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    itemId: "645-01",
+    itemName: "Forward Active Energy",
+    di: "00010000",
+    dataLen: "4",
+    valueType: "BCD",
+    notes: "Primary energy register",
+    id: "645-01",
+    name: "Forward Active Energy",
+    dataIdentifier: "00010000",
+    dataLength: "4",
+    dataType: "BCD",
+    remark: "Primary energy register",
+  });
+});
+
+test("normalizeTableData maps DLT645 task aliases into the protocol task table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          taskStatus: "Success",
+          meterNo: "M-645",
+          di: "00010000",
+          resultValue: "1234.56",
+          createDate: "2026-03-09 11:00",
+          modifyTime: "2026-03-09 11:02",
+        },
+      ],
+      total: 1,
+    },
+    "/api/DLT645Task/read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    taskStatus: "Success",
+    meterNo: "M-645",
+    di: "00010000",
+    resultValue: "1234.56",
+    createDate: "2026-03-09 11:00",
+    modifyTime: "2026-03-09 11:02",
+    status: "Success",
+    meterId: "M-645",
+    dataIdentifier: "00010000",
+    dataValue: "1234.56",
+    createTime: "2026-03-09 11:00",
+    updateTime: "2026-03-09 11:02",
+  });
+});
+
+test("normalizeTableData maps event notification aliases into the event table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          alarmId: "EV-1",
+          alarmType: "Magnetic Interference",
+          meterNo: "M-ALARM",
+          message: "Magnetic event detected",
+          level: "Critical",
+          createDate: "2026-03-11 07:45",
+          eventStatus: "Unread",
+        },
+      ],
+      total: 1,
+    },
+    "/API/EventNotification/Read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    alarmId: "EV-1",
+    alarmType: "Magnetic Interference",
+    meterNo: "M-ALARM",
+    message: "Magnetic event detected",
+    level: "Critical",
+    createDate: "2026-03-11 07:45",
+    eventStatus: "Unread",
+    id: "EV-1",
+    eventType: "Magnetic Interference",
+    meterId: "M-ALARM",
+    description: "Magnetic event detected",
+    severity: "Critical",
+    createTime: "2026-03-11 07:45",
+    status: "Unread",
+  });
+});
+
+test("normalizeTableData maps system log aliases into the log table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          logId: "LOG-9",
+          operationName: "Delete Customer",
+          userName: "admin",
+          clientIp: "127.0.0.1",
+          moduleName: "Customer",
+          message: "Deleted duplicate record",
+          createDate: "2026-03-12 15:30",
+        },
+      ],
+      total: 1,
+    },
+    "/api/Log/read",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    logId: "LOG-9",
+    operationName: "Delete Customer",
+    userName: "admin",
+    clientIp: "127.0.0.1",
+    moduleName: "Customer",
+    message: "Deleted duplicate record",
+    createDate: "2026-03-12 15:30",
+    id: "LOG-9",
+    action: "Delete Customer",
+    username: "admin",
+    ipAddress: "127.0.0.1",
+    module: "Customer",
+    detail: "Deleted duplicate record",
+    createTime: "2026-03-12 15:30",
+  });
+});
+
 test("normalizeTableData maps token record aliases for vend, timestamps, and station", () => {
   const creditResult = normalizeTableData(
     {

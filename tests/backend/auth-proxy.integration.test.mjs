@@ -222,6 +222,31 @@ test.before(async () => {
         }
       }
 
+      if (pathname === "/API/PrepayReport/LowPurchaseSituation") {
+        const hasExpectedAliases =
+          typeof body.page === "number" &&
+          typeof body.limit === "number" &&
+          typeof body.consumerId === "string" &&
+          typeof body.meterNo === "string" &&
+          typeof body.startDate === "string" &&
+          typeof body.endDate === "string" &&
+          typeof body.lowBalance === "number";
+
+        if (!hasExpectedAliases) {
+          response.writeHead(400, {
+            "Content-Type": "application/json",
+          });
+          response.end(
+            JSON.stringify({
+              code: 1,
+              reason: "LowPurchase payload mismatch",
+              result: null,
+            }),
+          );
+          return;
+        }
+      }
+
       sendUpstreamEnvelope(response, 200, {
         total: 1,
         data: [
@@ -740,7 +765,13 @@ test("report and daily data proxy requests inject upstream Lang parameter", asyn
       Cookie: cookieHeader,
       "x-csrf-token": csrfToken,
     },
-    body: JSON.stringify({ pageNumber: 1, pageSize: 10 }),
+    body: JSON.stringify({
+      customerId: "C-001",
+      meterId: "M-001",
+      fromDate: "01/03/2026",
+      toDate: "31/03/2026",
+      lowLimit: 50,
+    }),
   });
   assert.equal(reportResponse.status, 200);
   assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].Lang, "en");
@@ -768,6 +799,54 @@ test("report and daily data proxy requests inject upstream Lang parameter", asyn
   });
   assert.equal(readingTaskResponse.status, 200);
   assert.equal(upstreamState.lastRequestBodies["/API/RemoteMeterTask/GetReadingTask"].Lang, "en");
+});
+
+test("low purchase report retries with paging, date, and low balance aliases", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+  const cookieHeader = buildCookieHeader(sessionCookie, csrfCookie);
+
+  const reportResponse = await fetch(`${baseUrl}/API/PrepayReport/LowPurchaseSituation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      customerId: "C-001",
+      meterId: "M-001",
+      fromDate: "01/03/2026",
+      toDate: "31/03/2026",
+      lowLimit: 50,
+    }),
+  });
+
+  assert.equal(reportResponse.status, 200);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].Lang, "en");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].page, 1);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].limit, 10);
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].consumerId, "C-001");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].meterNo, "M-001");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].startDate, "2026-03-01");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].endDate, "2026-03-31");
+  assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].lowBalance, 50);
 });
 
 test("long nonpurchase report retries with paging and upstream field aliases", async () => {

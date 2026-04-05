@@ -191,6 +191,93 @@ function buildLongNonpurchaseBodies(body: Record<string, unknown>) {
   return dedupeBodies([body, withPaging, aliased]);
 }
 
+function buildLowPurchaseBodies(body: Record<string, unknown>) {
+  const customerId =
+    typeof body.customerId === "string" && body.customerId.trim().length > 0
+      ? body.customerId.trim()
+      : undefined;
+  const meterId =
+    typeof body.meterId === "string" && body.meterId.trim().length > 0
+      ? body.meterId.trim()
+      : undefined;
+  const lowLimit =
+    typeof body.lowLimit === "number"
+      ? body.lowLimit
+      : typeof body.lowLimit === "string" && body.lowLimit.trim().length > 0
+        ? Number(body.lowLimit)
+        : undefined;
+
+  const withPaging = {
+    pageNumber: typeof body.pageNumber === "number" ? body.pageNumber : 1,
+    pageSize: typeof body.pageSize === "number" ? body.pageSize : 10,
+    page: typeof body.page === "number" ? body.page : 1,
+    limit:
+      typeof body.limit === "number"
+        ? body.limit
+        : (typeof body.pageSize === "number" ? body.pageSize : 10),
+    ...body,
+  };
+
+  const isoDates = {
+    ...withPaging,
+    fromDate: toIsoDate(body.fromDate),
+    toDate: toIsoDate(body.toDate),
+  };
+
+  const dayFirstDates = {
+    ...withPaging,
+    fromDate: toDayFirstDate(body.fromDate),
+    toDate: toDayFirstDate(body.toDate),
+  };
+
+  const isoWithAliases = {
+    ...isoDates,
+    consumerId: customerId,
+    customerNo: customerId,
+    meterNo: meterId,
+    meterCode: meterId,
+    startDate: isoDates.fromDate,
+    endDate: isoDates.toDate,
+    beginDate: isoDates.fromDate,
+    finishDate: isoDates.toDate,
+    startTime: isoDates.fromDate,
+    endTime: isoDates.toDate,
+    lowBalance: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    lowAmount: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    balanceLimit: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    threshold: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    minBalance: Number.isFinite(lowLimit) ? lowLimit : undefined,
+  };
+
+  const dayFirstWithAliases = {
+    ...dayFirstDates,
+    consumerId: customerId,
+    customerNo: customerId,
+    meterNo: meterId,
+    meterCode: meterId,
+    startDate: dayFirstDates.fromDate,
+    endDate: dayFirstDates.toDate,
+    beginDate: dayFirstDates.fromDate,
+    finishDate: dayFirstDates.toDate,
+    startTime: dayFirstDates.fromDate,
+    endTime: dayFirstDates.toDate,
+    lowBalance: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    lowAmount: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    balanceLimit: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    threshold: Number.isFinite(lowLimit) ? lowLimit : undefined,
+    minBalance: Number.isFinite(lowLimit) ? lowLimit : undefined,
+  };
+
+  return dedupeBodies([
+    body,
+    withPaging,
+    isoDates,
+    dayFirstDates,
+    isoWithAliases,
+    dayFirstWithAliases,
+  ]);
+}
+
 function buildDailyDataMeterBodies(body: Record<string, unknown>) {
   const customerId =
     typeof body.customerId === "string" && body.customerId.trim().length > 0
@@ -296,6 +383,13 @@ export function buildUpstreamRequestPlan(
     return {
       body: normalizedBody,
       candidateBodies: buildLongNonpurchaseBodies(normalizedBody),
+    };
+  }
+
+  if (pathname === "/API/PrepayReport/LowPurchaseSituation") {
+    return {
+      body: normalizedBody,
+      candidateBodies: buildLowPurchaseBodies(normalizedBody),
     };
   }
 

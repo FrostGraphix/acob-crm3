@@ -59,6 +59,7 @@ export async function proxyHandler(request: Request, response: Response) {
         );
 
         if (
+          policy.pathname === "/API/PrepayReport/LowPurchaseSituation" ||
           policy.pathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
           policy.pathname === "/API/PrepayReport/ConsumptionStatistics" ||
           policy.pathname === "/api/DailyDataMeter/read"

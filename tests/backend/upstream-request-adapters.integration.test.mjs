@@ -53,6 +53,38 @@ test("long nonpurchase request plan normalizes numeric filters and paging aliase
   assert.ok(aliasedCandidate);
 });
 
+test("low purchase request plan adds paging, date aliases, and low balance aliases", () => {
+  const plan = buildUpstreamRequestPlan("/API/PrepayReport/LowPurchaseSituation", {
+    customerId: "C-150",
+    meterId: "M-250",
+    fromDate: "2026-03-01",
+    toDate: "2026-03-31",
+    lowLimit: "50",
+  });
+
+  assert.equal(plan.body.Lang, "en");
+  assert.equal(plan.candidateBodies.length >= 4, true);
+
+  const aliasedCandidate = plan.candidateBodies.find(
+    (candidate) =>
+      candidate.consumerId === "C-150" &&
+      candidate.meterNo === "M-250" &&
+      candidate.page === 1 &&
+      candidate.limit === 10 &&
+      candidate.startDate === "2026-03-01" &&
+      candidate.endDate === "2026-03-31" &&
+      candidate.lowBalance === 50,
+  );
+  assert.ok(aliasedCandidate);
+
+  const dayFirstCandidate = plan.candidateBodies.find(
+    (candidate) =>
+      candidate.fromDate === "01/03/2026" &&
+      candidate.toDate === "31/03/2026",
+  );
+  assert.ok(dayFirstCandidate);
+});
+
 test("daily data meter request plan derives site aliases and extended timeout", () => {
   const plan = buildUpstreamRequestPlan("/api/DailyDataMeter/read", {
     customerId: "C-500",

@@ -191,11 +191,95 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
     case "/api/meter/read":
       return {
         status: ["status", "meterStatus", "relayStatus", "state"],
+        customerId: customerIdAliases,
         customerName: customerNameAliases,
         meterId: meterIdAliases,
         meterType: meterTypeAliases,
+        communicationWay: [
+          "communicationWay",
+          "commWay",
+          "communicationMode",
+          "communicationType",
+          "commMode",
+        ],
+        protocolVersion: ["protocolVersion", "protocol", "protocolType", "version"],
+        gatewayId: gatewayIdAliases,
         remark: remarkAliases,
+        createTime: createTimeAliases,
         stationId: stationIdAliases,
+      };
+
+    case "/api/debt/read":
+      return {
+        id: ["id", "debtId", "debtNo", "orderNo", "voucherNo", "serialNumber"],
+        customerId: customerIdAliases,
+        customerName: customerNameAliases,
+        meterId: meterIdAliases,
+        amount: ["amount", "debtAmount", "arrears", "outstandingAmount", "balance"],
+        status: ["status", "debtStatus", "state"],
+        remark: remarkAliases,
+        createTime: createTimeAliases,
+        updateTime: updateTimeAliases,
+      };
+
+    case "/api/dlms/Read":
+      return {
+        id: ["id", "itemId", "obisId", "code"],
+        name: ["name", "itemName", "title", "objectName"],
+        obisCode: ["obisCode", "obis", "obisId", "objectCode"],
+        classId: ["classId", "classNo", "interfaceClass", "classType"],
+        attributeIndex: ["attributeIndex", "attributeNo", "attributeId", "attrIndex"],
+        dataType: ["dataType", "type", "valueType"],
+        remark: remarkAliases,
+      };
+
+    case "/api/dlt645/read":
+      return {
+        id: ["id", "itemId", "code"],
+        name: ["name", "itemName", "title"],
+        dataIdentifier: ["dataIdentifier", "identifier", "di", "dataFlag", "itemCode"],
+        dataLength: ["dataLength", "length", "dataLen"],
+        dataType: ["dataType", "type", "valueType"],
+        remark: remarkAliases,
+      };
+
+    case "/api/DLT645Task/read":
+      return {
+        status: ["status", "taskStatus", "state"],
+        meterId: meterIdAliases,
+        dataIdentifier: [
+          "dataIdentifier",
+          "identifier",
+          "di",
+          "dataItem",
+          "itemName",
+          "itemCode",
+        ],
+        dataValue: ["dataValue", "value", "resultValue", "readValue"],
+        createTime: createTimeAliases,
+        updateTime: updateTimeAliases,
+      };
+
+    case "/API/EventNotification/Read":
+      return {
+        id: ["id", "eventId", "alarmId", "notificationId", "serialNumber"],
+        eventType: ["eventType", "alarmType", "eventName", "type"],
+        meterId: meterIdAliases,
+        description: ["description", "detail", "message", "content", "remark"],
+        severity: ["severity", "level", "priority"],
+        createTime: createTimeAliases,
+        status: ["status", "eventStatus", "alarmStatus", "state"],
+      };
+
+    case "/api/Log/read":
+      return {
+        id: ["id", "logId", "serialNumber"],
+        action: ["action", "operation", "actionName", "operationName"],
+        username: ["username", "userName", "loginName", "operator", "createdBy"],
+        ipAddress: ["ipAddress", "ip", "clientIp", "remoteAddr"],
+        module: ["module", "moduleName", "menuName", "source"],
+        detail: ["detail", "description", "content", "remark", "message"],
+        createTime: createTimeAliases,
       };
 
     case "/api/token/creditTokenRecord/read":

@@ -81,6 +81,14 @@ function renderSectionIcon(iconKey: SidebarIconKey) {
           <path d="M18 14l2 2-2 2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
+    case "runtime-ops":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M14 2H7a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V8l-5-6z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M14 2v6h5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 13h6M9 17h6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     case "load-profile":
       return (
         <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

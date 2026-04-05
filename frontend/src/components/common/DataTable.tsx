@@ -81,6 +81,8 @@ export function DataTable({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const allVisibleSelected =
     rows.length > 0 && rows.every((row) => selectedKeys.includes(getRowKey(row)));
+  const rangeStart = total === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(total, pageNumber * pageSize);
 
   // Generate pagination window
   const getPageNumbers = () => {
@@ -101,18 +103,38 @@ export function DataTable({
   };
 
   return (
-    <section className="table-panel">
+    <section className="table-panel table-panel-vercel">
+      <div className="table-panel-header">
+        <div>
+          <p className="table-panel-eyebrow">Data view</p>
+          <div className="table-panel-title-row">
+            <strong className="table-panel-title">{total.toLocaleString()} entries</strong>
+            <span className="table-panel-range">
+              Showing {rangeStart}-{rangeEnd}
+            </span>
+          </div>
+        </div>
+        <div className="table-panel-status">
+          <span className="table-panel-chip">
+            {selectedKeys.length.toLocaleString()} selected
+          </span>
+          <span className="table-panel-chip">
+            Page {pageNumber} of {pageCount}
+          </span>
+        </div>
+      </div>
+
       <div className="table-wrap table-responsive">
         <table className="data-table">
           <thead>
             <tr>
-              <th>
+              <th className="table-select-column">
                 <input checked={allVisibleSelected} className="data-table-checkbox" onChange={onToggleAll} type="checkbox" />
               </th>
               {columns.map((column) => (
                 <th key={column.key}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                    <span>{column.label}</span>
+                  <div className="table-header-cell">
+                    <span className="table-header-label">{column.label}</span>
                     <span className="sort-indicator">
                       <svg fill="currentColor" height="6" viewBox="0 0 10 6" width="10" xmlns="http://www.w3.org/2000/svg">
                         <path d="M5 0L10 6H0L5 0Z" />
@@ -131,7 +153,7 @@ export function DataTable({
                   </div>
                 </th>
               ))}
-              {rowActions.length > 0 ? <th>Actions</th> : null}
+              {rowActions.length > 0 ? <th className="table-actions-column">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -140,7 +162,7 @@ export function DataTable({
                 <td className="table-empty" colSpan={columns.length + 2}>
                   <div className="loading-pulse">
                     <div className="pulse-circle"></div>
-                    <span>Loading Premium Data...</span>
+                    <span>Loading rows</span>
                   </div>
                 </td>
               </tr>
@@ -157,7 +179,7 @@ export function DataTable({
 
                 return (
                   <tr className={isSelected ? "selected" : ""} key={rowKey}>
-                    <td>
+                    <td className="table-select-column">
                       <input
                         checked={isSelected}
                         className="data-table-checkbox"
@@ -174,7 +196,7 @@ export function DataTable({
                       </td>
                     ))}
                     {rowActions.length > 0 ? (
-                      <td className="row-actions" style={{ whiteSpace: 'nowrap' }}>
+                      <td className="row-actions table-actions-column">
                         {rowActions.map((action) => (
                           <button
                             className={`mini-button mini-button-${action.tone ?? "neutral"}`}
@@ -195,8 +217,13 @@ export function DataTable({
         </table>
       </div>
 
-      <div className="table-meta" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', background: 'color-mix(in srgb, var(--panel-glass) 96%, transparent)' }}>
-        <strong style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total {total}</strong>
+      <div className="table-meta table-meta-vercel">
+        <div className="table-meta-summary">
+          <strong>Total {total.toLocaleString()}</strong>
+          <span>
+            Rows {rangeStart}-{rangeEnd}
+          </span>
+        </div>
         <div className="table-pagination">
           <label className="pagination-page-size">
             <span>Rows:</span>
@@ -285,16 +312,10 @@ function ColumnFilter({
   const active = value.trim().length > 0;
 
   return (
-    <div ref={containerRef} style={{ position: "relative", display: "inline-block" }}>
+    <div className="table-filter-shell" ref={containerRef}>
       <button
-        className="button-icon-only"
+        className={`table-filter-trigger${active ? " is-active" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          padding: "2px",
-          color: active ? "var(--acob-green)" : "inherit",
-          opacity: active ? 1 : 0.4,
-          background: "transparent",
-        }}
         title="Filter column"
         type="button"
       >
@@ -305,24 +326,10 @@ function ColumnFilter({
       </button>
 
       {isOpen ? (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: "-1rem",
-            marginTop: "0.25rem",
-            padding: "0.75rem",
-            background: "var(--bg-panel)",
-            border: "1px solid var(--border-light)",
-            borderRadius: "0.5rem",
-            boxShadow: "var(--shadow-modal)",
-            zIndex: 20,
-            display: "flex",
-            gap: "0.5rem",
-          }}
-        >
+        <div className="table-filter-popover">
           <input
             autoFocus
+            className="table-filter-input"
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -331,15 +338,6 @@ function ColumnFilter({
               }
             }}
             placeholder="Search..."
-            style={{
-              padding: "0.4rem 0.6rem",
-              borderRadius: "0.375rem",
-              border: "1px solid var(--border-light)",
-              background: "var(--bg-app)",
-              color: "var(--text-main)",
-              fontSize: "0.875rem",
-              width: "12rem",
-            }}
             type="text"
             value={value}
           />
@@ -349,10 +347,9 @@ function ColumnFilter({
               setIsOpen(false);
               onSearch();
             }}
-            style={{ padding: "0.4rem 0.8rem", fontSize: "0.875rem" }}
             type="button"
           >
-            Go
+            Apply
           </button>
         </div>
       ) : null}

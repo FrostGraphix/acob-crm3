@@ -260,6 +260,337 @@
   gap: 0.75rem;
 }
 
+.table-panel-vercel {
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--text-main) 12%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 96%, transparent), color-mix(in srgb, var(--bg-panel) 99%, transparent));
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.06);
+  backdrop-filter: none;
+}
+
+.table-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 100%, transparent), color-mix(in srgb, var(--bg-app) 40%, transparent));
+}
+
+.table-panel-eyebrow,
+.table-panel-range,
+.table-panel-chip,
+.table-header-label,
+.table-meta-vercel strong,
+.table-meta-vercel span,
+.table-pagination label span {
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.table-panel-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.table-panel-title-row,
+.table-panel-status,
+.table-meta-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.table-panel-title {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.table-panel-range {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.table-panel-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 94%, var(--bg-app));
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.table-panel-vercel .table-wrap {
+  background: transparent;
+}
+
+.table-panel-vercel .data-table {
+  font-size: 0.84rem;
+}
+
+.table-panel-vercel .data-table thead {
+  background: color-mix(in srgb, var(--bg-panel) 98%, transparent);
+  backdrop-filter: none;
+  border-bottom-color: color-mix(in srgb, var(--text-main) 10%, transparent);
+}
+
+.table-select-column {
+  width: 3.25rem;
+  min-width: 3.25rem;
+}
+
+.table-actions-column {
+  white-space: nowrap;
+}
+
+.table-header-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.table-header-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.table-panel-vercel .data-table th {
+  padding: 0.78rem 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.table-panel-vercel .data-table td {
+  padding: 0.92rem 1rem;
+  border-bottom-color: color-mix(in srgb, var(--text-main) 8%, transparent);
+}
+
+.table-panel-vercel .data-table tbody tr {
+  transition: background-color 0.16s ease;
+}
+
+.table-panel-vercel .data-table tbody tr:hover,
+.table-panel-vercel .data-table tbody tr:hover td {
+  transform: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--text-main) 3%, var(--bg-panel));
+}
+
+.table-panel-vercel .data-table tbody tr.selected td {
+  background: color-mix(in srgb, var(--text-main) 5%, var(--bg-panel));
+}
+
+.table-panel-vercel .sort-indicator {
+  opacity: 0.2;
+}
+
+.table-panel-vercel .data-table th:hover .sort-indicator {
+  opacity: 0.45;
+}
+
+.table-panel-vercel .badge {
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+}
+
+.table-panel-vercel .badge-success,
+.table-panel-vercel .badge-warning,
+.table-panel-vercel .badge-danger,
+.table-panel-vercel .badge-neutral {
+  background: color-mix(in srgb, var(--text-main) 6%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--text-main) 10%, transparent);
+}
+
+.table-panel-vercel .badge-success {
+  color: var(--text-main);
+}
+
+.table-panel-vercel .badge-warning {
+  color: #a16207;
+}
+
+.table-panel-vercel .badge-danger {
+  color: #b91c1c;
+}
+
+.table-panel-vercel .mini-button {
+  min-height: 2rem;
+  padding: 0.35rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  box-shadow: none;
+}
+
+.table-panel-vercel .mini-button:hover {
+  transform: none;
+}
+
+.table-panel-vercel .mini-button-primary,
+.table-panel-vercel .mini-button-neutral,
+.table-panel-vercel .mini-button-danger {
+  background: color-mix(in srgb, var(--bg-panel) 100%, transparent);
+  color: var(--text-main);
+  border: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+}
+
+.table-panel-vercel .mini-button-danger {
+  color: #b91c1c;
+}
+
+.table-panel-vercel .data-table-checkbox {
+  border-radius: 6px;
+}
+
+.table-filter-shell {
+  position: relative;
+  display: inline-block;
+}
+
+.table-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.45;
+  transition: opacity 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.table-filter-trigger:hover,
+.table-filter-trigger.is-active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text-main) 5%, transparent);
+}
+
+.table-filter-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: -0.9rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 98%, transparent);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.14);
+}
+
+.table-filter-input {
+  width: 12rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text-main) 12%, transparent);
+  background: color-mix(in srgb, var(--bg-app) 60%, var(--bg-panel));
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+.table-filter-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--text-main) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-main) 8%, transparent);
+}
+
+.table-meta-vercel {
+  margin-top: 0;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 98%, transparent);
+}
+
+.table-meta-summary {
+  color: var(--text-muted);
+}
+
+.table-meta-vercel strong {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.table-meta-vercel span {
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table-panel-vercel .pagination-number {
+  min-width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--text-main) 10%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 100%, transparent);
+  box-shadow: none;
+}
+
+.table-panel-vercel .pagination-number:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--text-main) 4%, var(--bg-panel));
+}
+
+.table-panel-vercel .pagination-number.active {
+  background: var(--text-main);
+  color: var(--bg-panel);
+  border-color: var(--text-main);
+  box-shadow: none;
+}
+
+.table-panel-vercel .button-icon-only {
+  background: color-mix(in srgb, var(--bg-panel) 100%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-main) 10%, transparent);
+  box-shadow: none;
+}
+
+.table-panel-vercel .button-icon-only:hover:not(:disabled) {
+  transform: none;
+  background: color-mix(in srgb, var(--text-main) 4%, var(--bg-panel));
+}
+
+@media (max-width: 900px) {
+  .table-panel-header,
+  .table-meta-vercel {
+    align-items: flex-start;
+  }
+
+  .table-panel-header,
+  .table-meta-vercel,
+  .table-pagination {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .table-filter-popover {
+    left: auto;
+    right: 0;
+  }
+
+  .table-filter-input {
+    width: min(12rem, calc(100vw - 7rem));
+  }
+}
+
 @media (max-width: 900px) {
   .data-page-toolbar-row,
   .reports-hero,

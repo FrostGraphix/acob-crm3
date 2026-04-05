@@ -37,6 +37,7 @@ const sectionDefinitions: Array<{
   { key: "meter", label: "Meter", iconKey: "meter" },
   { key: "debt", label: "Debt", iconKey: "debt" },
   { key: "protocol", label: "Protocol", iconKey: "protocol" },
+  { key: "runtime-ops", label: "Runtime Ops", iconKey: "runtime-ops" },
   { key: "event", label: "Events", iconKey: "event" },
   { key: "log", label: "System Log", iconKey: "log" },
 ];
