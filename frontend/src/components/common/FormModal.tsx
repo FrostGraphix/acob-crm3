@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button, Field, Surface } from "../../design-system";
 import type { ActionConfig, DataRow } from "../../types";
 import { createInitialFormValues } from "../../services/form-values";
 
@@ -32,7 +33,7 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="modal-card">
+      <Surface as="div" className="modal-card ds-modal-card" tone="raised">
         <div className="modal-header">
           <div className="modal-header-info">
             <span className="modal-eyebrow">
@@ -44,21 +45,27 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
             </span>
             <h3 className="modal-title">{action.label}</h3>
           </div>
-          <button className="modal-close" onClick={onCancel} type="button" aria-label="Close">
+          <Button aria-label="Close" className="modal-close" onClick={onCancel} size="icon" tone="ghost">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </button>
+          </Button>
         </div>
 
         <div className="modal-body">
           <div className="modal-grid">
             {(action.fields ?? []).map((field) => (
-              <label className="modal-field" key={field.key} data-span={field.type === "textarea" ? "full" : undefined}>
-                <span className="modal-field-label">{field.label}</span>
+              <Field
+                className="modal-field"
+                full={field.type === "textarea"}
+                helpText={field.helpText}
+                key={field.key}
+                label={field.label}
+                required={field.required}
+              >
                 {field.type === "textarea" ? (
                   <textarea
-                    className="modal-input modal-textarea"
+                    className="modal-input modal-textarea ds-textarea"
                     onChange={(event) =>
                       setValues((current) => ({
                         ...current,
@@ -69,9 +76,27 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
                     rows={6}
                     value={values[field.key] ?? ""}
                   />
+                ) : field.type === "select" ? (
+                  <select
+                    className="modal-input ds-select"
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: event.target.value,
+                      }))
+                    }
+                    value={values[field.key] ?? ""}
+                  >
+                    <option value="">{field.placeholder}</option>
+                    {(field.options ?? []).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <input
-                    className="modal-input"
+                    className="modal-input ds-input"
                     onChange={(event) =>
                       setValues((current) => ({
                         ...current,
@@ -83,20 +108,20 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
                     value={values[field.key] ?? ""}
                   />
                 )}
-              </label>
+              </Field>
             ))}
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="modal-btn modal-btn--ghost" onClick={onCancel} type="button">
+          <Button className="modal-btn modal-btn--ghost" onClick={onCancel} tone="ghost">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             className="modal-btn modal-btn--primary"
             disabled={submitting}
             onClick={handleSubmit}
-            type="button"
+            tone="primary"
           >
             {submitting ? "Processing..." : "Confirm"}
             {!submitting && (
@@ -104,9 +129,9 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
                 <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             )}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Surface>
     </div>
   );
 }

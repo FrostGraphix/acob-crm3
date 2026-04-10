@@ -53,7 +53,16 @@ function createEmptySeries(labels: string[]) {
   };
 }
 
-export function createEmptySnapshot(fromDate = "2025-01-01", toDate = new Date().toISOString().slice(0, 10)): SiteConsumptionSnapshot {
+function getDefaultFromDate(today = new Date()) {
+  const fromDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  fromDate.setUTCDate(fromDate.getUTCDate() - 2);
+  return fromDate.toISOString().slice(0, 10);
+}
+
+export function createEmptySnapshot(
+  fromDate = getDefaultFromDate(),
+  toDate = new Date().toISOString().slice(0, 10),
+): SiteConsumptionSnapshot {
   return {
     generatedAt: new Date().toISOString(),
     sourceWindow: {
@@ -168,7 +177,8 @@ function normalizeSnapshot(value: unknown): SiteConsumptionSnapshot | null {
     !Array.isArray(record.sourceWindow)
       ? (record.sourceWindow as Record<string, unknown>)
       : {};
-  const fromDate = typeof sourceWindow.fromDate === "string" ? sourceWindow.fromDate : "2025-01-01";
+  const fromDate =
+    typeof sourceWindow.fromDate === "string" ? sourceWindow.fromDate : getDefaultFromDate();
   const toDate = typeof sourceWindow.toDate === "string" ? sourceWindow.toDate : new Date().toISOString().slice(0, 10);
 
   const summary = Array.isArray(record.summary)

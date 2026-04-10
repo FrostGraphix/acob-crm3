@@ -1,95 +1,144 @@
 import type { EChartsOption } from "echarts";
 import { ReactEChartsCore, echarts } from "../../services/echarts";
 import type { PieSlice } from "../../types";
+import { ChartPanelHeader } from "./ChartPanelHeader";
 
 interface PieChartProps {
   slices: PieSlice[];
+  colors?: string[];
+  donut?: boolean;
+  showLegend?: boolean;
+  showCenterLabel?: boolean;
+  heightClassName?: string;
+  labelMode?: "legend" | "outside";
+  chartTitle?: string;
 }
 
-export function PieChart({ slices }: PieChartProps) {
+const defaultColors = [
+  "#068612",
+  "rgba(6, 134, 18, 0.78)",
+  "rgba(20, 33, 20, 0.74)",
+  "rgba(20, 33, 20, 0.58)",
+  "#9ca3af",
+  "#d1d5db",
+  "#4b5563",
+];
+
+export function PieChart({
+  slices,
+  colors = defaultColors,
+  donut = true,
+  showLegend = true,
+  showCenterLabel = true,
+  heightClassName,
+  labelMode = "legend",
+  chartTitle,
+}: PieChartProps) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
 
   const option: EChartsOption = {
-    title: {
-      text: total.toLocaleString(),
-      subtext: "Total alarms",
-      left: "center",
-      top: "34%",
-      textStyle: {
-        color: "var(--text-main)",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontSize: 20,
-        fontWeight: 800,
-      },
-      subtextStyle: {
-        color: "var(--text-muted)",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontSize: 11,
-      },
-    },
+    title: [
+      ...(showCenterLabel
+        ? [{
+            text: total.toLocaleString(),
+            subtext: "Total alarms",
+            left: "center",
+            top: showLegend ? "36%" : "42%",
+            textStyle: {
+              color: "var(--text-main)",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 20,
+              fontWeight: 800,
+            },
+            subtextStyle: {
+              color: "var(--text-muted)",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 11,
+            },
+          }]
+        : []),
+    ],
     tooltip: {
       trigger: "item",
-      backgroundColor: "var(--bg-panel)",
-      borderColor: "var(--border-light)",
+      backgroundColor: "#111b31",
+      borderColor: "rgba(148, 163, 184, 0.18)",
+      borderWidth: 1,
+      extraCssText: "border-radius: 14px; box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);",
       padding: [12, 14],
       textStyle: {
-        color: "var(--text-main)",
+        color: "#e5eefc",
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       },
     },
-    legend: {
-      bottom: 0,
-      left: "center",
-      icon: "circle",
-      itemGap: 18,
-      textStyle: {
-        color: "var(--text-muted)",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontSize: 11,
-      },
-    },
+    legend: showLegend
+      ? {
+          bottom: 0,
+          left: "center",
+          icon: "circle",
+          itemGap: 18,
+          textStyle: {
+            color: "var(--text-muted)",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 11,
+          },
+        }
+      : undefined,
     series: [
       {
         name: "Abnormal Alarm",
         type: "pie",
-        radius: ["58%", "78%"],
-        center: ["50%", "40%"],
+        radius: donut ? ["58%", "78%"] : ["0%", "74%"],
+        center: ["50%", labelMode === "outside" ? "55%" : "40%"],
         itemStyle: {
-          borderRadius: 12,
+          borderRadius: 4,
           borderColor: "var(--bg-panel)",
-          borderWidth: 3,
+          borderWidth: 2,
         },
         label: {
-          show: false,
+          show: labelMode === "outside",
+          formatter: "{b}",
+          color: "var(--text-main)",
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontSize: 11,
+          fontWeight: 600,
         },
         labelLine: {
-          show: false,
+          show: labelMode === "outside",
         },
         emphasis: {
           scale: true,
           scaleSize: 10,
         },
-        data: slices.map((slice) => ({
+        data: slices.map((slice, index) => ({
           name: slice.label,
           value: slice.value,
+          label: labelMode === "outside"
+            ? {
+                color: colors[index % colors.length],
+              }
+            : undefined,
+          labelLine: labelMode === "outside"
+            ? {
+                lineStyle: {
+                  color: colors[index % colors.length],
+                },
+              }
+            : undefined,
         })),
       },
     ],
-    color: [
-      "#16a34a", // ACOB Green
-      "#3b82f6", // Blue
-      "#f59e0b", // Amber
-      "#ef4444", // Red
-      "#14b8a6", // Teal
-      "#0ea5e9", // Sky
-      "#84cc16", // Lime
-    ],
+    color: colors,
   };
 
   return (
-    <div className="chart-card">
+    <div className="chart-card chart-card--themed">
+      {chartTitle ? <ChartPanelHeader title={chartTitle} /> : null}
       <ReactEChartsCore
-        className="echart-canvas pie-echart-canvas"
+        className={
+          heightClassName
+            ? `echart-canvas pie-echart-canvas chart-card__canvas ${heightClassName}`
+            : "echart-canvas pie-echart-canvas chart-card__canvas"
+        }
         echarts={echarts}
         lazyUpdate
         notMerge

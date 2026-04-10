@@ -1491,6 +1491,22 @@ button {
   backdrop-filter: blur(18px);
 }
 
+.data-page-live-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.action-result-json {
+  margin: 0.5rem 0 0;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
 .search-filter-bar {
   display: flex;
   flex-wrap: wrap;

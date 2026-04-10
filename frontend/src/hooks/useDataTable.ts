@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildReadPayload } from "../services/payload-mapper";
 import { loadTableData } from "../services/api";
 import { createInitialFilters } from "../services/filter-defaults.ts";
@@ -27,80 +27,139 @@ export function useDataTable(page: DataPageConfig) {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [livePaused, setLivePaused] = useState(false);
+  const liveFailureCountRef = useRef(0);
+
+  const fetchRows = useCallback(
+    async (options: { showLoading?: boolean } = {}) => {
+      if (options.showLoading) {
+        setLoading(true);
+      }
+      setError(null);
+
+      const mapping = buildReadPayload(page, appliedFilters, pageNumber, pageSize);
+      if (!mapping.ok || !mapping.payload) {
+        setError(mapping.message ?? "Invalid search filters");
+        if (options.showLoading) {
+          setLoading(false);
+        }
+        return false;
+      }
+
+      try {
+        const result = await loadTableData(
+          page.readEndpoint,
+          mapping.payload,
+          page.readMethod ?? "POST",
+        );
+        setRows(result.rows);
+        setTotal(result.total);
+        setLastUpdatedAt(Date.now());
+        return true;
+      } catch (caughtError) {
+        setError(caughtError instanceof Error ? caughtError.message : "Failed to load data");
+        return false;
+      } finally {
+        if (options.showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [appliedFilters, page, pageNumber, pageSize],
+  );
 
   useEffect(() => {
+    setDraftFilters(initialFilters);
+    setAppliedFilters(initialFilters);
+    setSelectedKeys([]);
+    setPageNumber(1);
+    setLastUpdatedAt(null);
+  }, [initialFilters]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const success = await fetchRows({ showLoading: true });
+      if (!cancelled) {
+        liveFailureCountRef.current = success ? 0 : liveFailureCountRef.current;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchRows]);
+
+  useEffect(() => {
+    const liveConfig = page.live;
+    if (!liveConfig?.enabled || liveConfig.intervalMs <= 0) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const scheduleNext = (delayMs: number) => {
+      timeoutId = window.setTimeout(() => {
+        void tick();
+      }, delayMs);
+    };
+
+    const tick = async () => {
+      if (cancelled) {
+        return;
+      }
+
+      const hidden = typeof document !== "undefined" && document.hidden;
+      if (livePaused || (liveConfig.pauseOnHidden && hidden)) {
+        scheduleNext(liveConfig.intervalMs);
+        return;
+      }
+
+      const success = await fetchRows();
+      if (success) {
+        liveFailureCountRef.current = 0;
+      } else {
+        liveFailureCountRef.current = Math.min(liveFailureCountRef.current + 1, 4);
+      }
+
+      const multiplier = Math.max(1, 2 ** liveFailureCountRef.current);
+      scheduleNext(liveConfig.intervalMs * multiplier);
+    };
+
+    scheduleNext(liveConfig.intervalMs);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [fetchRows, livePaused, page.live]);
+
+  const search = useCallback(() => {
+    setSelectedKeys([]);
+    setPageNumber(1);
+    setAppliedFilters(draftFilters);
+  }, [draftFilters]);
+
+  const reset = useCallback(() => {
     setDraftFilters(initialFilters);
     setAppliedFilters(initialFilters);
     setSelectedKeys([]);
     setPageNumber(1);
   }, [initialFilters]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchRows() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const mapping = buildReadPayload(page, appliedFilters, pageNumber, pageSize);
-        if (!mapping.ok || !mapping.payload) {
-          setError(mapping.message ?? "Invalid search filters");
-          setLoading(false);
-          return;
-        }
-
-        const result = await loadTableData(page.readEndpoint, mapping.payload);
-
-        if (!cancelled) {
-          setRows(result.rows);
-          setTotal(result.total);
-        }
-      } catch (caughtError) {
-        if (!cancelled) {
-          setError(caughtError instanceof Error ? caughtError.message : "Failed to load data");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const refresh = useCallback(async () => {
+    const success = await fetchRows();
+    if (!success) {
+      throw new Error(error ?? "Failed to refresh");
     }
+  }, [error, fetchRows]);
 
-    void fetchRows();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [appliedFilters, page, page.readEndpoint, pageNumber, pageSize]);
-
-  const search = () => {
-    setSelectedKeys([]);
-    setPageNumber(1);
-    setAppliedFilters(draftFilters);
-  };
-
-  const reset = () => {
-    setDraftFilters(initialFilters);
-    setAppliedFilters(initialFilters);
-    setSelectedKeys([]);
-    setPageNumber(1);
-  };
-
-  const refresh = async () => {
-    const mapping = buildReadPayload(page, appliedFilters, pageNumber, pageSize);
-    if (!mapping.ok || !mapping.payload) {
-      setError(mapping.message ?? "Invalid search filters");
-      return;
-    }
-
-    const result = await loadTableData(page.readEndpoint, mapping.payload);
-
-    setRows(result.rows);
-    setTotal(result.total);
-  };
-
-  const toggleRow = (row: DataRow) => {
+  const toggleRow = useCallback((row: DataRow) => {
     const rowKey = getRowKeyValue(row);
 
     setSelectedKeys((current) =>
@@ -108,14 +167,14 @@ export function useDataTable(page: DataPageConfig) {
         ? current.filter((entry) => entry !== rowKey)
         : [...current, rowKey],
     );
-  };
+  }, []);
 
-  const toggleAll = () => {
+  const toggleAll = useCallback(() => {
     const keys = rows.map(getRowKeyValue);
     const allSelected = keys.length > 0 && keys.every((key) => selectedKeys.includes(key));
 
     setSelectedKeys(allSelected ? [] : keys);
-  };
+  }, [rows, selectedKeys]);
 
   return {
     draftFilters,
@@ -136,5 +195,11 @@ export function useDataTable(page: DataPageConfig) {
     toggleRow,
     toggleAll,
     getRowKeyValue,
+    live: {
+      enabled: Boolean(page.live?.enabled),
+      paused: livePaused,
+      setPaused: setLivePaused,
+      lastUpdatedAt,
+    },
   };
 }

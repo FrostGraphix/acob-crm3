@@ -1,4 +1,16 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
+  --background: 216 45% 8%;
+  --foreground: 210 40% 98%;
+  --muted: 216 31% 16%;
+  --muted-foreground: 215 18% 68%;
+  --border: 216 25% 19%;
+  --input: 216 25% 19%;
+  --ring: 142 72% 42%;
   /* ACOB Brand Colors (Synced from acoblighting.com) */
   --acob-green: #068612;
   --acob-green-hover: #056e0f;
@@ -50,6 +62,13 @@
 }
 
 :root[data-theme="dark"] {
+  --background: 216 45% 8%;
+  --foreground: 210 40% 98%;
+  --muted: 216 31% 16%;
+  --muted-foreground: 215 18% 68%;
+  --border: 216 25% 19%;
+  --input: 216 25% 19%;
+  --ring: 142 72% 42%;
   --bg-app: #050906; /* Deep charcoal green-black */
   --bg-panel: #0d140e; /* Deep forest charcoal */
   --bg-panel-hover: #141e15;
@@ -111,6 +130,51 @@ body {
     var(--bg-app);
   color: var(--text-main);
   transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(9, 15, 27, 0.86));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: var(--shadow-soft);
+}
+
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.86) 20%,
+    rgba(30, 41, 59, 0.92) 50%,
+    rgba(15, 23, 42, 0.86) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
 }
 
 button,

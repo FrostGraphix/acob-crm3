@@ -108,3 +108,59 @@ test("daily data meter request plan derives site aliases and extended timeout", 
   );
   assert.ok(aliasedCandidate);
 });
+
+test("load profile daily/monthly request plan adds language, date aliases, and meter fallbacks", () => {
+  const dailyPlan = buildUpstreamRequestPlan("/API/LoadProfile/DailyData", {
+    searchTerm: "47005346136",
+    fromDate: "2026-04-01",
+    toDate: "2026-04-07",
+  });
+  const monthlyPlan = buildUpstreamRequestPlan("/API/LoadProfile/MonthlyData", {
+    meterId: "47005346136",
+    fromDate: "2026-01-01",
+    toDate: "2026-04-07",
+  });
+
+  assert.equal(dailyPlan.body.Lang, "en");
+  assert.equal(monthlyPlan.body.Lang, "en");
+  assert.equal(dailyPlan.timeoutMs, 45_000);
+  assert.equal(monthlyPlan.timeoutMs, 45_000);
+  assert.equal(dailyPlan.candidateBodies.length >= 4, true);
+  assert.equal(monthlyPlan.candidateBodies.length >= 4, true);
+
+  const dailyAliasedCandidate = dailyPlan.candidateBodies.find(
+    (candidate) =>
+      candidate.meterNo === "47005346136" &&
+      candidate.keyword === "47005346136" &&
+      candidate.startDate === "2026-04-01" &&
+      candidate.endDate === "2026-04-07" &&
+      candidate.periodType === "daily",
+  );
+  assert.ok(dailyAliasedCandidate);
+
+  const monthlyDayFirstCandidate = monthlyPlan.candidateBodies.find(
+    (candidate) =>
+      candidate.fromDate === "01/01/2026" &&
+      candidate.toDate === "07/04/2026" &&
+      candidate.periodType === "monthly",
+  );
+  assert.ok(monthlyDayFirstCandidate);
+});
+
+test("item list request plan adds paging and null-safe search aliases", () => {
+  const plan = buildUpstreamRequestPlan("/api/item/readItemList", {});
+
+  assert.equal(plan.candidateBodies.length >= 3, true);
+
+  const aliasedCandidate = plan.candidateBodies.find(
+    (candidate) =>
+      candidate.pageNumber === 1 &&
+      candidate.pageSize === 10 &&
+      candidate.page === 1 &&
+      candidate.limit === 10 &&
+      candidate.keyword === "" &&
+      candidate.searchWord === "" &&
+      candidate.itemName === "",
+  );
+  assert.ok(aliasedCandidate);
+});

@@ -24,6 +24,7 @@ export function AppLayout({
   onCloseTab,
   children,
 }: AppLayoutProps) {
+  const isDashboardView = currentPage.path === "/dashboard";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") {
@@ -50,8 +51,11 @@ export function AppLayout({
   };
 
   return (
-    <div className={`crm-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      {/* Sidebar Backdrop for mobile */}
+    <div
+      className={`crm-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""} ${
+        isDashboardView ? "crm-shell--dashboard" : ""
+      }`}
+    >
       {isMobileMenuOpen && (
         <div 
           className="modal-backdrop" 
@@ -65,10 +69,11 @@ export function AppLayout({
         currentPath={currentPage.path}
         sections={sections}
         onNavigate={handleNavigate}
+        onLogout={onLogout}
         isOpen={isMobileMenuOpen}
         isCollapsed={isSidebarCollapsed}
       />
-      <div className="crm-main">
+      <div className={`crm-main ${isDashboardView ? "crm-main--dashboard" : ""}`}>
         <Header
           currentPage={currentPage}
           isSidebarCollapsed={isSidebarCollapsed}
@@ -77,10 +82,14 @@ export function AppLayout({
           onToggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onToggleSidebarCollapse={() => setIsSidebarCollapsed((current) => !current)}
         />
-        {tabs && onCloseTab ? (
-          <TabBar tabs={tabs} activePath={currentPage.path} onClose={onCloseTab} />
-        ) : null}
-        <main className="crm-content">{children}</main>
+        <div className="crm-workspace">
+          {tabs && onCloseTab && !isDashboardView ? (
+            <TabBar tabs={tabs} activePath={currentPage.path} onClose={onCloseTab} />
+          ) : null}
+          <main className={`crm-content ${isDashboardView ? "crm-content--dashboard" : ""}`}>
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

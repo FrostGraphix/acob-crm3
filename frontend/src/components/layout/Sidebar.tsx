@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../hooks/useAuth";
 import type { NavigationSection, SidebarIconKey } from "../../types";
 
 interface SidebarProps {
   currentPath: string;
   sections: NavigationSection[];
   onNavigate: (path: string) => void;
+  onLogout: () => Promise<void>;
   isOpen?: boolean;
   isCollapsed?: boolean;
 }
@@ -137,9 +139,12 @@ export function Sidebar({
   currentPath,
   sections,
   onNavigate,
+  onLogout,
   isOpen,
   isCollapsed = false,
 }: SidebarProps) {
+  const { user } = useAuth();
+  const isDashboardView = currentPath === "/dashboard";
   const [openSectionKey, setOpenSectionKey] = useState<string>("");
   const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
   const [flyoutOffset, setFlyoutOffset] = useState<React.CSSProperties>({});
@@ -185,9 +190,20 @@ export function Sidebar({
     setOpenSectionKey((current) => (current === sectionKey ? "" : sectionKey));
   };
 
+  const operatorName = user?.displayName ?? user?.username ?? "ACOB Admin";
+  const operatorRole = user?.role ?? "Odyssey";
+  const operatorInitials = operatorName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment[0]?.toUpperCase() ?? "")
+    .join("") || "AC";
+
   return (
     <aside 
-      className={`sidebar ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}
+      className={`sidebar ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""} ${
+        isDashboardView ? "sidebar--dashboard" : ""
+      }`}
       ref={sidebarRef}
     >
       <div className="sidebar-scroll-shell">
@@ -199,19 +215,26 @@ export function Sidebar({
               </svg>
             </div>
             <div className="sidebar-brand-text">
-              <span className="brand-title">ACOB <strong>CRM3</strong></span>
+              <span className="brand-title">
+                {isDashboardView ? (
+                  <>
+                    ACOB <strong>Odyssey</strong>
+                  </>
+                ) : (
+                  <>
+                    ACOB <strong>CRM3</strong>
+                  </>
+                )}
+              </span>
+              <span className="brand-subtitle">
+                {isDashboardView ? "Metering Platform" : "Operations workspace"}
+              </span>
             </div>
-          </div>
-          
-          <div className="sidebar-site-dropdown">
-            <button className="site-drop-btn" title="Switch Site" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
           </div>
         </div>
 
         <div className="sidebar-intro">
-          <span className="sidebar-intro-label">Navigation</span>
+          <span className="sidebar-intro-label">{isDashboardView ? "Main Menu" : "Navigation"}</span>
           <span className="sidebar-intro-rule" />
         </div>
 
@@ -313,6 +336,30 @@ export function Sidebar({
             );
           })}
         </nav>
+
+        {isDashboardView ? (
+          <div className="sidebar-dashboard-footer">
+            <div className="sidebar-dashboard-user">
+              <div className="sidebar-dashboard-user__badge">{operatorInitials}</div>
+              <div className="sidebar-dashboard-user__copy">
+                <strong>{operatorName}</strong>
+                <span>{operatorRole}</span>
+              </div>
+            </div>
+            <button
+              className="sidebar-dashboard-signout"
+              onClick={() => void onLogout()}
+              type="button"
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15 12H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        ) : null}
       </div>
     </aside>
   );

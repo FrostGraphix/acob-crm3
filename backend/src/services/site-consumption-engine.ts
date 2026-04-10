@@ -47,6 +47,7 @@ interface SiteConsumptionRangeData {
 }
 
 const persistedState = (await loadSiteConsumptionState()) ?? createEmptySiteConsumptionState();
+const SITE_FETCH_BATCH_SIZE = 2;
 
 function extractTotal(result: unknown): number | null {
   const candidateValues: unknown[] = [];
@@ -119,6 +120,12 @@ function formatDateKey(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function getRecentWindowStartDate(today = new Date()) {
+  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  start.setUTCDate(start.getUTCDate() - 2);
+  return formatDateKey(start);
+}
+
 function formatMonthKey(value: Date) {
   return value.toISOString().slice(0, 7);
 }
@@ -184,6 +191,40 @@ function createYearRange(startDate: string, endDate: string) {
   }
 
   return labels;
+}
+
+function readRowDateKey(row: ReportRow) {
+  return (
+    toIsoDate(
+      readString(row, ["collectionDate", "collectDate", "dataDate", "readDate", "date", "currentDate"]),
+    ) ??
+    toIsoDate(readString(row, ["createTime", "updateTime"]))
+  );
+}
+
+function getPageDateBounds(rows: ReportRow[]) {
+  let minDate: string | null = null;
+  let maxDate: string | null = null;
+
+  for (const row of rows) {
+    const dateKey = readRowDateKey(row);
+    if (!dateKey) {
+      continue;
+    }
+
+    if (!minDate || dateKey < minDate) {
+      minDate = dateKey;
+    }
+
+    if (!maxDate || dateKey > maxDate) {
+      maxDate = dateKey;
+    }
+  }
+
+  return {
+    minDate,
+    maxDate,
+  };
 }
 
 function normalizeConsumptionValue(row: ReportRow) {
@@ -392,15 +433,19 @@ class SiteConsumptionEngine {
     return login.upstreamCookie;
   }
 
-  private async fetchRows(authToken: string, site: SiteConsumptionSite, fromDate: string, toDate: string) {
+  private async fetchRows(
+    authToken: string,
+    site: SiteConsumptionSite,
+    fromDate: string,
+    toDate: string,
+  ) {
     const rows: ReportRow[] = [];
 
     for (const body of buildRequestBodies(site, fromDate, toDate)) {
       let pageNumber = 1;
-      let total: number | null = null;
       let attempts = 0;
 
-      while (attempts < 100) {
+      while (attempts < 20) {
         attempts += 1;
         const response = await forwardToUpstream(
           "/api/DailyDataMeter/read",
@@ -412,7 +457,7 @@ class SiteConsumptionEngine {
             limit: 500,
           },
           authToken,
-          { timeoutMs: 30_000 },
+          { timeoutMs: 45_000 },
         );
 
         if (response.statusCode >= 400 || response.payload.code !== 0) {
@@ -420,19 +465,18 @@ class SiteConsumptionEngine {
         }
 
         const pageRows = extractRows(response.payload.result);
-        total = total ?? extractTotal(response.payload.result);
-
         if (pageRows.length === 0) {
           break;
         }
 
         rows.push(...pageRows);
+        const bounds = getPageDateBounds(pageRows);
 
-        if (total !== null && rows.length >= total) {
+        if (pageRows.length < 500) {
           break;
         }
 
-        if (pageRows.length < 500) {
+        if (bounds.maxDate !== null && bounds.maxDate < fromDate) {
           break;
         }
 
@@ -444,7 +488,10 @@ class SiteConsumptionEngine {
       }
     }
 
-    return rows;
+    return rows.filter((row) => {
+      const dateKey = readRowDateKey(row);
+      return Boolean(dateKey && dateKey >= fromDate && dateKey <= toDate);
+    });
   }
 
   private accumulateRangeData(rowsBySite: Map<SiteConsumptionSite, ReportRow[]>, startDate: string, endDate: string) {
@@ -474,14 +521,13 @@ class SiteConsumptionEngine {
           continue;
         }
 
-        const dateKey =
-          toIsoDate(
-            readString(row, ["collectionDate", "collectDate", "dataDate", "readDate", "date", "periodStart"]),
-          ) ??
-          toIsoDate(readString(row, ["createTime", "updateTime"])) ??
-          null;
+        const dateKey = readRowDateKey(row) ?? null;
 
         if (!dateKey) {
+          continue;
+        }
+
+        if (dateKey < startDate || dateKey > endDate) {
           continue;
         }
 
@@ -553,7 +599,7 @@ class SiteConsumptionEngine {
       this.lastRunStartedAt = new Date(startedAt).toISOString();
       this.setRefreshing(true);
       const sourceWindow = {
-        fromDate: "2025-01-01",
+        fromDate: getRecentWindowStartDate(),
         toDate: formatDateKey(new Date()),
       };
 
@@ -572,9 +618,18 @@ class SiteConsumptionEngine {
 
         const rowsBySite = new Map<SiteConsumptionSite, ReportRow[]>();
 
-        for (const site of SITE_CONSUMPTION_SITES) {
-          const rows = await this.fetchRows(authToken, site, sourceWindow.fromDate, sourceWindow.toDate);
-          rowsBySite.set(site, rows);
+        for (let index = 0; index < SITE_CONSUMPTION_SITES.length; index += SITE_FETCH_BATCH_SIZE) {
+          const batch = SITE_CONSUMPTION_SITES.slice(index, index + SITE_FETCH_BATCH_SIZE);
+          const batchEntries = await Promise.all(
+            batch.map(async (site) => [
+              site,
+              await this.fetchRows(authToken, site, sourceWindow.fromDate, sourceWindow.toDate),
+            ] as const),
+          );
+
+          for (const [site, rows] of batchEntries) {
+            rowsBySite.set(site, rows);
+          }
         }
 
         const snapshot = this.accumulateRangeData(rowsBySite, sourceWindow.fromDate, sourceWindow.toDate);

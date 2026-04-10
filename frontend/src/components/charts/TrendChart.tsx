@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import { ReactEChartsCore, echarts } from "../../services/echarts";
+import { ChartPanelHeader } from "./ChartPanelHeader";
 
 interface TrendChartProps {
   type: "line" | "bar";
@@ -21,30 +22,21 @@ export function TrendChart({
   const isBar = type === "bar";
 
   const option: EChartsOption = {
-    title: title ? {
-      text: title,
-      textStyle: {
-        color: "var(--text-main)",
-        fontSize: 16,
-        fontWeight: 600,
-        fontFamily: "Inter, sans-serif"
-      },
-      left: "center",
-      top: 0
-    } : undefined,
     grid: {
-      top: title ? 40 : 24,
-      right: 20,
-      bottom: 40,
-      left: 60,
+      top: 10,
+      right: 16,
+      bottom: 26,
+      left: 52,
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "var(--bg-panel)",
-      borderColor: "var(--border-light)",
+      backgroundColor: "#111b31",
+      borderColor: "rgba(148, 163, 184, 0.18)",
+      borderWidth: 1,
+      extraCssText: "border-radius: 14px; box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);",
       textStyle: {
-        color: "var(--text-main)",
-        fontFamily: "Inter, sans-serif",
+        color: "#e5eefc",
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
       },
       valueFormatter: (value) =>
         typeof value === "number" ? value.toLocaleString("en-US", { maximumFractionDigits: 2 }) : String(value ?? ""),
@@ -53,20 +45,23 @@ export function TrendChart({
       type: "category",
       data: labels,
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: "var(--border-light)" } },
+      axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.18)" } },
       axisLabel: { 
-        color: "var(--text-muted)", 
-        fontFamily: "Inter, sans-serif",
+        color: "#94a3b8", 
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
         rotate: labels.length > 8 ? 32 : 0,
       },
     },
     yAxis: {
       type: "value",
-      splitLine: { lineStyle: { color: "var(--border-light)", type: "dashed" } },
+      splitLine: { lineStyle: { color: "rgba(71, 85, 105, 0.42)", type: "dashed" } },
       axisLabel: {
-        color: "var(--text-muted)",
-        fontFamily: "Inter, sans-serif",
-        formatter: (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 1 }),
+        color: "#94a3b8",
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        formatter: (value: number) =>
+          Math.abs(value) >= 1_000
+            ? `${(value / 1_000).toFixed(0)}k`
+            : value.toLocaleString("en-US", { maximumFractionDigits: 1 }),
       },
     },
     series: [
@@ -76,7 +71,7 @@ export function TrendChart({
         data: values,
         smooth: type === "line",
         symbol: type === "line" ? "circle" : undefined,
-        showSymbol: type === "line",
+        showSymbol: false,
         symbolSize: 7,
         barMaxWidth: 30,
         lineStyle: {
@@ -118,8 +113,8 @@ export function TrendChart({
               symbol: "none",
               label: {
                 formatter: `Average ${averageValue.toFixed(2)}`,
-                color: "var(--text-muted)",
-                fontFamily: "Inter, sans-serif",
+                color: "#94a3b8",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
               },
               lineStyle: {
                 type: "dashed",
@@ -134,9 +129,10 @@ export function TrendChart({
   };
 
   return (
-    <div className="chart-card" style={{ height: "100%", minHeight: "350px", padding: "1rem" }}>
+    <div className="chart-card chart-card--themed" style={{ height: "100%", minHeight: "350px" }}>
+      {title ? <ChartPanelHeader title={title} /> : null}
       <ReactEChartsCore
-        className="echart-canvas"
+        className="echart-canvas chart-card__canvas"
         echarts={echarts}
         lazyUpdate
         notMerge

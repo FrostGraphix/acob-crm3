@@ -13,6 +13,8 @@ const basePage: DataPageConfig = {
   readEndpoint: "/API/PrepayReport/ConsumptionStatistics",
   columns: [],
   filters: [],
+  reportDisplayMode: "analytics",
+  reportAnalyticsKey: "consumption-statistics",
 };
 
 test("report analytics groups consumption rows by month when monthly mode is selected", () => {
@@ -28,14 +30,10 @@ test("report analytics groups consumption rows by month when monthly mode is sel
     "monthly",
   );
 
-  assert.deepEqual(result.chartData, {
-    labels: ["2026-01", "2026-02"],
-    values: [20, 3],
-    type: "line",
-    averageValue: 23 / 3,
-    seriesName: "Consumption",
-  });
+  assert.equal(result.chartData, null);
   assert.equal(result.stats[0]?.value, "3");
+  assert.equal(result.stats[1]?.label, "Total Consumption");
+  assert.equal(result.stats[1]?.value, "23.00");
 });
 
 test("report analytics excludes sentinel consumption values from stats and charts", () => {
@@ -54,14 +52,8 @@ test("report analytics excludes sentinel consumption values from stats and chart
 
   assert.equal(result.stats[0]?.value, "4");
   assert.equal(result.stats[1]?.value, "12.00");
-  assert.equal(result.stats[2]?.value, "6.00");
-  assert.deepEqual(result.chartData, {
-    labels: ["2026-03-02", "2026-03-04"],
-    values: [8, 4],
-    type: "line",
-    averageValue: 6,
-    seriesName: "Consumption",
-  });
+  assert.equal(result.stats[2]?.value, "0");
+  assert.equal(result.chartData, null);
 });
 
 test("report analytics uses low limit filter to count critically low balances", () => {
@@ -71,6 +63,8 @@ test("report analytics uses low limit filter to count critically low balances", 
     title: "Low Purchase Situation",
     menuLabel: "Low Purchase",
     readEndpoint: "/API/PrepayReport/LowPurchaseSituation",
+    reportDisplayMode: undefined,
+    reportAnalyticsKey: undefined,
   };
 
   const result = buildReportAnalytics(

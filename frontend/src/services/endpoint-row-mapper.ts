@@ -243,6 +243,17 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
         remark: remarkAliases,
       };
 
+    case "/api/item/read":
+    case "/api/item/readItemList":
+      return {
+        id: ["id", "itemId", "code"],
+        name: ["name", "itemName", "title"],
+        unit: ["unit", "unitName", "measureUnit", "uom"],
+        dataType: ["dataType", "type", "valueType"],
+        remark: remarkAliases,
+        createTime: createTimeAliases,
+      };
+
     case "/api/DLT645Task/read":
       return {
         status: ["status", "taskStatus", "state"],
@@ -405,6 +416,7 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
       };
 
     case "/API/PrepayReport/LongNonpurchaseSituation":
+    case "/api/reports/non-purchase":
       return {
         customerId: [...customerIdAliases, "id"],
         customerName: customerNameAliases,
@@ -420,6 +432,7 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
       };
 
     case "/API/PrepayReport/LowPurchaseSituation":
+    case "/api/reports/low-purchase":
       return {
         customerId: [...customerIdAliases, "id"],
         customerName: customerNameAliases,
@@ -454,6 +467,7 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
       };
 
     case "/API/PrepayReport/ConsumptionStatistics":
+    case "/api/reports/consumption":
       return {
         collectionDate: [
           "collectionDate",
@@ -496,6 +510,47 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
           "electricityConsumption",
           "consumptionValue",
         ],
+      };
+
+    case "/API/LoadProfile/ElectricEnergyCurve":
+    case "/API/LoadProfile/InstantaneousValueCurve":
+    case "/API/LoadProfile/DailyData":
+    case "/API/LoadProfile/MonthlyData":
+    case "/api/reports/energy-curve/single":
+    case "/api/reports/energy-curve/three-phase":
+    case "/api/reports/energy-curve/ct":
+    case "/api/reports/daily-amr":
+    case "/api/reports/monthly-amr":
+    case "/api/reports/daily-yield":
+    case "/api/reports/monthly-yield":
+    case "/api/reports/instantaneous":
+      return {
+        meterId: meterIdAliases,
+        customerName: customerNameAliases,
+        collectionDate: [
+          "collectionDate",
+          "collectDate",
+          "dataDate",
+          "readDate",
+          "currentDate",
+          "date",
+          "time",
+          "timestamp",
+        ],
+        value: [
+          "value",
+          "consumption",
+          "totalEnergy",
+          "energy",
+          "usage",
+          "usage1",
+          "power",
+          "activePower",
+          "readingValue",
+          "readValue",
+        ],
+        unit: ["unit", "unitLabel", "measureUnit", "uom"],
+        status: ["status", "state", "onlineStatus", "eventStatus"],
       };
 
     default:

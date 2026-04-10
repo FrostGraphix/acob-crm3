@@ -252,6 +252,7 @@ function normalizeReadFilters(
   const payload: Record<string, unknown> = {};
   const requiredKeys = new Set(page.requiredReadFilters ?? []);
   const filterByKey = new Map(page.filters.map((filter) => [filter.key, filter]));
+  const knownFilterKeys = new Set(page.filters.map((filter) => filter.key));
 
   for (const filter of page.filters) {
     const rawValue = filters[filter.key];
@@ -299,7 +300,251 @@ function normalizeReadFilters(
     }
   }
 
+  for (const [key, rawValue] of Object.entries(filters)) {
+    if (knownFilterKeys.has(key)) {
+      continue;
+    }
+
+    const value = sanitizeString(rawValue);
+    if (value.length === 0) {
+      continue;
+    }
+
+    payload[key] = value;
+  }
+
   return { ok: true, payload };
+}
+
+function sanitizeOptionalString(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const sanitized = sanitizeString(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+}
+
+function extractRemoteTarget(row?: DataRow) {
+  const meterId = sanitizeOptionalString(row?.meterId);
+  if (!meterId) {
+    return null;
+  }
+
+  return {
+    meterId,
+    customerId: sanitizeOptionalString(row?.customerId),
+    customerName: sanitizeOptionalString(row?.customerName),
+    meterType: sanitizeOptionalString(row?.meterType),
+    stationId: sanitizeOptionalString(row?.stationId),
+    gatewayId: sanitizeOptionalString(row?.gatewayId),
+    protocolVersion: sanitizeOptionalString(row?.protocolVersion),
+  };
+}
+
+function sanitizeTaskName(values: Record<string, unknown>) {
+  const taskNameRaw = values.taskName;
+  const taskName = typeof taskNameRaw === "string" ? sanitizeString(taskNameRaw) : "";
+  if (taskName.length > 0 && taskName.length < 2) {
+    return { ok: false, message: "Task name must be at least 2 characters" } as const;
+  }
+
+  return { ok: true, taskName } as const;
+}
+
+function createRemoteBasePayload(row: DataRow | undefined, values: Record<string, unknown>) {
+  const target = extractRemoteTarget(row);
+  if (!target) {
+    return { ok: false, message: "A target meter must be selected" } as const;
+  }
+
+  const taskNameResult = sanitizeTaskName(values);
+  if (!taskNameResult.ok) {
+    return taskNameResult;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskName: taskNameResult.taskName,
+      scheduleDate: sanitizeOptionalString(values.scheduleDate),
+      target,
+    },
+  } as const;
+}
+
+function requireField(values: Record<string, unknown>, key: string, label: string) {
+  const value = sanitizeOptionalString(values[key]);
+  if (!value) {
+    return { ok: false, message: `${label} is required` } as const;
+  }
+
+  return { ok: true, value } as const;
+}
+
+function requireOperatorReason(values: Record<string, unknown>) {
+  const operatorReason = sanitizeOptionalString(values.operatorReason);
+  if (!operatorReason || operatorReason.length < 5) {
+    return { ok: false, message: "Operator Reason must be at least 5 characters" } as const;
+  }
+
+  return { ok: true, operatorReason } as const;
+}
+
+function buildReadingTaskPayload(row: DataRow | undefined, values: Record<string, unknown>): MappingResult {
+  const base = createRemoteBasePayload(row, values);
+  if (!base.ok) {
+    return base;
+  }
+
+  const dataItem = requireField(values, "dataItem", "Data Item");
+  if (!dataItem.ok) {
+    return dataItem;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskType: "reading",
+      ...base.payload,
+      dataItem: dataItem.value,
+      readMode: sanitizeOptionalString(values.readMode),
+    },
+  };
+}
+
+function buildSettingTaskPayload(row: DataRow | undefined, values: Record<string, unknown>): MappingResult {
+  const base = createRemoteBasePayload(row, values);
+  if (!base.ok) {
+    return base;
+  }
+
+  const settingKey = requireField(values, "settingKey", "Setting Key");
+  if (!settingKey.ok) {
+    return settingKey;
+  }
+
+  const settingValue = requireField(values, "settingValue", "Setting Value");
+  if (!settingValue.ok) {
+    return settingValue;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskType: "setting",
+      ...base.payload,
+      settingKey: settingKey.value,
+      settingValue: settingValue.value,
+      valueType: sanitizeOptionalString(values.valueType) ?? "string",
+    },
+  };
+}
+
+function buildControlTaskPayload(row: DataRow | undefined, values: Record<string, unknown>): MappingResult {
+  const base = createRemoteBasePayload(row, values);
+  if (!base.ok) {
+    return base;
+  }
+
+  const controlCommand = requireField(values, "controlCommand", "Control Command");
+  if (!controlCommand.ok) {
+    return controlCommand;
+  }
+
+  if (!["connect", "disconnect", "open", "close"].includes(controlCommand.value)) {
+    return { ok: false, message: "Control Command is invalid" };
+  }
+
+  const reason = requireOperatorReason(values);
+  if (!reason.ok) {
+    return reason;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskType: "control",
+      ...base.payload,
+      controlCommand: controlCommand.value,
+      reason: sanitizeOptionalString(values.reason),
+      operatorReason: reason.operatorReason,
+      reviewConfirmed: values.reviewConfirmed === true || values.reviewConfirmed === "true",
+    },
+  };
+}
+
+function buildTokenTaskPayload(row: DataRow | undefined, values: Record<string, unknown>): MappingResult {
+  const base = createRemoteBasePayload(row, values);
+  if (!base.ok) {
+    return base;
+  }
+
+  const tokenType = requireField(values, "tokenType", "Token Type");
+  if (!tokenType.ok) {
+    return tokenType;
+  }
+
+  const reason = requireOperatorReason(values);
+  if (!reason.ok) {
+    return reason;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskType: "token",
+      ...base.payload,
+      tokenType: tokenType.value,
+      tokenValue: sanitizeOptionalString(values.tokenValue),
+      operatorReason: reason.operatorReason,
+      reviewConfirmed: values.reviewConfirmed === true || values.reviewConfirmed === "true",
+    },
+  };
+}
+
+function buildTransparentForwardingPayload(row: DataRow | undefined, values: Record<string, unknown>): MappingResult {
+  const base = createRemoteBasePayload(row, values);
+  if (!base.ok) {
+    return base;
+  }
+
+  const protocolMode = requireField(values, "protocolMode", "Protocol Mode");
+  if (!protocolMode.ok) {
+    return protocolMode;
+  }
+
+  if (!["hex", "ascii"].includes(protocolMode.value)) {
+    return { ok: false, message: "Protocol Mode is invalid" };
+  }
+
+  const commandPayload = requireField(values, "commandPayload", "Command Payload");
+  if (!commandPayload.ok) {
+    return commandPayload;
+  }
+
+  const timeoutSeconds = toNumber(values.timeoutSeconds);
+  if (timeoutSeconds !== null && (timeoutSeconds < 1 || timeoutSeconds > 300)) {
+    return { ok: false, message: "Timeout (Seconds) must be between 1 and 300" };
+  }
+
+  const reason = requireOperatorReason(values);
+  if (!reason.ok) {
+    return reason;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      taskType: "transparent-forwarding",
+      ...base.payload,
+      protocolMode: protocolMode.value,
+      commandPayload: commandPayload.value,
+      timeoutSeconds: timeoutSeconds ?? undefined,
+      operatorReason: reason.operatorReason,
+      reviewConfirmed: values.reviewConfirmed === true || values.reviewConfirmed === "true",
+    },
+  };
 }
 
 function mapReadOperationKind(
@@ -364,7 +609,7 @@ function mapActionByKind(
   const row = compactRow(context.row);
   const selectedKeys = (context.selectedKeys ?? []).map((entry) => sanitizeString(entry));
 
-  if (operationKind === "token-generate") {
+  if (operationKind === "token-generate" || operationKind === "token-generate-credit") {
     const amount = toNumber(values.amount);
     const unit = toNumber(values.unit);
 
@@ -386,18 +631,61 @@ function mapActionByKind(
     };
   }
 
-  if (operationKind === "task-create") {
-    const taskNameRaw = values.taskName;
-    const taskName = typeof taskNameRaw === "string" ? sanitizeString(taskNameRaw) : "";
-    if (taskName.length > 0 && taskName.length < 2) {
-      return { ok: false, message: "Task name must be at least 2 characters" };
+  if (operationKind === "token-generate-limit") {
+    const limitValue = toNumber(values.limitValue);
+    if (limitValue === null || limitValue <= 0) {
+      return { ok: false, message: "Limit Value must be greater than zero" };
     }
 
     return {
       ok: true,
       payload: {
         row,
-        taskName,
+        limitValue,
+      },
+    };
+  }
+
+  if (operationKind === "token-generate-basic") {
+    return {
+      ok: true,
+      payload: {
+        row,
+      },
+    };
+  }
+
+  if (operationKind === "task-create") {
+    if (action.payloadBuilderKey === "reading") {
+      return buildReadingTaskPayload(context.row, values);
+    }
+
+    if (action.payloadBuilderKey === "setting") {
+      return buildSettingTaskPayload(context.row, values);
+    }
+
+    if (action.payloadBuilderKey === "control") {
+      return buildControlTaskPayload(context.row, values);
+    }
+
+    if (action.payloadBuilderKey === "token") {
+      return buildTokenTaskPayload(context.row, values);
+    }
+
+    if (action.payloadBuilderKey === "transparent-forwarding") {
+      return buildTransparentForwardingPayload(context.row, values);
+    }
+
+    const taskNameResult = sanitizeTaskName(values);
+    if (!taskNameResult.ok) {
+      return taskNameResult;
+    }
+
+    return {
+      ok: true,
+      payload: {
+        row,
+        taskName: taskNameResult.taskName,
         scheduleDate: values.scheduleDate,
       },
     };
@@ -486,6 +774,30 @@ function mapActionByKind(
 
   if (operationKind === "report-export") {
     return { ok: true, payload: values };
+  }
+
+  if (operationKind === "drilldown") {
+    if (!row) {
+      return { ok: false, message: `${action.label} requires a selected row` };
+    }
+
+    return { ok: true, payload: { row } };
+  }
+
+  if (operationKind === "theft-case-create") {
+    if (!row) {
+      return { ok: false, message: `${action.label} requires a selected row` };
+    }
+
+    return {
+      ok: true,
+      payload: {
+        row,
+        meterId: row.meterId,
+        customerName: row.customerName,
+        notes: sanitizeOptionalString(values.notes),
+      },
+    };
   }
 
   return {

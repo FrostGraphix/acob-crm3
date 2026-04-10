@@ -28,6 +28,101 @@ export const dateRangeFilters: FilterField[] = [
   },
 ];
 
+export const creditTokenRecordFilters: FilterField[] = [
+  ...dateRangeFilters,
+  searchFilter,
+  {
+    key: "receiptId",
+    label: "Receipt Id",
+    placeholder: "Search receipt id",
+    type: "text",
+  },
+  {
+    key: "customerId",
+    label: "Customer Id",
+    placeholder: "Search customer id",
+    type: "text",
+  },
+  {
+    key: "customerName",
+    label: "Customer Name",
+    placeholder: "Search customer name",
+    type: "text",
+  },
+  {
+    key: "meterId",
+    label: "Meter Id",
+    placeholder: "Search meter id",
+    type: "text",
+  },
+  {
+    key: "meterType",
+    label: "Meter Type",
+    placeholder: "Search meter type",
+    type: "text",
+  },
+  {
+    key: "tariffId",
+    label: "Tariff Id",
+    placeholder: "Search tariff id",
+    type: "text",
+  },
+  {
+    key: "vatCharge",
+    label: "VAT Charge",
+    placeholder: "Search VAT charge",
+    type: "number",
+  },
+  {
+    key: "totalUnit",
+    label: "Total Unit",
+    placeholder: "Search total unit",
+    type: "number",
+  },
+  {
+    key: "totalPrice",
+    label: "Total Paid",
+    placeholder: "Search total paid",
+    type: "number",
+  },
+  {
+    key: "tokenRecharge",
+    label: "Recharge(kwh)",
+    placeholder: "Search recharge",
+    type: "number",
+  },
+  {
+    key: "createId",
+    label: "Vend",
+    placeholder: "Search vend",
+    type: "text",
+  },
+  {
+    key: "token",
+    label: "Token",
+    placeholder: "Search token",
+    type: "text",
+  },
+  {
+    key: "createTime",
+    label: "Time",
+    placeholder: "Search time",
+    type: "text",
+  },
+  {
+    key: "remark",
+    label: "Remark",
+    placeholder: "Search remark",
+    type: "text",
+  },
+  {
+    key: "stationId",
+    label: "Station Id",
+    placeholder: "Search station id",
+    type: "text",
+  },
+];
+
 export const accountColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
@@ -56,17 +151,17 @@ export const creditTokenRecordColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
-  { key: "meterType", label: "Meter Type" },
-  { key: "tariffId", label: "Tariff Id" },
-  { key: "vatCharge", label: "VAT Charge", align: "end" },
-  { key: "totalUnit", label: "Total Unit", align: "end" },
-  { key: "totalPrice", label: "Total Paid", align: "end" },
-  { key: "tokenRecharge", label: "Recharge(kwh)", align: "end" },
-  { key: "createId", label: "Vend" },
-  { key: "token", label: "Token" },
-  { key: "createTime", label: "Time" },
-  { key: "remark", label: "Remark" },
-  { key: "stationId", label: "Station Id" },
+  { key: "meterType", label: "Meter Type", searchable: true },
+  { key: "tariffId", label: "Tariff Id", searchable: true },
+  { key: "vatCharge", label: "VAT Charge", align: "end", searchable: true },
+  { key: "totalUnit", label: "Total Unit", align: "end", searchable: true },
+  { key: "totalPrice", label: "Total Paid", align: "end", searchable: true },
+  { key: "tokenRecharge", label: "Recharge(kwh)", align: "end", searchable: true },
+  { key: "createId", label: "Vend", searchable: true },
+  { key: "token", label: "Token", searchable: true },
+  { key: "createTime", label: "Time", searchable: true },
+  { key: "remark", label: "Remark", searchable: true },
+  { key: "stationId", label: "Station Id", searchable: true },
 ];
 
 export const clearTokenRecordColumns: TableColumn[] = [
@@ -300,6 +395,29 @@ export const overdraftRecordColumns: TableColumn[] = [
   { key: "createTime", label: "Create Time" },
 ];
 
+export const theftSignalColumns: TableColumn[] = [
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "severity", label: "Severity" },
+  { key: "score", label: "Score", align: "end" },
+  { key: "signalTypes", label: "Signals" },
+  { key: "title", label: "Title" },
+  { key: "status", label: "Status" },
+  { key: "updatedAt", label: "Updated At" },
+];
+
+export const theftCaseColumns: TableColumn[] = [
+  { key: "id", label: "Case Id", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "severity", label: "Severity" },
+  { key: "score", label: "Score", align: "end" },
+  { key: "status", label: "Status" },
+  { key: "owner", label: "Owner", searchable: true },
+  { key: "updatedAt", label: "Updated At" },
+  { key: "notes", label: "Notes" },
+];
+
 export function filterField(
   key: string,
   label: string,
@@ -313,10 +431,131 @@ export function field(
   key: string,
   label: string,
   placeholder: string,
-  type: "text" | "date" | "number" | "textarea" = "text",
+  type: "text" | "date" | "number" | "textarea" | "select" = "text",
 ): ActionField {
   return { key, label, placeholder, type };
 }
+
+export function selectField(
+  key: string,
+  label: string,
+  placeholder: string,
+  options: Array<{ label: string; value: string }>,
+): ActionField {
+  return { key, label, placeholder, type: "select", options };
+}
+
+export const remoteCommonFields: ActionField[] = [
+  field("taskName", "Task Name", "Task name"),
+  {
+    ...field("scheduleDate", "Schedule Date", "Schedule date", "date"),
+    helpText: "Leave empty to dispatch immediately.",
+  },
+];
+
+export const readingTaskFields: ActionField[] = [
+  ...remoteCommonFields,
+  {
+    ...field("dataItem", "Data Item", "Register / OBIS / item code"),
+    required: true,
+    helpText: "Provide the remote data identifier to read from the selected meter.",
+  },
+  selectField("readMode", "Read Mode", "Select read mode", [
+    { label: "Single", value: "single" },
+    { label: "Profile", value: "profile" },
+    { label: "Instant", value: "instant" },
+  ]),
+];
+
+export const settingTaskFields: ActionField[] = [
+  ...remoteCommonFields,
+  {
+    ...field("settingKey", "Setting Key", "Setting key"),
+    required: true,
+    helpText: "The meter setting or parameter to update remotely.",
+  },
+  {
+    ...field("settingValue", "Setting Value", "Setting value"),
+    required: true,
+  },
+  selectField("valueType", "Value Type", "Select value type", [
+    { label: "String", value: "string" },
+    { label: "Number", value: "number" },
+    { label: "HEX", value: "hex" },
+    { label: "JSON", value: "json" },
+  ]),
+];
+
+export const controlTaskFields: ActionField[] = [
+  ...remoteCommonFields,
+  {
+    ...selectField("controlCommand", "Control Command", "Select command", [
+      { label: "Connect", value: "connect" },
+      { label: "Disconnect", value: "disconnect" },
+      { label: "Open", value: "open" },
+      { label: "Close", value: "close" },
+    ]),
+    required: true,
+    helpText: "This command can change the remote relay or service state.",
+  },
+  {
+    ...field("reason", "Reason", "Reason for command"),
+    helpText: "Recommended for operator traceability.",
+  },
+  {
+    ...field("operatorReason", "Operator Reason", "Reason for high-risk action"),
+    required: true,
+    helpText: "Required for high-risk command audit trail.",
+  },
+];
+
+export const tokenTaskFields: ActionField[] = [
+  ...remoteCommonFields,
+  {
+    ...selectField("tokenType", "Token Type", "Select token type", [
+      { label: "Credit", value: "credit" },
+      { label: "Clear Credit", value: "clear-credit" },
+      { label: "Clear Tamper", value: "clear-tamper" },
+      { label: "Change Key", value: "change-key" },
+      { label: "Custom", value: "custom" },
+    ]),
+    required: true,
+  },
+  {
+    ...field("tokenValue", "Token Value", "Token value"),
+    helpText: "Sensitive values are redacted in the review step and logs.",
+  },
+  {
+    ...field("operatorReason", "Operator Reason", "Reason for token operation"),
+    required: true,
+    helpText: "Required for high-risk command audit trail.",
+  },
+];
+
+export const transparentForwardingFields: ActionField[] = [
+  ...remoteCommonFields,
+  {
+    ...selectField("protocolMode", "Protocol Mode", "Select protocol mode", [
+      { label: "HEX", value: "hex" },
+      { label: "ASCII", value: "ascii" },
+    ]),
+    required: true,
+  },
+  {
+    ...field("commandPayload", "Command Payload", "Raw command payload", "textarea"),
+    required: true,
+    helpText: "Paste the raw command body. The backend will redact this in logs.",
+  },
+  {
+    ...field("timeoutSeconds", "Timeout (Seconds)", "Timeout", "number"),
+    helpText: "Optional timeout between 1 and 300 seconds.",
+  },
+  {
+    ...field("operatorReason", "Operator Reason", "Reason for raw forwarding command"),
+    required: true,
+    helpText: "Required for high-risk command audit trail.",
+  },
+];
 
 export const customerManagementFields = [
   field("id", "Customer Id", "Customer id"),
@@ -439,27 +678,47 @@ export function createImportAction(endpoint: string): ActionConfig {
   };
 }
 
-export function createRechargeAction(label: string, endpoint: string): ActionConfig {
+export function createTokenGenerateAction(options: {
+  label: string;
+  endpoint: string;
+  operationKind: "token-generate-credit" | "token-generate-limit" | "token-generate-basic";
+  successRedirectPath?: string;
+}): ActionConfig {
+  const fields: ActionField[] =
+    options.operationKind === "token-generate-credit"
+      ? [
+          {
+            key: "amount",
+            label: "Amount",
+            type: "number",
+            placeholder: "Enter amount",
+          },
+          {
+            key: "unit",
+            label: "Unit",
+            type: "number",
+            placeholder: "Enter unit",
+          },
+        ]
+      : options.operationKind === "token-generate-limit"
+        ? [
+            {
+              key: "limitValue",
+              label: "Limit Value",
+              type: "number",
+              placeholder: "Enter limit value",
+            },
+          ]
+        : [];
+
   return {
     key: "generate",
-    label,
-    endpoint,
+    label: options.label,
+    endpoint: options.endpoint,
     tone: "primary",
-    operationKind: "token-generate",
-    fields: [
-      {
-        key: "amount",
-        label: "Amount",
-        type: "number",
-        placeholder: "Enter amount",
-      },
-      {
-        key: "unit",
-        label: "Unit",
-        type: "number",
-        placeholder: "Enter unit",
-      },
-    ],
+    operationKind: options.operationKind,
+    fields,
+    successRedirectPath: options.successRedirectPath,
   };
 }
 
@@ -471,6 +730,8 @@ export function createTokenGeneratePage(
   options: {
     actionLabel: string;
     showQuota: boolean;
+    operationKind: "token-generate-credit" | "token-generate-limit" | "token-generate-basic";
+    successRedirectPath?: string;
   },
 ): DataPageConfig {
   return {
@@ -484,13 +745,26 @@ export function createTokenGeneratePage(
     readOperationKind: "table-read",
     filters: [searchFilter],
     columns: tokenGenerateColumns,
-    rowActions: [createRechargeAction(options.actionLabel, endpoint)],
+    rowActions: [
+      createTokenGenerateAction({
+        label: options.actionLabel,
+        endpoint,
+        operationKind: options.operationKind,
+        successRedirectPath: options.successRedirectPath,
+      }),
+    ],
     showQuota: options.showQuota,
+    live: { enabled: true, intervalMs: 15_000, pauseOnHidden: true },
+    actionPolicy: {
+      guardedConfirm: true,
+      requireReasonForHighRisk: false,
+    },
   };
 }
 
 interface TokenRecordPageOptions {
   columns: TableColumn[];
+  filters?: FilterField[];
   toolbarActions?: ActionConfig[];
   rowActions?: ActionConfig[];
 }
@@ -511,10 +785,15 @@ export function createTokenRecordPage(
     sectionKey: "token-record",
     readEndpoint,
     readOperationKind: "table-read",
-    filters: [searchFilter],
+    filters: options.filters ?? [searchFilter],
     columns: options.columns,
     toolbarActions: [createClientExportAction(readEndpoint), ...(options.toolbarActions ?? [])],
     rowActions: [createClientPrintAction(readEndpoint), ...(options.rowActions ?? [])],
+    live: { enabled: true, intervalMs: 8_000, pauseOnHidden: true, critical: true },
+    riskIntegration: {
+      canOpenCase: true,
+      riskSignals: ["token-anomaly", "repeat-cancel", "abnormal-vend"],
+    },
   };
 }
 
@@ -523,6 +802,15 @@ export function createRemoteOperationPage(
   title: string,
   menuLabel: string,
   endpoint: string,
+  options: {
+    remoteTaskType: "reading" | "setting" | "control" | "token" | "transparent-forwarding";
+    payloadBuilderKey: "reading" | "setting" | "control" | "token" | "transparent-forwarding";
+    fields: ActionField[];
+    dangerLevel: "low" | "medium" | "high";
+    requiresReviewStep?: boolean;
+    confirmMessage?: string;
+    successRedirectPath: string;
+  },
 ): DataPageConfig {
   return {
     kind: "data",
@@ -537,42 +825,23 @@ export function createRemoteOperationPage(
     columns: remoteColumns,
     toolbarActions: [
       {
-        key: "batch",
-        label: "Add Batch Task",
+        key: "remote-command",
+        label: options.requiresReviewStep ? "Review Command" : "Submit Command",
         endpoint,
-        tone: "primary",
+        tone: options.dangerLevel === "high" ? "danger" : "primary",
         operationKind: "task-create",
-        fields: [
-          {
-            key: "taskName",
-            label: "Task Name",
-            placeholder: "Task name",
-          },
-          {
-            key: "scheduleDate",
-            label: "Schedule Date",
-            placeholder: "Schedule date",
-            type: "date",
-          },
-        ],
+        remoteTaskType: options.remoteTaskType,
+        payloadBuilderKey: options.payloadBuilderKey,
+        dangerLevel: options.dangerLevel,
+        riskLevel: options.dangerLevel,
+        requiresReason: options.dangerLevel === "high",
+        requiresReviewStep: options.requiresReviewStep,
+        confirmMessage: options.confirmMessage,
+        successRedirectPath: options.successRedirectPath,
+        fields: options.fields,
       },
     ],
-    rowActions: [
-      {
-        key: "single",
-        label: "Add Task",
-        endpoint,
-        tone: "primary",
-        operationKind: "task-create",
-        fields: [
-          {
-            key: "taskName",
-            label: "Task Name",
-            placeholder: "Task name",
-          },
-        ],
-      },
-    ],
+    live: { enabled: true, intervalMs: 12_000, pauseOnHidden: true },
   };
 }
 
@@ -604,6 +873,11 @@ export function createReadOnlyTaskPage(
     columns: options.columns ?? genericTaskColumns,
     toolbarActions: [createClientExportAction(readEndpoint), ...(options.toolbarActions ?? [])],
     rowActions: options.rowActions,
+    live: { enabled: true, intervalMs: 3_000, pauseOnHidden: true, critical: true },
+    riskIntegration: {
+      canOpenCase: true,
+      riskSignals: ["remote-task-failure", "suspicious-control-pattern"],
+    },
   };
 }
 
@@ -611,6 +885,7 @@ interface ManagementPageOptions {
   formFields?: NonNullable<ActionConfig["fields"]>;
   extraRowActions?: ActionConfig[];
   sectionKey?: string;
+  actionBasePath?: string;
 }
 
 export function createManagementPage(
@@ -621,11 +896,13 @@ export function createManagementPage(
   columns: TableColumn[],
   options: ManagementPageOptions = {},
 ): DataPageConfig {
-  const base = readEndpoint.replace("/read", "").replace("/Read", "");
-  const createPath = readEndpoint.includes("/Read") ? `${base}/Create` : `${base}/create`;
-  const updatePath = readEndpoint.includes("/Read") ? `${base}/Update` : `${base}/update`;
-  const deletePath = readEndpoint.includes("/Read") ? `${base}/Delete` : `${base}/delete`;
-  const importPath = readEndpoint.includes("/Read") ? `${base}/Import` : `${base}/import`;
+  const actionBaseSource = options.actionBasePath ?? readEndpoint;
+  const base = actionBaseSource.replace("/read", "").replace("/Read", "");
+  const usesUppercaseRead = actionBaseSource.includes("/Read");
+  const createPath = usesUppercaseRead ? `${base}/Create` : `${base}/create`;
+  const updatePath = usesUppercaseRead ? `${base}/Update` : `${base}/update`;
+  const deletePath = usesUppercaseRead ? `${base}/Delete` : `${base}/delete`;
+  const importPath = usesUppercaseRead ? `${base}/Import` : `${base}/import`;
   const formFields = options.formFields ?? [
     field("name", "Name", `${menuLabel} name`),
     field("remark", "Remark", "Optional note"),
@@ -642,6 +919,7 @@ export function createManagementPage(
     readOperationKind: "table-read",
     filters: [searchFilter],
     columns,
+    live: { enabled: false, intervalMs: 0, pauseOnHidden: true },
     toolbarActions: [
       {
         key: "add",

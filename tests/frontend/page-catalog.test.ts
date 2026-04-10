@@ -46,9 +46,13 @@ test("critical pages exist in catalog", () => {
 
   assert.equal(paths.has("/dashboard"), true);
   assert.equal(paths.has("/token-generate/credit-token"), true);
+  assert.equal(paths.has("/management/analytics"), true);
   assert.equal(paths.has("/management/customer"), true);
   assert.equal(paths.has("/remote-operation/meter-reading"), true);
   assert.equal(paths.has("/data-report/interval-data"), true);
+  assert.equal(paths.has("/data-report/site-consumption"), true);
+  assert.equal(paths.has("/data-report/theft-signals"), true);
+  assert.equal(paths.has("/data-report/theft-cases"), true);
   assert.equal(paths.has("/system/runtime"), true);
 });
 
@@ -70,6 +74,7 @@ test("management pages expose import/export and mapped customer/tariff/gateway c
   const customerPage = getDataPage("/management/customer");
   const tariffPage = getDataPage("/management/tariff");
   const gatewayPage = getDataPage("/management/gateway");
+  const itemPage = getDataPage("/management/item");
 
   assert.deepEqual(
     customerPage.columns.map((column) => column.key),
@@ -100,6 +105,19 @@ test("management pages expose import/export and mapped customer/tariff/gateway c
   assert.equal(tariffPage.toolbarActions?.some((action) => action.label === "Export"), true);
   assert.equal(gatewayPage.toolbarActions?.some((action) => action.label === "Import"), true);
   assert.equal(gatewayPage.toolbarActions?.some((action) => action.label === "Export"), true);
+  assert.equal(itemPage.readEndpoint, "/api/item/readItemList");
+  assert.deepEqual(
+    itemPage.toolbarActions?.map((action) => action.endpoint),
+    ["/api/item/create", "/api/item/import", "/api/item/readItemList"],
+  );
+  assert.deepEqual(
+    itemPage.rowActions?.map((action) => action.endpoint),
+    ["/api/item/update", "/api/item/delete"],
+  );
+  assert.deepEqual(
+    itemPage.bulkActions?.map((action) => action.endpoint),
+    ["/api/item/delete"],
+  );
 });
 
 test("token record, interval, and task pages expose mapped columns and client actions", () => {
@@ -165,23 +183,61 @@ test("token record, interval, and task pages expose mapped columns and client ac
   assert.equal(creditRecordPage.rowActions?.some((action) => action.label === "Cancel"), true);
   assert.equal(clearCreditRecordPage.rowActions?.some((action) => action.label === "Print"), true);
   assert.equal(meterReadingTaskPage.toolbarActions?.some((action) => action.label === "Export"), true);
-  assert.equal(meterReadingTaskPage.rowActions?.length ?? 0, 0);
+  assert.deepEqual(
+    meterReadingTaskPage.rowActions?.map((action) => action.label),
+    ["Retry"],
+  );
 });
 
 test("report pages use PDF-specific filters and columns", () => {
+  const siteConsumptionPage = getDataPage("/data-report/site-consumption");
+  const theftSignalsPage = getDataPage("/data-report/theft-signals");
+  const theftCasesPage = getDataPage("/data-report/theft-cases");
   const consumptionPage = getDataPage("/data-report/consumption-statistics");
   const lowPurchasePage = getDataPage("/data-report/low-purchase");
   const longNonpurchasePage = getDataPage("/data-report/long-nonpurchase");
   const intervalPage = getDataPage("/data-report/interval-data");
+  const dailyLoadProfilePage = getDataPage("/load-profile/daily-data");
+  const monthlyLoadProfilePage = getDataPage("/load-profile/monthly-data");
 
+  assert.equal(siteConsumptionPage.reportDisplayMode, "analytics");
+  assert.equal(siteConsumptionPage.reportAnalyticsKey, "site-consumption");
+  assert.deepEqual(
+    siteConsumptionPage.filters.map((filter) => filter.key),
+    ["fromDate", "toDate", "granularity", "sites", "compareMode"],
+  );
+  assert.deepEqual(
+    siteConsumptionPage.columns.map((column) => column.key),
+    ["periodLabel", "site", "consumption", "unitLabel"],
+  );
+  assert.equal(consumptionPage.reportDisplayMode, "analytics");
+  assert.equal(consumptionPage.reportAnalyticsKey, "consumption-statistics");
+  assert.deepEqual(
+    theftSignalsPage.columns.map((column) => column.key),
+    ["meterId", "customerName", "severity", "score", "signalTypes", "title", "status", "updatedAt"],
+  );
+  assert.deepEqual(
+    theftCasesPage.columns.map((column) => column.key),
+    ["id", "meterId", "customerName", "severity", "score", "status", "owner", "updatedAt", "notes"],
+  );
   assert.deepEqual(
     consumptionPage.filters.map((filter) => filter.key),
     ["customerId", "meterId", "fromDate", "toDate"],
   );
   assert.deepEqual(
     consumptionPage.columns.map((column) => column.key),
-    ["collectionDate", "consumption"],
+    ["periodLabel", "customerId", "customerName", "meterId", "consumption", "totalEnergy"],
   );
+  assert.equal(longNonpurchasePage.readEndpoint, "/api/reports/non-purchase");
+  assert.equal(longNonpurchasePage.readMethod, "GET");
+  assert.equal(lowPurchasePage.readEndpoint, "/api/reports/low-purchase");
+  assert.equal(lowPurchasePage.readMethod, "GET");
+  assert.equal(consumptionPage.readEndpoint, "/api/reports/consumption");
+  assert.equal(consumptionPage.readMethod, "GET");
+  assert.equal(dailyLoadProfilePage.readEndpoint, "/api/reports/daily-amr");
+  assert.equal(dailyLoadProfilePage.readMethod, "GET");
+  assert.equal(monthlyLoadProfilePage.readEndpoint, "/api/reports/monthly-amr");
+  assert.equal(monthlyLoadProfilePage.readMethod, "GET");
   assert.deepEqual(
     lowPurchasePage.filters.map((filter) => filter.key),
     ["customerId", "meterId", "fromDate", "toDate", "lowLimit"],
@@ -201,7 +257,7 @@ test("report pages use PDF-specific filters and columns", () => {
   );
   assert.deepEqual(
     longNonpurchasePage.filters.map((filter) => filter.key),
-    ["customerId", "meterId", "nonpurchaseDaysStart", "nonpurchaseDaysEnd"],
+    ["customerId", "meterId", "fromDate", "toDate", "nonpurchaseDaysStart", "nonpurchaseDaysEnd"],
   );
   assert.deepEqual(
     longNonpurchasePage.columns.map((column) => column.key),
@@ -231,6 +287,16 @@ test("report pages use PDF-specific filters and columns", () => {
       "updateTime",
     ],
   );
+  assert.deepEqual(dailyLoadProfilePage.meterDrilldown, {
+    primaryEndpoint: "/API/LoadProfile/DailyData",
+    fallbackEndpoint: "/api/DailyDataMeter/readHourly",
+    refreshMs: 30_000,
+  });
+  assert.deepEqual(monthlyLoadProfilePage.meterDrilldown, {
+    primaryEndpoint: "/API/LoadProfile/MonthlyData",
+    fallbackEndpoint: "/api/DailyDataMeter/readMonthly",
+    refreshMs: 30_000,
+  });
 });
 
 test("removed modules are no longer present in the catalog", () => {

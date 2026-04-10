@@ -1,6 +1,8 @@
 import { TrendChart } from "../charts/TrendChart";
 import { DataPage, type DataPageSnapshot } from "../../pages/DataPage";
 import type { DataPageConfig, ReportChartData } from "../../types";
+import { ConsumptionStatisticsReportView } from "./ConsumptionStatisticsReportView";
+import { SiteConsumptionReportView } from "./SiteConsumptionReportView";
 
 interface ReportContentPanelProps {
   activeConfig?: DataPageConfig;
@@ -19,8 +21,12 @@ export function ReportContentPanel({
   trendMode,
   viewMode,
 }: ReportContentPanelProps) {
+  const isSiteConsumptionAnalytics =
+    activeConfig?.reportDisplayMode === "analytics" &&
+    activeConfig.reportAnalyticsKey === "site-consumption";
+
   return (
-    <div className="premium-card reports-content-panel">
+    <div className={isSiteConsumptionAnalytics ? "reports-content-panel reports-content-panel--plain" : "premium-card reports-content-panel"}>
       {!activeConfig ? (
         <div className="reports-empty-state">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
@@ -34,11 +40,22 @@ export function ReportContentPanel({
         </div>
       ) : (
         <div className="reports-panel-body">
-          <div className="reports-panel-meta">
-            <span>{reportSnapshot.total} records</span>
-          </div>
+          {!isSiteConsumptionAnalytics ? (
+            <div className="reports-panel-meta">
+              <span>{reportSnapshot.total} records</span>
+            </div>
+          ) : null}
 
-          {viewMode === "data" ? (
+          {activeConfig.reportDisplayMode === "analytics" &&
+          activeConfig.reportAnalyticsKey === "site-consumption" ? (
+            <SiteConsumptionReportView onSnapshotChange={setReportSnapshot} />
+          ) : activeConfig.reportDisplayMode === "analytics" &&
+            activeConfig.reportAnalyticsKey === "consumption-statistics" ? (
+            <ConsumptionStatisticsReportView
+              page={activeConfig}
+              onSnapshotChange={setReportSnapshot}
+            />
+          ) : viewMode === "data" ? (
             <DataPage page={activeConfig} onTableStateChange={setReportSnapshot} />
           ) : (
             <div className="analytics-view reports-chart-view">

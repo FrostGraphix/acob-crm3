@@ -7,6 +7,7 @@ import {
   type ReportRow,
 } from "../lib/upstream-data.js";
 import { env as config } from "./env.js";
+import { buildUpstreamRequestPlan } from "./upstream-request-adapters.js";
 import {
   loadRuntimeState,
   saveRuntimeState,
@@ -14,6 +15,7 @@ import {
   type AnalysisStateSnapshot,
 } from "./runtime-state-store.js";
 import { SchedulerLeader, type SchedulerLeaderStatus } from "./scheduler-leader.js";
+import { theftIntelligenceService } from "./theft-intelligence.js";
 import { forwardToUpstream, loginToUpstream } from "./upstream.js";
 
 type NotificationItem = AnalysisNotificationRecord;
@@ -27,6 +29,11 @@ export interface ManagedEngineStatus {
   lastRunCompletedAt: string | null;
   lastRunDurationMs: number | null;
   lastError: string | null;
+  theftMetrics?: {
+    activeSignals: number;
+    openCases: number;
+    criticalSignals: number;
+  };
 }
 
 function buildAlertKey(prefix: string, meterId: string, dateBucket: string) {
@@ -45,6 +52,51 @@ function getCustomerLabel(row: ReportRow) {
     readString(row, ["customerName", "customer", "name", "userName"]) ??
     "Unknown customer"
   );
+}
+
+function formatIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getReportWindow(today = new Date()) {
+  return {
+    fromDate: `${today.getUTCFullYear()}-01-01`,
+    toDate: formatIsoDate(today),
+  };
+}
+
+function extractTotal(result: unknown): number | null {
+  if (typeof result !== "object" || result === null || Array.isArray(result)) {
+    return null;
+  }
+
+  const root = result as Record<string, unknown>;
+  const page =
+    typeof root.page === "object" && root.page !== null && !Array.isArray(root.page)
+      ? (root.page as Record<string, unknown>)
+      : null;
+
+  for (const source of [root, page]) {
+    if (!source) {
+      continue;
+    }
+
+    for (const key of ["total", "count", "totalCount", "recordsTotal", "rowCount", "size"]) {
+      const value = source[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.max(0, Math.floor(value));
+      }
+
+      if (typeof value === "string" && value.trim().length > 0) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) {
+          return Math.max(0, Math.floor(parsed));
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 const persistedState = await loadRuntimeState<AnalysisStateSnapshot>("analysis");
@@ -100,24 +152,71 @@ class AnalysisEngine {
     }
   }
 
-  private async fetchUpstreamReport(authToken: string, endpoint: string) {
+  private async fetchUpstreamReport(
+    authToken: string,
+    endpoint: string,
+    payload: Record<string, unknown>,
+  ) {
     try {
-      const upstreamResult = await forwardToUpstream(
-        endpoint,
-        {
-          pageNumber: 1,
-          pageSize: 200,
-          page: 1,
-          limit: 200,
-        },
-        authToken,
-      );
+      const rows: ReportRow[] = [];
+      let total: number | null = null;
+      let pageNumber = 1;
 
-      if (upstreamResult.statusCode >= 400 || upstreamResult.payload.code !== 0) {
-        return [];
+      while (pageNumber <= 100) {
+        const requestPlan = buildUpstreamRequestPlan(endpoint, {
+          ...payload,
+          pageNumber,
+          pageSize: 500,
+          page: pageNumber,
+          limit: 500,
+        });
+        const [firstCandidate, ...fallbackCandidates] = requestPlan.candidateBodies;
+
+        let upstreamResult = await forwardToUpstream(
+          endpoint,
+          firstCandidate ?? requestPlan.body,
+          authToken,
+          { timeoutMs: requestPlan.timeoutMs },
+        );
+
+        for (const candidateBody of fallbackCandidates) {
+          if (upstreamResult.statusCode < 400 && upstreamResult.payload.code === 0) {
+            break;
+          }
+
+          upstreamResult = await forwardToUpstream(
+            endpoint,
+            candidateBody,
+            authToken,
+            { timeoutMs: requestPlan.timeoutMs },
+          );
+        }
+
+        if (upstreamResult.statusCode >= 400 || upstreamResult.payload.code !== 0) {
+          return rows;
+        }
+
+        const pageRows = extractRows(upstreamResult.payload.result);
+        total = total ?? extractTotal(upstreamResult.payload.result);
+
+        if (pageRows.length === 0) {
+          break;
+        }
+
+        rows.push(...pageRows);
+
+        if (total !== null && rows.length >= total) {
+          break;
+        }
+
+        if (pageRows.length < 500) {
+          break;
+        }
+
+        pageNumber += 1;
       }
 
-      return extractRows(upstreamResult.payload.result);
+      return rows;
     } catch (error) {
       console.error(`[AnalysisEngine] Failed to fetch report ${endpoint}`, error);
       return [];
@@ -139,10 +238,15 @@ class AnalysisEngine {
 
     let stateChanged = false;
     const dateBucket = new Date().toISOString().slice(0, 10);
+    const reportWindow = getReportWindow();
 
     const lowPurchaseData = await this.fetchUpstreamReport(
       authToken,
       "/API/PrepayReport/LowPurchaseSituation",
+      {
+        ...reportWindow,
+        lowLimit: 500,
+      },
     );
     for (const row of lowPurchaseData) {
       const meterId = getMeterId(row);
@@ -174,6 +278,11 @@ class AnalysisEngine {
     const longNonPurchaseData = await this.fetchUpstreamReport(
       authToken,
       "/API/PrepayReport/LongNonpurchaseSituation",
+      {
+        ...reportWindow,
+        nonpurchaseDaysStart: 30,
+        nonpurchaseDaysEnd: 90,
+      },
     );
     for (const row of longNonPurchaseData) {
       const meterId = getMeterId(row);
@@ -202,6 +311,12 @@ class AnalysisEngine {
         stateChanged = true;
       }
     }
+
+    await theftIntelligenceService.ingestSignalsFromReports({
+      dateBucket,
+      lowPurchaseRows: lowPurchaseData,
+      longNonPurchaseRows: longNonPurchaseData,
+    });
 
     if (this.knownAlerts.size > 5000) {
       this.knownAlerts.clear();
@@ -297,6 +412,8 @@ class AnalysisEngine {
   }
 
   public getStatus(): ManagedEngineStatus {
+    const signals = theftIntelligenceService.listSignals();
+    const cases = theftIntelligenceService.listCases();
     return {
       name: "analysis-engine",
       enabledByConfig: config.enableAnalysisEngine,
@@ -306,6 +423,15 @@ class AnalysisEngine {
       lastRunCompletedAt: this.lastRunCompletedAt,
       lastRunDurationMs: this.lastRunDurationMs,
       lastError: this.lastError,
+      theftMetrics: {
+        activeSignals: signals.filter((item) => item.status === "active").length,
+        openCases: cases.filter((item) =>
+          ["new", "active", "investigating"].includes(item.status),
+        ).length,
+        criticalSignals: signals.filter(
+          (item) => item.status === "active" && item.severity === "critical",
+        ).length,
+      },
     };
   }
 

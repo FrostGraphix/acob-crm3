@@ -1,259 +1,411 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { BarChart } from "../components/charts/BarChart";
-import { LineChart } from "../components/charts/LineChart";
-import { PieChart } from "../components/charts/PieChart";
-import { loadDashboard } from "../services/api";
-import type { DashboardData, PieSlice } from "../types";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  RefreshCw,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import { useDashboard } from "../hooks/useOdyssey";
+import { cn } from "../lib/utils";
+import { SITES, type SiteId } from "../../../common/types/odyssey";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-function PremiumStatCard({
-  label,
-  value,
-  subtext,
-  icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  subtext?: string;
-  icon: ReactNode;
-  accent: "emerald" | "sapphire" | "amber" | "amethyst";
-}) {
-  return (
-    <div className="premium-card">
-      <div className="stat-content">
-        <div className="stat-info">
-          <span className="stat-label-tiny">{label}</span>
-          <strong className="stat-value-huge">{value}</strong>
-          {subtext ? <span className="stat-subtext">{subtext}</span> : null}
-        </div>
-        <div className={`stat-icon-square ${accent}`}>{icon}</div>
-      </div>
-    </div>
-  );
-}
+const PIE_COLORS = ["#22c55e", "#16a34a", "#84cc16", "#4ade80", "#15803d", "#65a30d"];
+const CHART_ACCENT = "#22c55e";
+const CHART_GRID = "#21412b";
+const CHART_TICK = "#8fb39a";
+const DEFAULT_FROM = "2000-01-01T00:00:00.000Z";
 
-function ChartCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="premium-chart-card">
-      <div className="chart-header">
-        <h3 className="chart-title">{title}</h3>
-        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{description}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function EmptyChartState({ message }: { message: string }) {
-  return (
-    <div
-      style={{
-        minHeight: "300px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "var(--text-muted)",
-        textAlign: "center",
-        padding: "2rem",
-        borderRadius: "1rem",
-        border: "1px dashed var(--border-subtle)",
-        background: "rgba(255, 255, 255, 0.02)",
-      }}
-    >
-      {message}
-    </div>
-  );
-}
-
-function StatIcon({ accent }: { accent: "emerald" | "sapphire" | "amber" | "amethyst" }) {
-  switch (accent) {
-    case "emerald":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 19V5M8 19V9M12 19V12M16 19V7M20 19V3" />
-        </svg>
-      );
-    case "sapphire":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <line x1="2" y1="10" x2="22" y2="10" />
-        </svg>
-      );
-    case "amber":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2 2 22h20L12 2z" />
-          <path d="M12 9v4" />
-          <path d="M12 17h.01" />
-        </svg>
-      );
-    case "amethyst":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
-      );
-  }
-}
-
-function countAlarmSlices(slices: PieSlice[]) {
-  return slices.reduce((sum, slice) => sum + slice.value, 0);
-}
-
-export function DashboardPage() {
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchDashboard = async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-    }
-
-    try {
-      const payload = await loadDashboard();
-      setDashboard(payload);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
-    }
-  };
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    void fetchDashboard();
-    const interval = setInterval(() => void fetchDashboard(true), 60_000);
-    return () => clearInterval(interval);
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    const update = () => {
+      setSize({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
+    };
+
+    update();
+
+    const observer = new ResizeObserver(() => {
+      update();
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
-  if (loading && !dashboard) {
+  return { ref, size };
+}
+
+function ChartHost({
+  heightClassName,
+  loading,
+  children,
+}: {
+  heightClassName: string;
+  loading: boolean;
+  children: (size: { width: number; height: number }) => ReactNode;
+}) {
+  const { ref, size } = useElementSize<HTMLDivElement>();
+
+  return (
+    <div ref={ref} className={`${heightClassName} w-full min-w-0`}>
+      {loading ? <div className="h-full w-full shimmer-bg rounded" /> : null}
+      {!loading && size.width > 0 && size.height > 0 ? children(size) : null}
+    </div>
+  );
+}
+
+function ReferenceStats({
+  stats,
+  loading,
+}: {
+  stats: {
+    accountCount: number;
+    purchaseTimes: number;
+    purchaseUnit: number;
+    purchaseMoney: number;
+  };
+  loading: boolean;
+}) {
+  if (loading) {
     return (
-      <div
-        className="loading-screen"
-        style={{
-          color: "var(--acob-green)",
-          background: "var(--bg-app)",
-          minHeight: "100vh",
-        }}
-      >
-        <p style={{ fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          Loading live dashboard data...
-        </p>
+      <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <div key={item} className="h-24 glass rounded-xl shimmer-bg" />
+        ))}
       </div>
     );
   }
 
-  if (!dashboard) {
-    return null;
-  }
-
-  const hasPurchaseMoney = dashboard.purchaseMoney.labels.length > 0 && dashboard.purchaseMoney.values.length > 0;
-  const hasSuccessRate = dashboard.successRate.labels.length > 0 && dashboard.successRate.values.length > 0;
-  const hasAlarms = dashboard.alarms.length > 0;
-  const hasDailyConsumption = dashboard.consumption.daily.length > 0;
-  const hasMonthlyConsumption = dashboard.consumption.monthly.length > 0;
-
-  const panelAccents: Array<"emerald" | "sapphire" | "amethyst" | "amber"> = [
-    "emerald",
-    "sapphire",
-    "amethyst",
-    "amber",
+  const items = [
+    { label: "Account Count", value: stats.accountCount, unit: "", icon: Users, color: "#06D6A0" },
+    { label: "Purchase Times", value: stats.purchaseTimes, unit: "", icon: RefreshCw, color: "#22c55e" },
+    { label: "Purchase Unit", value: stats.purchaseUnit, unit: "kWh", icon: Zap, color: "#84cc16" },
+    { label: "Purchase Money", value: stats.purchaseMoney, unit: "NGN", icon: TrendingUp, color: "#16a34a" },
   ];
 
   return (
-    <div className="premium-dashboard">
-      <div className="premium-stat-grid">
-        {dashboard.panels.map((panel, index) => (
-          <PremiumStatCard
-            key={panel.label}
-            label={panel.label}
-            value={panel.value}
-            subtext="Live upstream summary"
-            accent={panelAccents[index % panelAccents.length]}
-            icon={<StatIcon accent={panelAccents[index % panelAccents.length]} />}
-          />
-        ))}
-      </div>
-
-      <div className="premium-chart-grid">
-        <ChartCard title="Purchase Money" description="Upstream chart series">
-          {hasPurchaseMoney ? (
-            <BarChart labels={dashboard.purchaseMoney.labels} values={dashboard.purchaseMoney.values} />
-          ) : (
-            <EmptyChartState message="No purchase money series was returned by the upstream API." />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Hourly Success Rate" description="Upstream chart series">
-          {hasSuccessRate ? (
-            <LineChart labels={dashboard.successRate.labels} values={dashboard.successRate.values} />
-          ) : (
-            <EmptyChartState message="No success rate series was returned by the upstream API." />
-          )}
-        </ChartCard>
-      </div>
-
-      <div className="premium-chart-grid" style={{ marginTop: "1rem" }}>
-        <ChartCard
-          title="Abnormal Alarm"
-          description={hasAlarms ? `${countAlarmSlices(dashboard.alarms)} total alarm events` : "Upstream alarm distribution"}
+    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="glass p-5 rounded-xl border border-odyssey-border/50 flex items-center justify-between group hover:border-odyssey-mid/40 transition-colors shadow-sm cursor-default"
         >
-          {hasAlarms ? (
-            <PieChart slices={dashboard.alarms} />
-          ) : (
-            <EmptyChartState message="No alarm breakdown was returned by the upstream API." />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Consumption Trends" description="Daily and monthly upstream series">
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <section>
-              <div className="chart-header" style={{ marginBottom: "0.75rem" }}>
-                <h4 className="chart-title" style={{ fontSize: "1rem" }}>
-                  Daily Consumption
-                </h4>
-              </div>
-              {hasDailyConsumption ? (
-                <BarChart labels={dashboard.consumption.labels} values={dashboard.consumption.daily} />
-              ) : (
-                <EmptyChartState message="No daily consumption series was returned by the upstream API." />
-              )}
-            </section>
-
-            <section>
-              <div className="chart-header" style={{ marginBottom: "0.75rem" }}>
-                <h4 className="chart-title" style={{ fontSize: "1rem" }}>
-                  Monthly Consumption
-                </h4>
-              </div>
-              {hasMonthlyConsumption ? (
-                <LineChart labels={dashboard.consumption.labels} values={dashboard.consumption.monthly} />
-              ) : (
-                <EmptyChartState message="No monthly consumption series was returned by the upstream API." />
-              )}
-            </section>
+          <div>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">
+              {item.label}
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-display font-bold text-white tracking-tight">
+                {typeof item.value === "number" && item.unit === "NGN"
+                  ? `₦${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : item.value?.toLocaleString() ?? 0}
+              </span>
+              {item.unit && item.unit !== "NGN" ? (
+                <span className="text-xs text-muted-foreground font-medium ml-0.5">{item.unit}</span>
+              ) : null}
+            </div>
           </div>
-        </ChartCard>
+          <div
+            className="p-3 rounded-xl transition-colors duration-300"
+            style={{ backgroundColor: `${item.color}15` }}
+          >
+            <item.icon
+              className="w-5 h-5 transition-transform duration-300 group-hover:scale-110"
+              style={{ color: item.color }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatusTicker() {
+  const [messages] = useState([
+    "UMAISHA: Battery reaching 85% SOC",
+    "MUSHA: Solar Generation peaking at 42kW",
+    "OGUFA: High consumption detected on Meter 0012",
+    "KYAKALE: System health optimal",
+    "TUNGA: Communication link stable",
+  ]);
+
+  return (
+    <div className="glass h-12 rounded-xl mb-8 border border-odyssey-electric/20 flex items-center px-4 overflow-hidden shadow-[0_0_15px_-5px_rgba(34,197,94,0.18)] relative">
+      <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-odyssey-surface to-transparent z-10" />
+      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-odyssey-surface to-transparent z-10" />
+
+      <div className="flex items-center gap-2.5 mr-6 shrink-0 relative z-20 bg-odyssey-surface/80 px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 rounded-full bg-odyssey-electric animate-pulse shadow-[0_0_8px_#06D6A0]" />
+        <span className="text-[11px] font-bold text-odyssey-electric uppercase tracking-widest">Live Pulse</span>
       </div>
 
-      <div className="premium-card" style={{ marginTop: "1rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h3 className="chart-title">Live Status</h3>
-          <span style={{ color: "var(--emerald)", fontSize: "0.75rem", fontWeight: 600 }}>UPSTREAM ONLY</span>
+      <div className="flex-1 w-full overflow-hidden relative z-0">
+        <motion.div
+          animate={{ x: ["50%", "-100%"] }}
+          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap flex gap-16"
+        >
+          {messages.map((message, index) => (
+            <span key={`${message}-${index}`} className="text-sm text-white/80 font-mono flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                [{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}]
+              </span>
+              {message}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function mapSeries(xData: string[] | undefined, yData: number[] | undefined) {
+  if (!xData || !yData) {
+    return [];
+  }
+
+  return xData.map((x, index) => ({
+    name: x,
+    value: yData[index] ?? 0,
+  }));
+}
+
+export function DashboardPage() {
+  const [from] = useState(DEFAULT_FROM);
+  const [queryWindowEnd, setQueryWindowEnd] = useState(() => new Date().toISOString());
+  const [selectedSite, setSelectedSite] = useState<SiteId | "ALL">("ALL");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { data: dashboardData, loading, error } = useDashboard(
+    from,
+    queryWindowEnd,
+    selectedSite === "ALL" ? undefined : selectedSite,
+  );
+
+  useAutoRefresh(() => {
+    setQueryWindowEnd(new Date().toISOString());
+  });
+
+  useEffect(() => {
+    if (!loading) {
+      setIsRefreshing(false);
+    }
+  }, [loading]);
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    setQueryWindowEnd(new Date().toISOString());
+  }
+
+  const referenceStats = useMemo(
+    () => ({
+      accountCount: dashboardData?.accountCount || 0,
+      purchaseTimes: dashboardData?.purchaseTimes || 0,
+      purchaseUnit: dashboardData?.purchaseUnit || 0,
+      purchaseMoney: dashboardData?.purchaseMoney || 0,
+    }),
+    [dashboardData],
+  );
+
+  const purchaseMoneySeries = useMemo(
+    () => mapSeries(dashboardData?.charts?.purchaseMoney?.xData, dashboardData?.charts?.purchaseMoney?.yData),
+    [dashboardData],
+  );
+  const hourlySuccessSeries = useMemo(
+    () => mapSeries(dashboardData?.charts?.hourlySuccess?.xData, dashboardData?.charts?.hourlySuccess?.yData),
+    [dashboardData],
+  );
+  const abnormalAlarmSeries = useMemo(
+    () =>
+      mapSeries(dashboardData?.charts?.abnormalAlarm?.xData, dashboardData?.charts?.abnormalAlarm?.yData).filter(
+        (entry) => entry.value > 0,
+      ),
+    [dashboardData],
+  );
+  const dailyConsumptionSeries = useMemo(
+    () => mapSeries(dashboardData?.charts?.dailyConsumption?.xData, dashboardData?.charts?.dailyConsumption?.yData),
+    [dashboardData],
+  );
+
+  return (
+    <div className="dashboard-page dashboard-page--legacy space-y-4 animate-fade-in pb-12 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-white tracking-tight flex items-center gap-3">
+            {selectedSite === "ALL" ? "Portfolio Overview" : `${selectedSite} Dashboard`}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Real-time energy management & microgrid performance
+          </p>
         </div>
-        <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.6 }}>
-          This dashboard now reflects only data returned by the upstream API. If a section is empty, the upstream service did not expose that series yet.
-        </p>
+
+        <div className="flex items-center gap-3 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-md">
+          <select
+            value={selectedSite}
+            onChange={(event) => setSelectedSite(event.target.value as SiteId | "ALL")}
+            className="glass border-none rounded-lg px-4 py-2 text-sm font-semibold text-white bg-transparent focus:outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors"
+          >
+            <option value="ALL" className="bg-odyssey-card text-white">
+              All Sites (Portfolio)
+            </option>
+            {SITES.map((site) => (
+              <option key={site} value={site} className="bg-odyssey-card text-white">
+                {site} Site
+              </option>
+            ))}
+          </select>
+          <div className="w-px h-6 bg-white/10 hidden sm:block" />
+          <button
+            onClick={() => void handleRefresh()}
+            className="p-2 lg:px-4 lg:py-2 rounded-lg hover:bg-white/10 transition-colors group flex items-center gap-2"
+            disabled={loading || isRefreshing}
+          >
+            <RefreshCw
+              className={cn(
+                "w-4 h-4 text-muted-foreground group-hover:text-white transition-all",
+                (loading || isRefreshing) && "animate-spin text-odyssey-electric",
+              )}
+            />
+            <span className="hidden lg:block text-sm font-medium text-white/80 group-hover:text-white">
+              Refresh
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <StatusTicker />
+
+      <ReferenceStats stats={referenceStats} loading={loading} />
+
+      {error ? (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 flex items-start gap-4 text-red-500 shadow-lg animate-fade-in">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-semibold text-sm">Data Retrieval Error</h4>
+            <p className="text-sm opacity-90 mt-1">{error}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-6 animate-fade-in">
+        <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
+          <div className="flex items-center justify-center mb-4">
+            <h3 className="text-lg font-display text-odyssey-electric font-semibold">Purchase Money</h3>
+          </div>
+          <ChartHost heightClassName="h-[300px]" loading={loading}>
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={purchaseMoneySeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: "#09120c", borderColor: CHART_GRID, borderRadius: "8px" }}
+                  itemStyle={{ color: "#fff" }}
+                />
+                <Bar dataKey="value" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            )}
+          </ChartHost>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
+            <div className="flex items-center justify-center mb-4">
+              <h3 className="text-lg font-display text-odyssey-electric font-semibold">Hourly Success Rate</h3>
+            </div>
+            <ChartHost heightClassName="h-[260px]" loading={loading}>
+              {({ width, height }) => (
+                <LineChart width={width} height={height} data={hourlySuccessSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: "#09120c", borderColor: CHART_GRID, borderRadius: "8px" }}
+                    itemStyle={{ color: "#fff" }}
+                  />
+                  <Line type="monotone" dataKey="value" stroke={CHART_ACCENT} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                </LineChart>
+              )}
+            </ChartHost>
+          </div>
+
+          <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
+            <div className="flex items-center justify-center mb-4">
+              <h3 className="text-lg font-display text-odyssey-electric font-semibold">Abnormal Alarm</h3>
+            </div>
+            <ChartHost heightClassName="h-[260px]" loading={loading}>
+              {({ width, height }) => (
+                <PieChart width={width} height={height} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={abnormalAlarmSeries}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    fill={CHART_ACCENT}
+                    dataKey="value"
+                    label={({ name }) => name}
+                    labelLine
+                  >
+                    {abnormalAlarmSeries.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: "#09120c", borderColor: CHART_GRID, borderRadius: "8px" }}
+                    itemStyle={{ color: "#fff" }}
+                  />
+                </PieChart>
+              )}
+            </ChartHost>
+          </div>
+        </div>
+
+        <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
+          <div className="flex items-center justify-center mb-4">
+            <h3 className="text-lg font-display text-odyssey-electric font-semibold">Daily Consumption</h3>
+          </div>
+          <ChartHost heightClassName="h-[300px]" loading={loading}>
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={dailyConsumptionSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: "#09120c", borderColor: CHART_GRID, borderRadius: "8px" }}
+                  itemStyle={{ color: "#fff" }}
+                />
+                <Bar dataKey="value" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            )}
+          </ChartHost>
+        </div>
       </div>
     </div>
   );

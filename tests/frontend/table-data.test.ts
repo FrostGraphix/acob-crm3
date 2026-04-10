@@ -375,6 +375,40 @@ test("normalizeTableData maps DLT645 aliases into the protocol table keys", () =
   });
 });
 
+test("normalizeTableData maps item list aliases into the management table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          itemId: "ITEM-001",
+          itemName: "Voltage",
+          unitName: "V",
+          valueType: "number",
+          notes: "Generic item catalog",
+          createDate: "2026-03-10 11:30",
+        },
+      ],
+      total: 1,
+    },
+    "/api/item/readItemList",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    itemId: "ITEM-001",
+    itemName: "Voltage",
+    unitName: "V",
+    valueType: "number",
+    notes: "Generic item catalog",
+    createDate: "2026-03-10 11:30",
+    id: "ITEM-001",
+    name: "Voltage",
+    unit: "V",
+    dataType: "number",
+    remark: "Generic item catalog",
+    createTime: "2026-03-10 11:30",
+  });
+});
+
 test("normalizeTableData maps DLT645 task aliases into the protocol task table keys", () => {
   const result = normalizeTableData(
     {
@@ -778,6 +812,31 @@ test("normalizeTableData maps live low purchase field names into the report tabl
   });
 });
 
+test("normalizeTableData maps low purchase alias endpoints into the same report table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          consumerId: "C-100",
+          consumerName: "Musa",
+          meterNo: "M-100",
+          tariffName: "RESID",
+          totalKwh: 87.5,
+          purchaseMoney: 12500,
+          addr: "Tunga Maje",
+          balance: 125,
+        },
+      ],
+      total: 1,
+    },
+    "/api/reports/low-purchase",
+  );
+
+  assert.equal(result.rows[0]?.customerId, "C-100");
+  assert.equal(result.rows[0]?.totalUnit, 87.5);
+  assert.equal(result.rows[0]?.remainingBalance, 125);
+});
+
 test("normalizeTableData maps long nonpurchase aliases into the report table keys", () => {
   const result = normalizeTableData(
     {
@@ -809,6 +868,27 @@ test("normalizeTableData maps long nonpurchase aliases into the report table key
   });
 });
 
+test("normalizeTableData maps non-purchase alias endpoints into the same report table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          consumerId: "C-200",
+          consumerName: "Grace",
+          meterNo: "M-200",
+          tariffName: "COMM",
+          nonpurchaseDays: 34,
+        },
+      ],
+      total: 1,
+    },
+    "/api/reports/non-purchase",
+  );
+
+  assert.equal(result.rows[0]?.customerId, "C-200");
+  assert.equal(result.rows[0]?.daysWithoutPurchase, 34);
+});
+
 test("normalizeTableData maps consumption statistics aliases into the report table keys", () => {
   const result = normalizeTableData(
     {
@@ -829,6 +909,40 @@ test("normalizeTableData maps consumption statistics aliases into the report tab
     collectionDate: "2026-03-01",
     periodEnd: "2026-03-01",
     consumption: 18.5,
+  });
+});
+
+test("normalizeTableData maps load profile alias endpoints into report table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          meterNo: "M-900",
+          consumerName: "Fatima",
+          collectDate: "2026-03-09 10:00",
+          activePower: 8.5,
+          unitLabel: "kWh",
+          onlineStatus: "online",
+        },
+      ],
+      total: 1,
+    },
+    "/api/reports/daily-amr",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    meterNo: "M-900",
+    consumerName: "Fatima",
+    collectDate: "2026-03-09 10:00",
+    activePower: 8.5,
+    unitLabel: "kWh",
+    onlineStatus: "online",
+    meterId: "M-900",
+    customerName: "Fatima",
+    collectionDate: "2026-03-09 10:00",
+    value: 8.5,
+    unit: "kWh",
+    status: "online",
   });
 });
 

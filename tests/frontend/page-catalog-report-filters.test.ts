@@ -26,22 +26,31 @@ test("consumption statistics report requires a complete date range and sends rep
   assert.equal(page.requestDateFormat, "day-first");
 });
 
-test("date-filtered pages default from January 1, 2025 through the current day", () => {
+test("date-filtered pages default from January 1 of the current year through the current day", () => {
   const lowPurchasePage = getDataPage("/data-report/low-purchase");
+  const siteConsumptionPage = getDataPage("/data-report/site-consumption");
   const eventPage = getDataPage("/event-notification");
   const referenceDate = new Date("2026-04-02T09:00:00Z");
 
   assert.deepEqual(createInitialFilters(lowPurchasePage, referenceDate), {
     customerId: "",
     meterId: "",
-    fromDate: "2025-01-01",
+    fromDate: "2026-01-01",
     toDate: "2026-04-02",
     lowLimit: "",
   });
 
   assert.deepEqual(createInitialFilters(eventPage, referenceDate), {
     searchTerm: "",
-    fromDate: "2025-01-01",
+    fromDate: "2026-01-01",
     toDate: "2026-04-02",
+  });
+
+  assert.deepEqual(createInitialFilters(siteConsumptionPage, referenceDate), {
+    fromDate: "2026-01-01",
+    toDate: "2026-04-02",
+    granularity: "",
+    sites: "",
+    compareMode: "",
   });
 });

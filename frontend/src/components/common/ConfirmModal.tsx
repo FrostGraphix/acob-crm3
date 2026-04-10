@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Button, Surface } from "../../design-system";
 
 interface ConfirmModalProps {
   title: string;
@@ -23,7 +24,7 @@ export function ConfirmModal({
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="modal-card modal-card--compact">
+      <Surface as="div" className="modal-card modal-card--compact ds-modal-card" tone="raised">
         <div className="modal-header">
           <div className="modal-header-info">
             <span className="modal-eyebrow">
@@ -36,11 +37,11 @@ export function ConfirmModal({
             </span>
             <h3 className="modal-title">{title}</h3>
           </div>
-          <button className="modal-close" onClick={onCancel} type="button" aria-label="Close">
+          <Button aria-label="Close" className="modal-close" onClick={onCancel} size="icon" tone="ghost">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </button>
+          </Button>
         </div>
 
         <div className="modal-body">
@@ -48,17 +49,17 @@ export function ConfirmModal({
         </div>
 
         <div className="modal-footer">
-          <button className="modal-btn modal-btn--ghost" onClick={onCancel} type="button">
+          <Button className="modal-btn modal-btn--ghost" onClick={onCancel} tone="ghost">
             Cancel
-          </button>
-          <button className="modal-btn modal-btn--danger" onClick={onConfirm} type="button">
+          </Button>
+          <Button className="modal-btn modal-btn--danger" onClick={onConfirm} tone="danger">
             Confirm
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </button>
+          </Button>
         </div>
-      </div>
+      </Surface>
     </div>
   );
 }

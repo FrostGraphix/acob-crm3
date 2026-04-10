@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { DataTable } from "../components/common/DataTable";
 import { FormModal } from "../components/common/FormModal";
+import { MeterDrilldownModal } from "../components/common/MeterDrilldownModal";
+import { CreditTokenRecordWorkspace } from "../components/data/CreditTokenRecordWorkspace";
 import { DataPageToolbar } from "../components/data/DataPageToolbar";
 import { useDataTable } from "../hooks/useDataTable";
 import { runPageAction } from "../services/api";
@@ -29,6 +32,8 @@ interface DataPageProps {
 }
 
 export function DataPage({ page, onTableStateChange }: DataPageProps) {
+  const navigate = useNavigate();
+  const showCreditTokenWorkspace = page.path === "/token-record/credit-token-record";
   const {
     draftFilters,
     setDraftFilters,
@@ -48,9 +53,42 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
     toggleRow,
     toggleAll,
     getRowKeyValue,
+    live,
   } = useDataTable(page);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [drilldownMeterId, setDrilldownMeterId] = useState<string | null>(null);
+  const [actionDetails, setActionDetails] = useState<Record<string, unknown> | null>(null);
+
+  const caseAction = useMemo<ActionConfig | null>(
+    () =>
+      page.riskIntegration?.canOpenCase
+        ? {
+            key: "open-theft-case",
+            label: "Open Case",
+            endpoint: "/api/theft/cases/create",
+            tone: "danger",
+            operationKind: "theft-case-create",
+            fields: [
+              {
+                key: "notes",
+                label: "Notes",
+                type: "textarea",
+                placeholder: "Add initial investigation notes",
+              },
+            ],
+          }
+        : null,
+    [page.riskIntegration?.canOpenCase],
+  );
+  const rowActions = useMemo(
+    () => (caseAction ? [...(page.rowActions ?? []), caseAction] : page.rowActions),
+    [caseAction, page.rowActions],
+  );
+  const exportAction = useMemo(
+    () => page.toolbarActions?.find((action) => action.operationKind === "client-export") ?? null,
+    [page.toolbarActions],
+  );
 
   useEffect(() => {
     onTableStateChange?.({
@@ -103,13 +141,22 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
 
       const result = await runPageAction(action.endpoint, { records });
       setFeedback(result.message ?? `Imported ${records.length} record(s) into ${page.menuLabel}.`);
+      setActionDetails(result.details ?? null);
       await refresh();
       return;
     }
 
     const result = await runPageAction(action.endpoint, mapping.payload);
-    setFeedback(result.message ?? `${action.label} completed`);
+    const traceSuffix = typeof result.__metaTraceId === "string" ? ` (trace: ${result.__metaTraceId})` : "";
+    setFeedback((result.message ?? `${action.label} completed`) + traceSuffix);
+    setActionDetails((result.details as Record<string, unknown> | undefined) ?? (result as Record<string, unknown>));
     await refresh();
+
+    if (action.operationKind?.startsWith("token-generate") && action.successRedirectPath) {
+      setTimeout(() => {
+        navigate(action.successRedirectPath as string);
+      }, 1200);
+    }
   };
 
   const handleAction = async (action: ActionConfig, row?: DataRow, isBulk = false) => {
@@ -130,58 +177,140 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
     }
   };
 
-  return (
-    <section className="page-stack">
-      <DataPageToolbar
-        draftFilters={draftFilters}
-        error={error}
-        feedback={feedback}
-        onBulkAction={(action) => void handleAction(action, undefined, true)}
-        onFilterChange={(key, value) =>
-          setDraftFilters((current) => ({
-            ...current,
-            [key]: value,
-          }))
-        }
-        onReset={() => {
-          setFeedback(null);
-          reset();
-        }}
-        onSearch={() => {
-          setFeedback(null);
-          search();
-        }}
-        onToolbarAction={(action) => void handleAction(action)}
-        page={page}
-      />
+  const handleRowClick = (row: DataRow) => {
+    if (!page.meterDrilldown) {
+      return;
+    }
 
-      <DataTable
-        columns={page.columns}
-        getRowKey={getRowKeyValue}
-        loading={loading}
-        onPageChange={setPageNumber}
-        onPageSizeChange={(nextSize) => {
-          setPageNumber(1);
-          setPageSize(nextSize);
-        }}
-        onRowAction={(action, row) => void handleAction(action, row)}
-        onToggleAll={toggleAll}
-        onToggleRow={toggleRow}
-        pageNumber={pageNumber}
-        pageSize={pageSize}
-        rowActions={page.rowActions}
-        rows={rows}
-        selectedKeys={selectedKeys}
-        total={total}
-        columnFilters={draftFilters}
-        onColumnFilterChange={(key, value) => {
-          setDraftFilters(curr => ({ ...curr, [key]: value }));
-        }}
-        onColumnSearch={() => {
-          setFeedback(null);
-          search();
-        }}
-      />
+    const meterIdValue = row.meterId;
+    const meterId =
+      meterIdValue === null || meterIdValue === undefined
+        ? ""
+        : String(meterIdValue).trim();
+
+    if (meterId.length === 0) {
+      setFeedback("Selected row has no meter id for drilldown.");
+      return;
+    }
+
+    setDrilldownMeterId(meterId);
+  };
+
+  return (
+    <section className="page-stack ds-page">
+      {showCreditTokenWorkspace ? (
+        <CreditTokenRecordWorkspace
+          page={page}
+          appliedFilters={appliedFilters}
+          rows={rows}
+          total={total}
+          feedback={feedback}
+          error={error}
+          live={live}
+          onGenerate={() => navigate("/token-generate/credit-token")}
+          onExport={exportAction ? () => void handleAction(exportAction) : undefined}
+          onRefresh={() => {
+            void refresh()
+              .then(() => setFeedback("Data refreshed"))
+              .catch((caughtError) =>
+                setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
+              );
+          }}
+          table={
+            <DataTable
+              columns={page.columns}
+              getRowKey={getRowKeyValue}
+              loading={loading}
+              onPageChange={setPageNumber}
+              onPageSizeChange={(nextSize) => {
+                setPageNumber(1);
+                setPageSize(nextSize);
+              }}
+              onRowClick={page.meterDrilldown ? handleRowClick : undefined}
+              onRowAction={(action, row) => void handleAction(action, row)}
+              onToggleAll={toggleAll}
+              onToggleRow={toggleRow}
+              pageNumber={pageNumber}
+              pageSize={pageSize}
+              rowActions={rowActions}
+              rows={rows}
+              selectedKeys={selectedKeys}
+              total={total}
+              columnFilters={draftFilters}
+              onColumnFilterChange={(key, value) => {
+                setDraftFilters((curr) => ({ ...curr, [key]: value }));
+              }}
+              onColumnSearch={() => {
+                setFeedback(null);
+                search();
+              }}
+              selectionMode="none"
+            />
+          }
+        />
+      ) : (
+        <>
+          <DataPageToolbar
+            draftFilters={draftFilters}
+            error={error}
+            feedback={feedback}
+            onBulkAction={(action) => void handleAction(action, undefined, true)}
+            onFilterChange={(key, value) =>
+              setDraftFilters((current) => ({
+                ...current,
+                [key]: value,
+              }))
+            }
+            onReset={() => {
+              setFeedback(null);
+              reset();
+            }}
+            onSearch={() => {
+              setFeedback(null);
+              search();
+            }}
+            onToolbarAction={(action) => void handleAction(action)}
+            onRefresh={() => {
+              void refresh()
+                .then(() => setFeedback("Data refreshed"))
+                .catch((caughtError) =>
+                  setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
+                );
+            }}
+            live={live}
+            page={page}
+          />
+
+          <DataTable
+            columns={page.columns}
+            getRowKey={getRowKeyValue}
+            loading={loading}
+            onPageChange={setPageNumber}
+            onPageSizeChange={(nextSize) => {
+              setPageNumber(1);
+              setPageSize(nextSize);
+            }}
+            onRowClick={page.meterDrilldown ? handleRowClick : undefined}
+            onRowAction={(action, row) => void handleAction(action, row)}
+            onToggleAll={toggleAll}
+            onToggleRow={toggleRow}
+            pageNumber={pageNumber}
+            pageSize={pageSize}
+            rowActions={rowActions}
+            rows={rows}
+            selectedKeys={selectedKeys}
+            total={total}
+            columnFilters={draftFilters}
+            onColumnFilterChange={(key, value) => {
+              setDraftFilters((curr) => ({ ...curr, [key]: value }));
+            }}
+            onColumnSearch={() => {
+              setFeedback(null);
+              search();
+            }}
+          />
+        </>
+      )}
 
       {pendingAction?.action.fields?.length ? (
         <FormModal
@@ -219,6 +348,22 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
               });
           }}
           title={pendingAction.action.label}
+        />
+      ) : null}
+
+      {actionDetails && Object.keys(actionDetails).length > 0 ? (
+        <div className="status-banner ds-status-message">
+          <strong>Last Action Result</strong>
+          <pre className="action-result-json">{JSON.stringify(actionDetails, null, 2)}</pre>
+        </div>
+      ) : null}
+
+      {drilldownMeterId && page.meterDrilldown ? (
+        <MeterDrilldownModal
+          appliedFilters={appliedFilters}
+          meterId={drilldownMeterId}
+          onClose={() => setDrilldownMeterId(null)}
+          page={page}
         />
       ) : null}
     </section>

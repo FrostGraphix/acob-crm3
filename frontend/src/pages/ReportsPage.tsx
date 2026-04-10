@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Button, PageHeader, Surface } from "../design-system";
 import { ReportContentPanel } from "../components/reports/ReportContentPanel";
 import { ReportControlPanel } from "../components/reports/ReportControlPanel";
 import { ReportTabStrip } from "../components/reports/ReportTabStrip";
@@ -25,12 +26,21 @@ export function ReportsPage() {
   const [reportSnapshot, setReportSnapshot] = useState<DataPageSnapshot>(emptySnapshot);
 
   const reportConfigs = allPages.filter(
-    (page): page is DataPageConfig => page.kind === "data" && page.sectionKey === "data-report",
+    (page): page is DataPageConfig =>
+      page.kind === "data" &&
+      (page.sectionKey === "data-report" || page.sectionKey === "load-profile"),
   );
 
   const activeTabPath =
     reportConfigs.find((config) => config.path === location.pathname)?.path ?? reportConfigs[0]?.path ?? "";
   const activeConfig = reportConfigs.find((config) => config.path === activeTabPath);
+  const minimalSiteConsumptionShell =
+    activeConfig?.reportDisplayMode === "analytics" &&
+    activeConfig.reportAnalyticsKey === "site-consumption";
+  const groupedReportConfigs = {
+    dataReports: reportConfigs.filter((config) => config.sectionKey === "data-report"),
+    loadProfiles: reportConfigs.filter((config) => config.sectionKey === "load-profile"),
+  };
 
   const { stats, chartData } = buildReportAnalytics(
     activeConfig,
@@ -52,38 +62,103 @@ export function ReportsPage() {
     downloadRowsAsCsv(activeConfig.title, activeConfig.columns, reportSnapshot.rows);
   };
 
+  const exportDisabled = reportSnapshot.rows.length === 0 || reportSnapshot.loading;
+
   return (
-    <div className="premium-dashboard">
-      <div className="reports-hero">
-        <div className="reports-hero-copy">
-          <h1 className="reports-title">Data Reports</h1>
-          <p className="reports-description">
-            Filters and search are available in the selected report table. This shell only switches
-            views and exports the current rows.
-          </p>
-        </div>
-        <button
-          className="button button-primary"
-          onClick={handleExport}
-          type="button"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-          </svg>
-          Export CSV
-        </button>
-      </div>
-
-      <ReportTabStrip activePath={activeTabPath} configs={reportConfigs} onChange={handleTabChange} />
-
-      <ReportControlPanel
-        onTrendModeChange={setTrendMode}
-        onViewModeChange={setViewMode}
-        stats={stats}
-        total={reportSnapshot.total}
-        trendMode={trendMode}
-        viewMode={viewMode}
+    <div className="premium-dashboard ds-page">
+      <PageHeader
+        actions={(
+          <Button disabled={exportDisabled} onClick={handleExport} tone="primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+            Export Current Result
+          </Button>
+        )}
+        className="reports-hero"
+        description={
+          minimalSiteConsumptionShell
+            ? "Open a report, set the few options you need, and export when the result looks right."
+            : "Pick a report, use the quick options inside it, and export the result when you are done."
+        }
+        eyebrow="Reporting workspace"
+        meta={
+          minimalSiteConsumptionShell ? (
+            <label className="reports-picker-field reports-picker-field--compact">
+              <span>Open report</span>
+              <select value={activeTabPath} onChange={(event) => handleTabChange(event.target.value)}>
+                <optgroup label="Data Reports">
+                  {groupedReportConfigs.dataReports.map((config) => (
+                    <option key={config.path} value={config.path}>
+                      {config.menuLabel}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Load Profile">
+                  {groupedReportConfigs.loadProfiles.map((config) => (
+                    <option key={config.path} value={config.path}>
+                      {config.menuLabel}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+          ) : null
+        }
+        title="Data Reports"
       />
+
+      {!minimalSiteConsumptionShell ? (
+        <>
+          <Surface className="premium-card reports-guide-card" tone="hero">
+            <div className="reports-guide-steps" aria-label="Simple report steps">
+              <span>1. Pick a report</span>
+              <span>2. Use a quick button or dropdown</span>
+              <span>3. Export the result if needed</span>
+            </div>
+            <div className="reports-picker-row">
+              <label className="reports-picker-field">
+                <span>Open report</span>
+                <select value={activeTabPath} onChange={(event) => handleTabChange(event.target.value)}>
+                  <optgroup label="Data Reports">
+                    {groupedReportConfigs.dataReports.map((config) => (
+                      <option key={config.path} value={config.path}>
+                        {config.menuLabel}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Load Profile">
+                    {groupedReportConfigs.loadProfiles.map((config) => (
+                      <option key={config.path} value={config.path}>
+                        {config.menuLabel}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </label>
+
+              {activeConfig ? (
+                <div className="reports-current-card">
+                  <strong>{activeConfig.menuLabel}</strong>
+                  <span>{activeConfig.description}</span>
+                </div>
+              ) : null}
+            </div>
+          </Surface>
+
+          <ReportTabStrip activePath={activeTabPath} configs={reportConfigs} onChange={handleTabChange} />
+
+          <ReportControlPanel
+            activeConfig={activeConfig}
+            onTrendModeChange={setTrendMode}
+            onViewModeChange={setViewMode}
+            stats={stats}
+            total={reportSnapshot.total}
+            trendMode={trendMode}
+            viewMode={viewMode}
+          />
+        </>
+      ) : null}
 
       <ReportContentPanel
         activeConfig={activeConfig}

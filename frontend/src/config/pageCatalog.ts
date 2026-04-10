@@ -13,8 +13,19 @@ const dashboardPage: AppPageConfig = {
   sectionKey: "dashboard",
 };
 
+const designSystemPage: AppPageConfig = {
+  kind: "profile",
+  path: "/design-system",
+  title: "Design System",
+  menuLabel: "Design System",
+  description: "Visual showcase for the shared Odyssey frontend primitives and tokens.",
+  sectionKey: "dashboard",
+  includeInNavigation: false,
+};
+
 const pages: AppPageConfig[] = [
   dashboardPage,
+  designSystemPage,
   ...tokenPages,
   ...remotePages,
   ...reportPages,

@@ -1,4 +1,5 @@
 import type { FilterField } from "../../types";
+import { Button } from "../../design-system";
 
 interface SearchBarProps {
   fields: FilterField[];
@@ -53,12 +54,12 @@ export function SearchBar({
         </div>
       ))}
       <div className="action-pill-group">
-        <button className="button button-primary search-pill-button" onClick={onSearch} type="button">
+        <Button className="search-pill-button" onClick={onSearch} pill tone="primary">
           Search
-        </button>
-        <button className="button button-ghost search-pill-button" onClick={onReset} type="button">
+        </Button>
+        <Button className="search-pill-button" onClick={onReset} pill tone="ghost">
           Reset
-        </button>
+        </Button>
       </div>
     </div>
   );

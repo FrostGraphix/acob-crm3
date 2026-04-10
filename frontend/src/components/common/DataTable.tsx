@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { Badge, Button, Surface } from "../../design-system";
+import { formatNaira, formatNumber, isCurrencyColumnKey } from "../../services/currency.ts";
 import type { ActionConfig, DataRow, TableColumn } from "../../types";
 
 interface DataTableProps {
@@ -16,9 +18,23 @@ interface DataTableProps {
   onPageChange: (pageNumber: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   getRowKey: (row: DataRow) => string;
+  onRowClick?: (row: DataRow) => void;
   columnFilters?: Record<string, string>;
   onColumnFilterChange?: (key: string, value: string) => void;
   onColumnSearch?: () => void;
+  selectionMode?: "multiple" | "single" | "none";
+}
+
+function getColumnLabelText(label: React.ReactNode, fallback: string) {
+  if (typeof label === "string" && label.trim().length > 0) {
+    return label;
+  }
+
+  if (typeof label === "number") {
+    return String(label);
+  }
+
+  return fallback;
 }
 
 function renderValue(value: DataRow[string], columnKey: string): React.ReactNode {
@@ -39,12 +55,12 @@ function renderValue(value: DataRow[string], columnKey: string): React.ReactNode
   const statusKeys = ["status", "relayStatus", "energyStatus", "magneticStatus", "terminalCover", "upperOpen", "currentReverse", "currentUnbalance"];
   if (statusKeys.includes(columnKey)) {
     const lower = stringValue.toLowerCase();
-    let type = "neutral";
-    if (lower.includes("success") || lower.includes("open") || lower.includes("on") || lower === "0") type = "success";
-    if (lower.includes("fail") || lower.includes("close") || lower.includes("off") || lower === "1") type = "danger";
-    if (lower.includes("pend") || lower.includes("wait")) type = "warning";
-    
-    return <span className={`badge badge-${type}`}>{stringValue}</span>;
+    let tone: "neutral" | "success" | "warning" | "danger" = "neutral";
+    if (lower.includes("success") || lower.includes("open") || lower.includes("on") || lower === "0") tone = "success";
+    if (lower.includes("fail") || lower.includes("close") || lower.includes("off") || lower === "1") tone = "danger";
+    if (lower.includes("pend") || lower.includes("wait")) tone = "warning";
+
+    return <Badge tone={tone}>{stringValue}</Badge>;
   }
 
   if (typeof value === "string" && value.trim().length === 0) {
@@ -52,11 +68,51 @@ function renderValue(value: DataRow[string], columnKey: string): React.ReactNode
   }
 
   if (typeof value === "number") {
-    // Format numbers with commas (e.g. 21,604,000 or 4,302.25)
-    return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+    if (isCurrencyColumnKey(columnKey)) {
+      return formatNaira(value);
+    }
+
+    return formatNumber(value);
   }
 
   return stringValue;
+}
+
+function getCellToneClass(columnKey: string) {
+  const numericAccentKeys = ["vatCharge", "totalUnit", "totalPrice", "tokenRecharge", "maximumPowerLimit", "maximumOverdraftLimit", "score"];
+  const timestampKeys = ["createTime", "updateTime", "updatedAt"];
+  const badgeKeys = ["stationId", "stationName", "site", "siteId"];
+  const monoAccentKeys = ["receiptId", "meterId", "customerId", "id"];
+
+  if (columnKey === "token") {
+    return "table-value table-value--token";
+  }
+
+  if (columnKey === "remark" || columnKey === "notes") {
+    return "table-value table-value--remark";
+  }
+
+  if (badgeKeys.includes(columnKey)) {
+    return "table-value table-value--badge";
+  }
+
+  if (timestampKeys.includes(columnKey)) {
+    return "table-value table-value--timestamp";
+  }
+
+  if (numericAccentKeys.includes(columnKey)) {
+    return "table-value table-value--accent";
+  }
+
+  if (monoAccentKeys.includes(columnKey)) {
+    return "table-value table-value--mono";
+  }
+
+  if (columnKey === "customerName") {
+    return "table-value table-value--strong";
+  }
+
+  return "table-value";
 }
 
 export function DataTable({
@@ -74,15 +130,19 @@ export function DataTable({
   onPageChange,
   onPageSizeChange,
   getRowKey,
+  onRowClick,
   columnFilters = {},
   onColumnFilterChange,
   onColumnSearch,
+  selectionMode = "multiple",
 }: DataTableProps) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const showSelection = selectionMode !== "none";
   const allVisibleSelected =
-    rows.length > 0 && rows.every((row) => selectedKeys.includes(getRowKey(row)));
+    showSelection && rows.length > 0 && rows.every((row) => selectedKeys.includes(getRowKey(row)));
   const rangeStart = total === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(total, pageNumber * pageSize);
+  const extraColumnCount = (showSelection ? 1 : 0) + (rowActions.length > 0 ? 1 : 0);
 
   // Generate pagination window
   const getPageNumbers = () => {
@@ -103,7 +163,7 @@ export function DataTable({
   };
 
   return (
-    <section className="table-panel table-panel-vercel">
+    <Surface className="table-panel table-panel-vercel ds-table-surface" tone="raised">
       <div className="table-panel-header">
         <div>
           <p className="table-panel-eyebrow">Data view</p>
@@ -115,12 +175,14 @@ export function DataTable({
           </div>
         </div>
         <div className="table-panel-status">
-          <span className="table-panel-chip">
-            {selectedKeys.length.toLocaleString()} selected
-          </span>
-          <span className="table-panel-chip">
+          {showSelection ? (
+            <Badge className="table-panel-chip">
+              {selectedKeys.length.toLocaleString()} selected
+            </Badge>
+          ) : null}
+          <Badge className="table-panel-chip">
             Page {pageNumber} of {pageCount}
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -128,11 +190,17 @@ export function DataTable({
         <table className="data-table">
           <thead>
             <tr>
-              <th className="table-select-column">
-                <input checked={allVisibleSelected} className="data-table-checkbox" onChange={onToggleAll} type="checkbox" />
-              </th>
+              {showSelection ? (
+                <th className="table-select-column">
+                  {selectionMode === "multiple" ? (
+                    <input checked={allVisibleSelected} className="data-table-checkbox" onChange={onToggleAll} type="checkbox" />
+                  ) : (
+                    <span className="table-select-placeholder">Target</span>
+                  )}
+                </th>
+              ) : null}
               {columns.map((column) => (
-                <th key={column.key}>
+                <th className={`cell-align-${column.align ?? "start"}`} key={column.key} scope="col">
                   <div className="table-header-cell">
                     <span className="table-header-label">{column.label}</span>
                     <span className="sort-indicator">
@@ -159,7 +227,7 @@ export function DataTable({
           <tbody>
             {loading ? (
               <tr>
-                <td className="table-empty" colSpan={columns.length + 2}>
+                <td className="table-empty" colSpan={columns.length + extraColumnCount}>
                   <div className="loading-pulse">
                     <div className="pulse-circle"></div>
                     <span>Loading rows</span>
@@ -168,7 +236,7 @@ export function DataTable({
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="table-empty" colSpan={columns.length + 2}>
+                <td className="table-empty" colSpan={columns.length + extraColumnCount}>
                   No records found.
                 </td>
               </tr>
@@ -178,34 +246,55 @@ export function DataTable({
                 const isSelected = selectedKeys.includes(rowKey);
 
                 return (
-                  <tr className={isSelected ? "selected" : ""} key={rowKey}>
-                    <td className="table-select-column">
-                      <input
-                        checked={isSelected}
-                        className="data-table-checkbox"
-                        onChange={() => onToggleRow(row)}
-                        type="checkbox"
-                      />
-                    </td>
+                  <tr
+                    className={`${isSelected ? "selected" : ""}${onRowClick ? " table-row-clickable" : ""}`}
+                    key={rowKey}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  >
+                    {showSelection ? (
+                      <td className="table-select-column" data-label={selectionMode === "single" ? "Target" : "Select"}>
+                        <input
+                          checked={isSelected}
+                          className="data-table-checkbox"
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => onToggleRow(row)}
+                          type={selectionMode === "single" ? "radio" : "checkbox"}
+                        />
+                      </td>
+                    ) : null}
                     {columns.map((column) => (
                       <td
                         className={`cell-align-${column.align ?? "start"}`}
+                        data-label={getColumnLabelText(column.label, column.key)}
+                        data-column-key={column.key}
                         key={`${rowKey}-${column.key}`}
                       >
-                        {renderValue(row[column.key], column.key)}
+                        <span className={getCellToneClass(column.key)}>
+                          {renderValue(row[column.key], column.key)}
+                        </span>
                       </td>
                     ))}
                     {rowActions.length > 0 ? (
-                      <td className="row-actions table-actions-column">
+                      <td className="row-actions table-actions-column" data-label="Actions">
                         {rowActions.map((action) => (
-                          <button
+                          <Button
                             className={`mini-button mini-button-${action.tone ?? "neutral"}`}
                             key={action.key}
-                            onClick={() => onRowAction(action, row)}
-                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onRowAction(action, row);
+                            }}
+                            size="sm"
+                            tone={
+                              action.tone === "primary"
+                                ? "primary"
+                                : action.tone === "danger"
+                                  ? "danger"
+                                  : "ghost"
+                            }
                           >
                             {action.label}
-                          </button>
+                          </Button>
                         ))}
                       </td>
                     ) : null}
@@ -240,46 +329,50 @@ export function DataTable({
           </label>
           
           <div className="pagination-controls">
-            <button
+            <Button
+              aria-label="Previous page"
               className="button-icon-only"
               disabled={pageNumber <= 1}
               onClick={() => onPageChange(pageNumber - 1)}
-              type="button"
-              aria-label="Previous page"
+              size="icon"
+              tone="ghost"
             >
               <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
-            </button>
+            </Button>
             
             <div className="pagination-numbers">
               {getPageNumbers().map((num) => (
-                <button
+                <Button
                   key={num}
-                  className={`pagination-number ${pageNumber === num ? 'active' : ''}`}
+                  className={`pagination-number ${pageNumber === num ? "active" : ""}`}
+                  active={pageNumber === num}
                   onClick={() => onPageChange(num)}
-                  type="button"
+                  size="sm"
+                  tone={pageNumber === num ? "primary" : "ghost"}
                 >
                   {num}
-                </button>
+                </Button>
               ))}
             </div>
 
-            <button
+            <Button
+              aria-label="Next page"
               className="button-icon-only"
               disabled={pageNumber >= pageCount}
               onClick={() => onPageChange(pageNumber + 1)}
-              type="button"
-              aria-label="Next page"
+              size="icon"
+              tone="ghost"
             >
               <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </section>
+    </Surface>
   );
 }
 
@@ -313,17 +406,18 @@ function ColumnFilter({
 
   return (
     <div className="table-filter-shell" ref={containerRef}>
-      <button
+      <Button
         className={`table-filter-trigger${active ? " is-active" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
+        size="icon"
         title="Filter column"
-        type="button"
+        tone={active ? "secondary" : "ghost"}
       >
         <svg fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
           <circle cx="11" cy="11" r="8" />
           <line x1="21" x2="16.65" y1="21" y2="16.65" />
         </svg>
-      </button>
+      </Button>
 
       {isOpen ? (
         <div className="table-filter-popover">
@@ -341,16 +435,15 @@ function ColumnFilter({
             type="text"
             value={value}
           />
-          <button
-            className="button button-primary"
+          <Button
             onClick={() => {
               setIsOpen(false);
               onSearch();
             }}
-            type="button"
+            tone="primary"
           >
             Apply
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

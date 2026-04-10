@@ -69,23 +69,49 @@ function isCookieHeaderValue(authToken: string) {
   return authToken.includes("=");
 }
 
+function buildAuthHeaders(authToken: string | undefined) {
+  const headers: Record<string, string> = {};
+
+  if (!authToken) {
+    return headers;
+  }
+
+  if (isCookieHeaderValue(authToken)) {
+    headers.Cookie = authToken;
+  } else {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  return headers;
+}
+
 export async function forwardToUpstream(
   pathname: string,
   body: Record<string, unknown>,
   authToken: string | undefined,
   options: { timeoutMs?: number } = {},
 ): Promise<UpstreamResult> {
-  const headers: Record<string, string> = {};
-  if (authToken) {
-    if (isCookieHeaderValue(authToken)) {
-      headers.Cookie = authToken;
-    } else {
-      headers.Authorization = `Bearer ${authToken}`;
-    }
-  }
-
   const response = await upstreamClient.post(pathname, body, {
-    headers,
+    headers: buildAuthHeaders(authToken),
+    timeout: options.timeoutMs,
+    validateStatus: () => true,
+  });
+
+  return {
+    statusCode: response.status,
+    payload: normalizePayload(response),
+  };
+}
+
+export async function forwardToUpstreamGet(
+  pathname: string,
+  params: Record<string, unknown>,
+  authToken: string | undefined,
+  options: { timeoutMs?: number } = {},
+): Promise<UpstreamResult> {
+  const response = await upstreamClient.get(pathname, {
+    headers: buildAuthHeaders(authToken),
+    params,
     timeout: options.timeoutMs,
     validateStatus: () => true,
   });
@@ -128,7 +154,7 @@ export async function loginToUpstream(
   return {
     statusCode: response.status,
     payload,
-    upstreamCookie: tokenFromBody ?? cookieFromHeader,
+    upstreamCookie: cookieFromHeader ?? tokenFromBody,
   };
 }
 

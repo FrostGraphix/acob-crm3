@@ -1,4 +1,5 @@
 import type { DataPageConfig } from "../../types";
+import { Button } from "../../design-system";
 
 interface ReportTabStripProps {
   configs: DataPageConfig[];
@@ -10,14 +11,17 @@ export function ReportTabStrip({ configs, activePath, onChange }: ReportTabStrip
   return (
     <div className="reports-tab-strip no-scrollbar">
       {configs.map((config) => (
-        <button
+        <Button
+          active={activePath === config.path}
           key={config.path}
-          className={`button ${activePath === config.path ? "button-primary" : "button-ghost"}`}
+          className="button"
           onClick={() => onChange(config.path)}
-          type="button"
+          pill
+          tone={activePath === config.path ? "primary" : "ghost"}
+          title={config.description}
         >
           {config.menuLabel}
-        </button>
+        </Button>
       ))}
     </div>
   );

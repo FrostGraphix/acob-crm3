@@ -147,6 +147,39 @@ export function buildReportAnalytics(
     return { stats: [], chartData: null };
   }
 
+  if (
+    page.reportDisplayMode === "analytics" &&
+    page.reportAnalyticsKey === "consumption-statistics"
+  ) {
+    const metric = appliedFilters.metric === "totalEnergy" ? "totalEnergy" : "consumption";
+    const metricLabel = metric === "totalEnergy" ? "Total Energy" : "Total Consumption";
+    const metricKeys = metric === "totalEnergy" ? ["totalEnergy", "consumption"] : ["consumption", "totalEnergy"];
+    const distinctMeters = new Set(
+      rows
+        .map((row) => String(row.meterId ?? "").trim())
+        .filter((value) => value.length > 0),
+    ).size;
+
+    return {
+      stats: [
+        { label: "Filtered Rows", value: String(total), accent: "blue" },
+        { label: metricLabel, value: toFixedValue(sumNumbers(rows, metricKeys)), accent: "teal" },
+        { label: "Distinct Meters", value: String(distinctMeters), accent: "green" },
+      ],
+      chartData: null,
+    };
+  }
+
+  if (page.reportDisplayMode === "analytics") {
+    return {
+      stats: [
+        { label: "Filtered Rows", value: String(total), accent: "blue" },
+        { label: "Report Mode", value: "Analytics", accent: "teal" },
+      ],
+      chartData: null,
+    };
+  }
+
   if (page.path === "/data-report/interval-data") {
     return {
       stats: [
@@ -205,6 +238,60 @@ export function buildReportAnalytics(
         { label: "Max Days", value: String(maxDays), accent: "blue" },
       ],
       chartData: groupSeries(rows, ["customerName", "meterId"], "daysWithoutPurchase"),
+    };
+  }
+
+  if (page.path === "/data-report/theft-signals") {
+    return {
+      stats: [
+        { label: "Active Signals", value: String(total), accent: "orange" },
+        { label: "Critical", value: String(rows.filter((row) => String(row.severity ?? "").toLowerCase() === "critical").length), accent: "blue" },
+        { label: "Avg Score", value: toFixedValue(averageNumbers(rows, "score")), accent: "teal" },
+      ],
+      chartData: groupSeries(rows, ["meterId", "customerName"], "score", {
+        limit: 12,
+        chartType: "bar",
+        seriesName: "Risk Score",
+      }),
+    };
+  }
+
+  if (page.path === "/data-report/theft-cases") {
+    return {
+      stats: [
+        { label: "Open Cases", value: String(rows.filter((row) => !["closed", "false-positive", "confirmed-theft"].includes(String(row.status ?? ""))).length), accent: "orange" },
+        { label: "Confirmed", value: String(rows.filter((row) => String(row.status ?? "") === "confirmed-theft").length), accent: "blue" },
+        { label: "Avg Score", value: toFixedValue(averageNumbers(rows, "score")), accent: "green" },
+      ],
+      chartData: groupSeries(rows, ["meterId", "customerName"], "score", {
+        limit: 12,
+        chartType: "bar",
+        seriesName: "Case Score",
+      }),
+    };
+  }
+
+  if (
+    page.path === "/load-profile/electric-energy" ||
+    page.path === "/load-profile/instantaneous-value" ||
+    page.path === "/load-profile/daily-data" ||
+    page.path === "/load-profile/monthly-data"
+  ) {
+    const metricLabel =
+      page.path === "/load-profile/instantaneous-value" ? "Instant Value" : "Energy";
+
+    return {
+      stats: [
+        { label: "Total Records", value: String(total), accent: "blue" },
+        { label: `Avg ${metricLabel}`, value: toFixedValue(averageNumbers(rows, "value")), accent: "teal" },
+        { label: "Distinct Meters", value: String(new Set(rows.map((row) => String(row.meterId ?? ""))).size), accent: "green" },
+      ],
+      chartData: groupSeries(rows, ["collectionDate", "meterId"], "value", {
+        limit: 14,
+        dateMode: trendMode,
+        chartType: "line",
+        seriesName: metricLabel,
+      }),
     };
   }
 

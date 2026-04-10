@@ -1,110 +1,158 @@
 {
   "snapshot": {
-    "generatedAt": "2026-03-31T17:43:08.167Z",
+    "generatedAt": "2026-04-10T09:03:01.828Z",
     "sourceWindow": {
-      "fromDate": "2025-01-01",
-      "toDate": "2026-03-31"
+      "fromDate": "2026-04-08",
+      "toDate": "2026-04-10"
     },
     "summary": [
       {
         "site": "Musha",
-        "totalConsumption": 0
+        "totalConsumption": 11848.37
       },
       {
         "site": "Ogufa",
-        "totalConsumption": 0
+        "totalConsumption": 12123.879999999996
       },
       {
         "site": "Umaisha",
-        "totalConsumption": 0
+        "totalConsumption": 55946.80000000004
       },
       {
         "site": "Tunga",
-        "totalConsumption": 0
+        "totalConsumption": 57935.86999999994
       },
       {
         "site": "Kyakale",
-        "totalConsumption": 0
+        "totalConsumption": 8877.839999999995
       }
     ],
     "daily": {
-      "labels": [],
+      "labels": [
+        "2026-04-08",
+        "2026-04-09",
+        "2026-04-10"
+      ],
       "series": [
         {
           "site": "Musha",
-          "values": []
+          "values": [
+            3923.9600000000014,
+            3969.570000000001,
+            3954.8400000000006
+          ]
         },
         {
           "site": "Ogufa",
-          "values": []
+          "values": [
+            4682.170000000003,
+            3716.44,
+            3725.269999999999
+          ]
         },
         {
           "site": "Umaisha",
-          "values": []
+          "values": [
+            18521.43000000002,
+            18736.699999999997,
+            18688.67000000003
+          ]
         },
         {
           "site": "Tunga",
-          "values": []
+          "values": [
+            19355.92,
+            19446.589999999997,
+            19133.360000000008
+          ]
         },
         {
           "site": "Kyakale",
-          "values": []
+          "values": [
+            2930.1699999999987,
+            2965.829999999999,
+            2981.8399999999974
+          ]
         }
       ]
     },
     "monthly": {
-      "labels": [],
+      "labels": [
+        "2026-04"
+      ],
       "series": [
         {
           "site": "Musha",
-          "values": []
+          "values": [
+            11848.37
+          ]
         },
         {
           "site": "Ogufa",
-          "values": []
+          "values": [
+            12123.879999999996
+          ]
         },
         {
           "site": "Umaisha",
-          "values": []
+          "values": [
+            55946.80000000004
+          ]
         },
         {
           "site": "Tunga",
-          "values": []
+          "values": [
+            57935.86999999994
+          ]
         },
         {
           "site": "Kyakale",
-          "values": []
+          "values": [
+            8877.839999999995
+          ]
         }
       ]
     },
     "yearly": {
-      "labels": [],
+      "labels": [
+        "2026"
+      ],
       "series": [
         {
           "site": "Musha",
-          "values": []
+          "values": [
+            11848.37
+          ]
         },
         {
           "site": "Ogufa",
-          "values": []
+          "values": [
+            12123.879999999996
+          ]
         },
         {
           "site": "Umaisha",
-          "values": []
+          "values": [
+            55946.80000000004
+          ]
         },
         {
           "site": "Tunga",
-          "values": []
+          "values": [
+            57935.86999999994
+          ]
         },
         {
           "site": "Kyakale",
-          "values": []
+          "values": [
+            8877.839999999995
+          ]
         }
       ]
     }
   },
-  "lastUpdatedAt": "2026-03-31T17:43:08.167Z",
-  "lastAttemptAt": "2026-04-05T21:07:59.027Z",
-  "lastError": "timeout of 30000ms exceeded",
+  "lastUpdatedAt": "2026-04-10T09:03:01.828Z",
+  "lastAttemptAt": "2026-04-10T09:03:01.828Z",
+  "lastError": null,
   "refreshing": false
 }

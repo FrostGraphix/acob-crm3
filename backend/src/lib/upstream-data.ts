@@ -47,10 +47,18 @@ export function extractRows(result: unknown): ReportRow[] {
   const page = asRecord(root.page);
 
   return firstAvailableRows([
+    root.payments,
+    root.readings,
+    root.events,
+    root.items,
     root.rows,
     root.list,
     root.data,
     root.records,
+    page.payments,
+    page.readings,
+    page.events,
+    page.items,
     page.rows,
     page.list,
     page.data,

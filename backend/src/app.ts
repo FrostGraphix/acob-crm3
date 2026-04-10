@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -17,17 +18,20 @@ import { gatewayRouter } from "./api/gateway.js";
 import { itemRouter } from "./api/item.js";
 import { loadProfileRouter } from "./api/load-profile.js";
 import { logRouter } from "./api/log.js";
+import { managementAnalyticsRouter } from "./api/management-analytics.js";
 import { meterRouter } from "./api/meter.js";
 import { proxyHandler } from "./api/proxy.js";
 import { siteConsumptionRouter } from "./api/site-consumption.js";
 import { remoteRouter } from "./api/remote.js";
 import { reportRouter } from "./api/report.js";
 import { runtimeRouter } from "./api/runtime.js";
+import { restAliasesRouter } from "./api/rest-aliases.js";
 import { tariffRouter } from "./api/tariff.js";
 import { tokenRouter } from "./api/token.js";
 import { userRouter } from "./api/user.js";
 import { notificationRouter } from "./api/notification.js";
 import { requireAuth } from "./middleware/auth.js";
+import { requireRouteAccess } from "./middleware/authorization.js";
 import { requireCsrf } from "./middleware/csrf.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { metricsMiddleware } from "./middleware/metrics.js";
@@ -38,6 +42,7 @@ import { readRuntimeDiagnostics } from "./services/runtime-diagnostics.js";
 import { checkRuntimeStateStoreHealth } from "./services/runtime-state-store.js";
 import { checkSessionStoreHealth } from "./services/session-store.js";
 import { checkUpstreamHealth } from "./services/upstream.js";
+import { theftRouter } from "./api/theft.js";
 
 export function createApp() {
   const app = express();
@@ -53,6 +58,10 @@ export function createApp() {
   }
   app.use(cookieParser());
   app.use(express.json({ limit: "1mb" }));
+  app.use((_request, response, next) => {
+    response.locals.traceId = randomUUID();
+    next();
+  });
   app.use(metricsMiddleware);
   app.use(rateLimitMiddleware);
 
@@ -97,35 +106,44 @@ export function createApp() {
   app.use("/api/user", requireAuth, requireCsrf, userRouter);
 
   // --- Core domain routers ---
-  app.use("/api/dashboard", requireAuth, requireCsrf, dashboardRouter);
-  app.use("/api/account", requireAuth, requireCsrf, accountRouter);
-  app.use("/api/customer", requireAuth, requireCsrf, customerRouter);
-  app.use("/api/tariff", requireAuth, requireCsrf, tariffRouter);
-  app.use("/api/gateway", requireAuth, requireCsrf, gatewayRouter);
-  app.use("/api/meter", requireAuth, requireCsrf, meterRouter);
-  app.use("/api/token", requireAuth, requireCsrf, tokenRouter);
-  app.use("/api/DailyDataMeter", requireAuth, requireCsrf, dailyDataMeterRouter);
-  app.use("/api/site-consumption", requireAuth, requireCsrf, siteConsumptionRouter);
+  app.use("/api", requireAuth, requireCsrf, requireRouteAccess, restAliasesRouter);
+  app.use("/api/dashboard", requireAuth, requireCsrf, requireRouteAccess, dashboardRouter);
+  app.use("/api/account", requireAuth, requireCsrf, requireRouteAccess, accountRouter);
+  app.use("/api/customer", requireAuth, requireCsrf, requireRouteAccess, customerRouter);
+  app.use("/api/tariff", requireAuth, requireCsrf, requireRouteAccess, tariffRouter);
+  app.use("/api/gateway", requireAuth, requireCsrf, requireRouteAccess, gatewayRouter);
+  app.use("/api/meter", requireAuth, requireCsrf, requireRouteAccess, meterRouter);
+  app.use("/api/token", requireAuth, requireCsrf, requireRouteAccess, tokenRouter);
+  app.use("/api/DailyDataMeter", requireAuth, requireCsrf, requireRouteAccess, dailyDataMeterRouter);
+  app.use(
+    "/api/management/analytics",
+    requireAuth,
+    requireCsrf,
+    requireRouteAccess,
+    managementAnalyticsRouter,
+  );
+  app.use("/api/site-consumption", requireAuth, requireCsrf, requireRouteAccess, siteConsumptionRouter);
 
   // --- New domain routers ---
-  app.use("/api/debt", requireAuth, requireCsrf, debtRouter);
-  app.use("/api/dlms", requireAuth, requireCsrf, dlmsRouter);
-  app.use("/api/dlt645", requireAuth, requireCsrf, dlt645Router);
-  app.use("/api/DLT645Task", requireAuth, requireCsrf, dlt645TaskRouter);
-  app.use("/api/item", requireAuth, requireCsrf, itemRouter);
-  app.use("/api/Log", requireAuth, requireCsrf, logRouter);
-  app.use("/API/LoadProfile", requireAuth, requireCsrf, loadProfileRouter);
-  app.use("/API/EventNotification", requireAuth, requireCsrf, eventNotificationRouter);
-  app.use("/API/File", requireAuth, requireCsrf, fileUploadRouter);
+  app.use("/api/debt", requireAuth, requireCsrf, requireRouteAccess, debtRouter);
+  app.use("/api/dlms", requireAuth, requireCsrf, requireRouteAccess, dlmsRouter);
+  app.use("/api/dlt645", requireAuth, requireCsrf, requireRouteAccess, dlt645Router);
+  app.use("/api/DLT645Task", requireAuth, requireCsrf, requireRouteAccess, dlt645TaskRouter);
+  app.use("/api/item", requireAuth, requireCsrf, requireRouteAccess, itemRouter);
+  app.use("/api/Log", requireAuth, requireCsrf, requireRouteAccess, logRouter);
+  app.use("/API/LoadProfile", requireAuth, requireCsrf, requireRouteAccess, loadProfileRouter);
+  app.use("/API/EventNotification", requireAuth, requireCsrf, requireRouteAccess, eventNotificationRouter);
+  app.use("/API/File", requireAuth, requireCsrf, requireRouteAccess, fileUploadRouter);
 
   // --- Remote & Reports ---
-  app.use("/API/RemoteMeterTask", requireAuth, requireCsrf, remoteRouter);
-  app.use("/API/PrepayReport", requireAuth, requireCsrf, reportRouter);
-  app.use("/api/notifications", requireAuth, requireCsrf, notificationRouter);
-  app.use("/api/runtime", requireAuth, requireCsrf, runtimeRouter);
+  app.use("/API/RemoteMeterTask", requireAuth, requireCsrf, requireRouteAccess, remoteRouter);
+  app.use("/API/PrepayReport", requireAuth, requireCsrf, requireRouteAccess, reportRouter);
+  app.use("/api/notifications", requireAuth, requireCsrf, requireRouteAccess, notificationRouter);
+  app.use("/api/runtime", requireAuth, requireCsrf, requireRouteAccess, runtimeRouter);
+  app.use("/api/theft", requireAuth, requireCsrf, requireRouteAccess, theftRouter);
 
   // Endpoint registry still protects this route from unknown paths.
-  app.post(/^\/(?:api|API)\//, requireAuth, requireCsrf, proxyHandler);
+  app.post(/^\/(?:api|API)\//, requireAuth, requireCsrf, requireRouteAccess, proxyHandler);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

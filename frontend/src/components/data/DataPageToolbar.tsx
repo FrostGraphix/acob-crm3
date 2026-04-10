@@ -1,4 +1,5 @@
 import type { ActionConfig, DataPageConfig } from "../../types";
+import { Badge, Button, Surface } from "../../design-system";
 import { SearchBar } from "../common/SearchBar";
 
 interface DataPageToolbarProps {
@@ -11,6 +12,13 @@ interface DataPageToolbarProps {
   onSearch: () => void;
   onToolbarAction: (action: ActionConfig) => void;
   onBulkAction: (action: ActionConfig) => void;
+  onRefresh: () => void;
+  live?: {
+    enabled: boolean;
+    paused: boolean;
+    setPaused: (paused: boolean) => void;
+    lastUpdatedAt: number | null;
+  };
 }
 
 export function DataPageToolbar({
@@ -23,10 +31,15 @@ export function DataPageToolbar({
   onSearch,
   onToolbarAction,
   onBulkAction,
+  onRefresh,
+  live,
 }: DataPageToolbarProps) {
+  const lastUpdatedLabel =
+    live?.lastUpdatedAt != null ? new Date(live.lastUpdatedAt).toLocaleString() : "Not yet";
+
   return (
-    <div className="data-view-header">
-      <div className="data-page-toolbar-row">
+    <Surface className="data-view-header ds-toolbar" tone="raised">
+      <div className="data-page-toolbar-row ds-toolbar__row">
         <SearchBar
           fields={page.filters}
           onChange={onFilterChange}
@@ -35,29 +48,46 @@ export function DataPageToolbar({
           values={draftFilters}
         />
 
-        <div className="action-strip data-page-action-strip">
+        <div className="action-strip data-page-action-strip ds-toolbar__actions">
           {(page.toolbarActions ?? []).map((action) => (
-            <button
-              className={`button ${action.tone === "primary" ? "button-primary" : "button-ghost"}`}
+            <Button
               key={action.key}
               onClick={() => onToolbarAction(action)}
-              type="button"
+              tone={action.tone === "primary" ? "primary" : "ghost"}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
           {(page.bulkActions ?? []).map((action) => (
-            <button
-              className={`button ${action.tone === "danger" ? "button-danger" : "button-ghost"}`}
+            <Button
               key={action.key}
               onClick={() => onBulkAction(action)}
-              type="button"
+              tone={action.tone === "danger" ? "danger" : "ghost"}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
+          <Button onClick={onRefresh} tone="ghost">
+            Refresh
+          </Button>
+          {live?.enabled ? (
+            <Button
+              active={!live.paused}
+              onClick={() => live.setPaused(!live.paused)}
+              tone="ghost"
+            >
+              {live.paused ? "Resume Live" : "Pause Live"}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {live?.enabled ? (
+        <div className="data-page-live-meta">
+          <Badge tone={live.paused ? "warning" : "success"}>Live: {live.paused ? "Paused" : "Running"}</Badge>
+          <Badge>Last updated: {lastUpdatedLabel}</Badge>
+        </div>
+      ) : null}
 
       {page.showQuota ? (
         <div className="data-page-quota data-page-quota-muted">
@@ -65,8 +95,8 @@ export function DataPageToolbar({
         </div>
       ) : null}
 
-      {feedback ? <p className="status-banner">{feedback}</p> : null}
-      {error ? <p className="status-banner status-banner-error">{error}</p> : null}
-    </div>
+      {feedback ? <p className="status-banner ds-status-message">{feedback}</p> : null}
+      {error ? <p className="status-banner status-banner-error ds-status-message ds-status-message--danger">{error}</p> : null}
+    </Surface>
   );
 }

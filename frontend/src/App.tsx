@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
@@ -16,36 +16,42 @@ import {
   syncOpenedTabsWithUserAccess,
 } from "./services/app-shell-state";
 import { LoginPage } from "./pages/LoginPage";
+import { loadLazyPage } from "./services/lazy-page";
 import type { AppPageConfig } from "./types";
 
-const DashboardPage = lazy(async () => {
-  const module = await import("./pages/DashboardPage");
-  return { default: module.DashboardPage };
-});
+const DashboardPage = lazy(() =>
+  loadLazyPage("DashboardPage", () => import("./pages/DashboardPage"), "DashboardPage"),
+);
+const ManagementAnalyticsPage = lazy(() =>
+  loadLazyPage(
+    "ManagementAnalyticsPage",
+    () => import("./pages/ManagementAnalyticsPage"),
+    "ManagementAnalyticsPage",
+  ),
+);
 
-const DataPage = lazy(async () => {
-  const module = await import("./pages/DataPage");
-  return { default: module.DataPage };
-});
+const DataPage = lazy(() => loadLazyPage("DataPage", () => import("./pages/DataPage"), "DataPage"));
+const RemoteOperationPage = lazy(() =>
+  loadLazyPage(
+    "RemoteOperationPage",
+    () => import("./pages/RemoteOperationPage"),
+    "RemoteOperationPage",
+  ),
+);
 
-const ReportsPage = lazy(async () => {
-  const module = await import("./pages/ReportsPage");
-  return { default: module.ReportsPage };
-});
+const ReportsPage = lazy(() =>
+  loadLazyPage("ReportsPage", () => import("./pages/ReportsPage"), "ReportsPage"),
+);
+const DesignSystemPage = lazy(() =>
+  loadLazyPage("DesignSystemPage", () => import("./pages/DesignSystemPage"), "DesignSystemPage"),
+);
 
-const SiteConsumptionPage = lazy(async () => {
-  const module = await import("./pages/SiteConsumptionPage");
-  return { default: module.SiteConsumptionPage };
-});
-
-const ProfilePage = lazy(async () => {
-  const module = await import("./pages/ProfilePage");
-  return { default: module.ProfilePage };
-});
-const RuntimeAdminPage = lazy(async () => {
-  const module = await import("./pages/RuntimeAdminPage");
-  return { default: module.RuntimeAdminPage };
-});
+const ProfilePage = lazy(() =>
+  loadLazyPage("ProfilePage", () => import("./pages/ProfilePage"), "ProfilePage"),
+);
+const RuntimeAdminPage = lazy(() =>
+  loadLazyPage("RuntimeAdminPage", () => import("./pages/RuntimeAdminPage"), "RuntimeAdminPage"),
+);
 
 function LoadingFallback() {
   return (
@@ -59,11 +65,20 @@ function renderPage(page: AppPageConfig) {
   return (
     <ErrorBoundary fallbackTitle={`Error loading ${page.title}`}>
       <Suspense fallback={<LoadingFallback />}>
-        {page.kind === "dashboard" ? <DashboardPage /> : null}
-        {page.kind === "data" && page.sectionKey === "data-report" ? <ReportsPage /> : null}
-        {page.kind === "data" && page.sectionKey !== "data-report" ? <DataPage page={page} /> : null}
-        {page.kind === "site-consumption" ? <SiteConsumptionPage /> : null}
-        {page.kind === "profile" ? <ProfilePage /> : null}
+        {page.path === "/management/analytics" ? <ManagementAnalyticsPage /> : null}
+        {page.path === "/design-system" ? <DesignSystemPage /> : null}
+        {page.kind === "dashboard" && page.path !== "/management/analytics" ? <DashboardPage /> : null}
+        {page.kind === "data" && (page.sectionKey === "data-report" || page.sectionKey === "load-profile") ? (
+          <ReportsPage />
+        ) : null}
+        {page.kind === "data" && page.sectionKey === "remote-operation" ? <RemoteOperationPage page={page} /> : null}
+        {page.kind === "data" &&
+        page.sectionKey !== "data-report" &&
+        page.sectionKey !== "load-profile" &&
+        page.sectionKey !== "remote-operation" ? (
+          <DataPage page={page} />
+        ) : null}
+        {page.kind === "profile" && page.path !== "/design-system" ? <ProfilePage /> : null}
         {page.kind === "runtime-admin" ? <RuntimeAdminPage /> : null}
       </Suspense>
     </ErrorBoundary>
@@ -75,6 +90,8 @@ function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
     <Routes>
       <Route path="/" element={<Navigate replace to={defaultPath} />} />
       <Route path="/login" element={<Navigate replace to={defaultPath} />} />
+      <Route path="/management" element={<Navigate replace to="/management/analytics" />} />
+      <Route path="/site-consumption" element={<Navigate replace to="/data-report/site-consumption" />} />
       {pages.map((page) => (
         <Route key={page.path} path={page.path} element={renderPage(page)} />
       ))}
@@ -83,19 +100,44 @@ function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
   );
 }
 
+function sameTabPaths(left: AppPageConfig[], right: AppPageConfig[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index]?.path !== right[index]?.path) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
-  const accessiblePages = filterPagesForUser(allPages, user);
-  const fallbackPage = accessiblePages.find((page) => page.path === defaultPath) ?? accessiblePages[0] ?? allPages[0];
-  const currentPage = resolveAccessiblePage(pathname, pagesByPath, fallbackPage, user);
-  const accessibleSections = filterNavigationSectionsForUser(navigationSections, user);
+  const accessiblePages = useMemo(() => filterPagesForUser(allPages, user), [user]);
+  const fallbackPage = useMemo(
+    () => accessiblePages.find((page) => page.path === defaultPath) ?? accessiblePages[0] ?? allPages[0],
+    [accessiblePages],
+  );
+  const currentPage = useMemo(
+    () => resolveAccessiblePage(pathname, pagesByPath, fallbackPage, user),
+    [pathname, fallbackPage, user],
+  );
+  const accessibleSections = useMemo(
+    () => filterNavigationSectionsForUser(navigationSections, user),
+    [user],
+  );
 
   const [openedTabs, setOpenedTabs] = useState<AppPageConfig[]>([pagesByPath[defaultPath]]);
-  const visibleTabs =
-    pathname === "/login" ? openedTabs : ensureCurrentTabVisible(openedTabs, currentPage);
+  const visibleTabs = useMemo(
+    () => (pathname === "/login" ? openedTabs : ensureCurrentTabVisible(openedTabs, currentPage)),
+    [pathname, openedTabs, currentPage],
+  );
 
   useEffect(() => {
     if (loading) return;
@@ -122,10 +164,13 @@ function AppContent() {
     if (page) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenedTabs((prev: AppPageConfig[]) => {
-        if (!prev.find((t: AppPageConfig) => t.path === page.path)) {
-          return [...prev, page];
+        const nextTabs = prev.find((t: AppPageConfig) => t.path === page.path)
+          ? prev
+          : [...prev, page];
+        if (sameTabPaths(prev, nextTabs)) {
+          return prev;
         }
-        return prev;
+        return nextTabs;
       });
     }
   }, [accessiblePages, pathname, loading, user]);
@@ -135,7 +180,13 @@ function AppContent() {
       return;
     }
 
-    setOpenedTabs((prev) => syncOpenedTabsWithUserAccess(prev, accessiblePages, fallbackPage));
+    setOpenedTabs((prev) => {
+      const nextTabs = syncOpenedTabsWithUserAccess(prev, accessiblePages, fallbackPage);
+      if (sameTabPaths(prev, nextTabs)) {
+        return prev;
+      }
+      return nextTabs;
+    });
   }, [accessiblePages, fallbackPage, user]);
 
   const handleCloseTab = (path: string) => {

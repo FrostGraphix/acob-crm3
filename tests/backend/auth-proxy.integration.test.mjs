@@ -10,6 +10,7 @@ let baseUrl;
 
 const upstreamState = {
   forceLoginFailure: false,
+  includeLoginBodyToken: false,
   userProfile: {
     username: "admin",
     displayName: "ACOB Admin",
@@ -122,10 +123,14 @@ test.before(async () => {
         return;
       }
 
+      const loginResult = upstreamState.includeLoginBodyToken
+        ? { ...upstreamState.userProfile, token: "legacy-body-token" }
+        : upstreamState.userProfile;
+
       sendUpstreamEnvelope(
         response,
         200,
-        upstreamState.userProfile,
+        loginResult,
         "OK",
         {
           "Set-Cookie": "JSESSIONID=upstream-session; Path=/; HttpOnly",
@@ -176,12 +181,23 @@ test.before(async () => {
     if (
       pathname === "/API/PrepayReport/LowPurchaseSituation" ||
       pathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
+      pathname === "/API/LoadProfile/DailyData" ||
+      pathname === "/API/LoadProfile/MonthlyData" ||
+      pathname === "/API/EventNotification/Read" ||
       pathname === "/api/DailyDataMeter/read" ||
-      pathname === "/API/RemoteMeterTask/GetReadingTask"
+      pathname === "/api/DailyDataMeter/readHourly" ||
+      pathname === "/DailyDataMeter/readHourly" ||
+      pathname === "/api/DailyDataMeter/readMonthly" ||
+      pathname === "/API/RemoteMeterTask/GetReadingTask" ||
+      pathname === "/api/item/readItemList"
     ) {
       upstreamState.lastRequestBodies[pathname] = body;
 
-      if (typeof body.Lang !== "string" || body.Lang.length === 0) {
+      if (
+        pathname !== "/api/item/readItemList" &&
+        pathname !== "/API/EventNotification/Read" &&
+        (typeof body.Lang !== "string" || body.Lang.length === 0)
+      ) {
         response.writeHead(400, {
           "Content-Type": "application/json",
         });
@@ -195,6 +211,87 @@ test.before(async () => {
             },
           }),
         );
+        return;
+      }
+
+      if (
+        pathname === "/API/LoadProfile/DailyData" ||
+        pathname === "/API/LoadProfile/MonthlyData"
+      ) {
+        sendUpstreamEnvelope(response, 403, null, "Forbidden");
+        return;
+      }
+
+      if (pathname === "/api/item/readItemList") {
+        response.writeHead(200, {
+          "Content-Type": "application/json",
+          "X-Item-Aliases-Present": JSON.stringify({
+            page: typeof body.page === "number",
+            limit: typeof body.limit === "number",
+            keyword: typeof body.keyword === "string",
+            searchWord: typeof body.searchWord === "string",
+            itemName: typeof body.itemName === "string",
+          }),
+        });
+        response.end(
+          JSON.stringify({
+            code: 99,
+            reason: "Object reference not set to an instance of an object.",
+            result: null,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/api/DailyDataMeter/readMonthly") {
+        sendUpstreamEnvelope(response, 200, {
+          rows: [
+            {
+              meterId: "M-001",
+              customerName: "Report Customer",
+              collectionDate: "2026-03-31",
+              value: 123,
+              unit: "kWh",
+              status: "ok",
+            },
+          ],
+          total: 1,
+        });
+        return;
+      }
+
+      if (
+        pathname === "/api/DailyDataMeter/readHourly" ||
+        pathname === "/DailyDataMeter/readHourly"
+      ) {
+        sendUpstreamEnvelope(response, 200, {
+          rows: [
+            {
+              meterId: "M-001",
+              customerName: "Hourly Customer",
+              collectionDate: "2026-03-31 10:00",
+              value: 42,
+              unit: "kWh",
+              status: "ok",
+            },
+          ],
+          total: 1,
+        });
+        return;
+      }
+
+      if (pathname === "/API/EventNotification/Read") {
+        sendUpstreamEnvelope(response, 200, {
+          rows: [
+            {
+              id: "EV-001",
+              eventType: "Voltage alarm",
+              customerName: "Alert Customer",
+              status: "unread",
+            },
+          ],
+          total: 1,
+        });
         return;
       }
 
@@ -423,6 +520,7 @@ test("legacy login falls back to configured local credentials when upstream auth
 
 test.beforeEach(() => {
   upstreamState.forceLoginFailure = false;
+  upstreamState.includeLoginBodyToken = false;
   upstreamState.userProfile = {
     username: "admin",
     displayName: "ACOB Admin",
@@ -432,6 +530,34 @@ test.beforeEach(() => {
   upstreamState.lastRequestBodies = {};
   upstreamState.customers = createCustomers();
 });
+
+async function loginAndCreateSession() {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+
+  assert.equal(loginResponse.status, 200);
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+
+  return {
+    csrfToken,
+    cookieHeader: buildCookieHeader(sessionCookie, csrfCookie),
+  };
+}
 
 test("legacy proxy requests recover a stale upstream session when service credentials are configured", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
@@ -482,6 +608,52 @@ test("legacy proxy requests recover a stale upstream session when service creden
 
   const refreshedSession = await getSession(decoded.sessionId);
   assert.equal(refreshedSession?.upstreamCookie, "JSESSIONID=upstream-session");
+});
+
+test("upstream login prefers cookie session when body token is also present", async () => {
+  upstreamState.includeLoginBodyToken = true;
+
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+
+  assert.equal(loginResponse.status, 200);
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+
+  const token = sessionCookie.split("=")[1];
+  const decoded = decodeJwtPayload(token);
+  const { getSession } = await import(
+    "../../backend/dist/backend/src/services/session-store.js"
+  );
+
+  const readResponse = await fetch(`${baseUrl}/api/customer/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: buildCookieHeader(sessionCookie, csrfCookie),
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 10 }),
+  });
+
+  assert.equal(readResponse.status, 200);
+
+  const persistedSession = await getSession(decoded.sessionId);
+  assert.equal(persistedSession?.upstreamCookie, "JSESSIONID=upstream-session");
 });
 
 test("csrf protection rejects authenticated requests with missing token", async () => {
@@ -801,6 +973,70 @@ test("report and daily data proxy requests inject upstream Lang parameter", asyn
   assert.equal(upstreamState.lastRequestBodies["/API/RemoteMeterTask/GetReadingTask"].Lang, "en");
 });
 
+test("load profile requests fallback to daily data meter endpoints when upstream returns forbidden", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+  const cookieHeader = buildCookieHeader(sessionCookie, csrfCookie);
+
+  const dailyResponse = await fetch(`${baseUrl}/API/LoadProfile/DailyData`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      meterId: "M-001",
+      fromDate: "2026-03-01",
+      toDate: "2026-03-31",
+      pageNumber: 1,
+      pageSize: 10,
+    }),
+  });
+  assert.equal(dailyResponse.status, 200);
+  const dailyPayload = await dailyResponse.json();
+  assert.equal(dailyPayload.code, 0);
+  assert.equal(upstreamState.lastRequestBodies["/API/LoadProfile/DailyData"].Lang, "en");
+  assert.equal(upstreamState.lastRequestBodies["/api/DailyDataMeter/read"].Lang, "en");
+
+  const monthlyResponse = await fetch(`${baseUrl}/API/LoadProfile/MonthlyData`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      meterId: "M-001",
+      fromDate: "2026-03-01",
+      toDate: "2026-03-31",
+      pageNumber: 1,
+      pageSize: 10,
+    }),
+  });
+  assert.equal(monthlyResponse.status, 200);
+  const monthlyPayload = await monthlyResponse.json();
+  assert.equal(monthlyPayload.code, 0);
+  assert.equal(upstreamState.lastRequestBodies["/API/LoadProfile/MonthlyData"].Lang, "en");
+  assert.equal(upstreamState.lastRequestBodies["/api/DailyDataMeter/readMonthly"].Lang, "en");
+});
+
 test("low purchase report retries with paging, date, and low balance aliases", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
     method: "POST",
@@ -849,6 +1085,51 @@ test("low purchase report retries with paging, date, and low balance aliases", a
   assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LowPurchaseSituation"].lowBalance, 50);
 });
 
+test("item list retries with paging and null-safe search aliases, then degrades to empty state", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+  const loginPayload = await loginResponse.json();
+  const csrfToken = loginPayload?.result?.csrfToken;
+  assert.equal(typeof csrfToken, "string");
+
+  const sessionCookie = getCookieByName(loginResponse, "acob_session");
+  const csrfCookie = getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+  const cookieHeader = buildCookieHeader(sessionCookie, csrfCookie);
+
+  const itemResponse = await fetch(`${baseUrl}/api/item/readItemList`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      pageNumber: 1,
+      pageSize: 10,
+    }),
+  });
+
+  assert.equal(itemResponse.status, 200);
+  const itemPayload = await itemResponse.json();
+  assert.equal(itemPayload.code, 0);
+  assert.deepEqual(itemPayload.result, { rows: [], total: 0 });
+  assert.equal(upstreamState.lastRequestBodies["/api/item/readItemList"].page, 1);
+  assert.equal(upstreamState.lastRequestBodies["/api/item/readItemList"].limit, 10);
+  assert.equal(upstreamState.lastRequestBodies["/api/item/readItemList"].keyword, "");
+  assert.equal(upstreamState.lastRequestBodies["/api/item/readItemList"].searchWord, "");
+  assert.equal(upstreamState.lastRequestBodies["/api/item/readItemList"].itemName, "");
+});
+
 test("long nonpurchase report retries with paging and upstream field aliases", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
     method: "POST",
@@ -895,4 +1176,91 @@ test("long nonpurchase report retries with paging and upstream field aliases", a
   assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].meterNo, "M-001");
   assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].daysStart, 30);
   assert.equal(upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].daysEnd, 90);
+});
+
+test("endpoint catalog exposes the REST-style compatibility aliases", async () => {
+  const { csrfToken, cookieHeader } = await loginAndCreateSession();
+
+  const response = await fetch(`${baseUrl}/api/endpoints`, {
+    headers: {
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.code, 0);
+  assert.ok(
+    payload.result.aliases.some((entry) => entry.path === "/api/reports/non-purchase"),
+  );
+  assert.ok(
+    payload.result.aliases.some((entry) => entry.path === "/api/DailyDataMeter/readHourly"),
+  );
+});
+
+test("rest report aliases proxy non-purchase requests through the canonical upstream endpoint", async () => {
+  const { csrfToken, cookieHeader } = await loginAndCreateSession();
+
+  const response = await fetch(
+    `${baseUrl}/api/reports/non-purchase?customerId=C-001&meterId=M-001&nonpurchaseDaysStart=30&nonpurchaseDaysEnd=90&pageNumber=1&pageSize=10`,
+    {
+      headers: {
+        Cookie: cookieHeader,
+        "x-csrf-token": csrfToken,
+      },
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.code, 0);
+  assert.equal(
+    upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].Lang,
+    "en",
+  );
+  assert.equal(
+    upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].meterNo,
+    "M-001",
+  );
+  assert.equal(
+    upstreamState.lastRequestBodies["/API/PrepayReport/LongNonpurchaseSituation"].daysStart,
+    30,
+  );
+});
+
+test("rest dashboard event alias proxies to the upstream event endpoint with GET query defaults", async () => {
+  const { csrfToken, cookieHeader } = await loginAndCreateSession();
+
+  const response = await fetch(`${baseUrl}/api/dashboard/events`, {
+    headers: {
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.code, 0);
+  assert.equal(upstreamState.lastRequestBodies["/API/EventNotification/Read"].pageNumber, 1);
+  assert.equal(upstreamState.lastRequestBodies["/API/EventNotification/Read"].pageSize, 100);
+  assert.ok(Array.isArray(payload.result.rows));
+});
+
+test("hourly AMR GET alias returns data without requiring a drilldown row payload", async () => {
+  const { csrfToken, cookieHeader } = await loginAndCreateSession();
+
+  const response = await fetch(`${baseUrl}/api/DailyDataMeter/readHourly?pageNumber=1&pageSize=20`, {
+    headers: {
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.code, 0);
+  assert.equal(upstreamState.lastRequestBodies["/api/DailyDataMeter/readHourly"].Lang, "en");
+  assert.equal(Number(upstreamState.lastRequestBodies["/api/DailyDataMeter/readHourly"].pageSize), 20);
+  assert.ok(Array.isArray(payload.result.rows));
 });

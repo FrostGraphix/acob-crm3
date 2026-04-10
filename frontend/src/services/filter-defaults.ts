@@ -8,9 +8,10 @@ function formatLocalDate(date: Date) {
 }
 
 export function createInitialFilters(page: DataPageConfig, today = new Date()) {
+  const startOfYear = `${today.getFullYear()}-01-01`;
   return page.filters.reduce<Record<string, string>>((accumulator, filter) => {
     if (filter.key === "fromDate" && filter.type === "date") {
-      accumulator[filter.key] = "2025-01-01";
+      accumulator[filter.key] = startOfYear;
       return accumulator;
     }
 

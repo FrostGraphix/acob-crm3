@@ -2,16 +2,21 @@ import type {
   ActionResponse as SharedActionResponse,
   AmrResponse,
   AuthUser,
+  RemoteTaskRiskLevel,
+  RemoteTaskType,
 } from "../../../common/types";
 
 export type DataRow = Record<string, string | number | boolean | null>;
 export type Envelope<T> = AmrResponse<T>;
 export type { AuthUser };
+export type { RemoteTaskRiskLevel, RemoteTaskType };
 
 export interface DashboardPanel {
   label: string;
   value: string;
   accent: "teal" | "blue" | "green" | "orange";
+  unit?: string;
+  icon: "accounts" | "refresh" | "energy" | "revenue";
 }
 
 export interface SeriesData {
@@ -22,6 +27,16 @@ export interface SeriesData {
 export interface PieSlice {
   label: string;
   value: number;
+}
+
+export interface DashboardQueryWindow {
+  from: string;
+  to: string;
+}
+
+export interface DashboardSiteOption {
+  value: string;
+  label: string;
 }
 
 export interface ReportChartData {
@@ -42,6 +57,15 @@ export interface DashboardData {
     daily: number[];
     monthly: number[];
   };
+  portfolioLabel: string;
+  selectedSiteId: string | null;
+  selectedSiteLabel: string;
+  sourceWindow: DashboardQueryWindow | null;
+  lastUpdatedAt: string | null;
+  livePulse: Array<{
+    timeLabel: string;
+    message: string;
+  }>;
 }
 
 export interface EngineLeaderStatus {
@@ -65,6 +89,11 @@ export interface RuntimeEngineStatus {
   sourceWindow?: {
     fromDate: string;
     toDate: string;
+  };
+  theftMetrics?: {
+    activeSignals: number;
+    openCases: number;
+    criticalSignals: number;
   };
 }
 
@@ -94,18 +123,29 @@ export interface FilterField {
   type?: "text" | "date" | "number";
 }
 
+export type ReportDisplayMode = "table" | "analytics";
+export type ReportAnalyticsKey = "site-consumption" | "consumption-statistics";
+
 export interface ActionField {
   key: string;
   label: string;
-  type?: "text" | "date" | "number" | "textarea";
+  type?: "text" | "date" | "number" | "textarea" | "select";
   placeholder: string;
   sourceKey?: string;
+  required?: boolean;
+  helpText?: string;
+  options?: Array<{ label: string; value: string }>;
 }
 
 export type ActionOperationKind =
   | "token-generate"
+  | "token-generate-credit"
+  | "token-generate-limit"
+  | "token-generate-basic"
   | "task-create"
   | "task-update"
+  | "drilldown"
+  | "theft-case-create"
   | "management-create"
   | "management-import"
   | "management-update"
@@ -126,12 +166,24 @@ export interface ActionConfig {
   operationKind?: ActionOperationKind;
   fields?: ActionField[];
   confirmMessage?: string;
+  remoteTaskType?: RemoteTaskType;
+  dangerLevel?: RemoteTaskRiskLevel;
+  requiresReviewStep?: boolean;
+  payloadBuilderKey?:
+    | "reading"
+    | "setting"
+    | "control"
+    | "token"
+    | "transparent-forwarding";
+  successRedirectPath?: string;
+  requiresReason?: boolean;
+  riskLevel?: "low" | "medium" | "high";
 }
 
 export type ReadOperationKind = "table-read" | "report-read" | "task-read";
 
 export interface BasePageConfig {
-  kind: "dashboard" | "data" | "profile" | "site-consumption" | "runtime-admin";
+  kind: "dashboard" | "data" | "profile" | "runtime-admin";
   path: string;
   title: string;
   menuLabel: string;
@@ -149,9 +201,17 @@ export interface DashboardPageConfig extends BasePageConfig {
 export interface DataPageConfig extends BasePageConfig {
   kind: "data";
   readEndpoint: string;
+  readMethod?: "GET" | "POST";
   readOperationKind?: ReadOperationKind;
   columns: TableColumn[];
   filters: FilterField[];
+  meterDrilldown?: {
+    primaryEndpoint: string;
+    fallbackEndpoint: string;
+    refreshMs: number;
+  };
+  reportDisplayMode?: ReportDisplayMode;
+  reportAnalyticsKey?: ReportAnalyticsKey;
   requiredReadFilters?: string[];
   omitReadPaging?: boolean;
   requestDateFormat?: "iso" | "day-first";
@@ -159,14 +219,24 @@ export interface DataPageConfig extends BasePageConfig {
   rowActions?: ActionConfig[];
   bulkActions?: ActionConfig[];
   showQuota?: boolean;
+  live?: {
+    enabled: boolean;
+    intervalMs: number;
+    pauseOnHidden: boolean;
+    critical?: boolean;
+  };
+  riskIntegration?: {
+    canOpenCase?: boolean;
+    riskSignals?: string[];
+  };
+  actionPolicy?: {
+    guardedConfirm?: boolean;
+    requireReasonForHighRisk?: boolean;
+  };
 }
 
 export interface ProfilePageConfig extends BasePageConfig {
   kind: "profile";
-}
-
-export interface SiteConsumptionPageConfig extends BasePageConfig {
-  kind: "site-consumption";
 }
 
 export interface RuntimeAdminPageConfig extends BasePageConfig {
@@ -177,7 +247,6 @@ export type AppPageConfig =
   | DashboardPageConfig
   | DataPageConfig
   | ProfilePageConfig
-  | SiteConsumptionPageConfig
   | RuntimeAdminPageConfig;
 
 export type SidebarIconKey =

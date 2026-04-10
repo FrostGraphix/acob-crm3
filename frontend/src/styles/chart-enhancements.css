@@ -108,6 +108,15 @@
   overflow: hidden;
 }
 
+.chart-card--themed {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.chart-card__canvas {
+  border-radius: 18px;
+}
+
 .chart-card::after {
   content: "";
   position: absolute;

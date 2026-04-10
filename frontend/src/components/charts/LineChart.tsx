@@ -1,19 +1,42 @@
 import type { EChartsOption } from "echarts";
 import { ReactEChartsCore, echarts } from "../../services/echarts";
+import { ChartPanelHeader } from "./ChartPanelHeader";
 
 interface LineChartProps {
   labels: string[];
   values: number[];
+  lineColor?: string;
+  areaStops?: Array<{ offset: number; color: string }>;
+  heightClassName?: string;
+  xAxisLabelInterval?: number | "auto";
+  yAxisMax?: number;
+  showArea?: boolean;
+  chartTitle?: string;
 }
 
-export function LineChart({ labels, values }: LineChartProps) {
+const defaultAreaStops = [
+  { offset: 0, color: "rgba(6, 134, 18, 0.18)" },
+  { offset: 1, color: "rgba(6, 134, 18, 0.02)" },
+];
+
+export function LineChart({
+  labels,
+  values,
+  lineColor = "#068612",
+  areaStops = defaultAreaStops,
+  heightClassName,
+  xAxisLabelInterval = "auto",
+  yAxisMax,
+  showArea = true,
+  chartTitle,
+}: LineChartProps) {
   const option: EChartsOption = {
-    animationDuration: 700,
+    animationDuration: 500,
     grid: {
-      top: 18,
-      right: 12,
-      bottom: 24,
-      left: 38,
+      top: 10,
+      right: 10,
+      bottom: 18,
+      left: 42,
       containLabel: true,
     },
     tooltip: {
@@ -21,11 +44,13 @@ export function LineChart({ labels, values }: LineChartProps) {
       axisPointer: {
         type: "line",
       },
-      backgroundColor: "var(--bg-panel)",
-      borderColor: "var(--border-light)",
+      backgroundColor: "#111b31",
+      borderColor: "rgba(148, 163, 184, 0.18)",
+      borderWidth: 1,
+      extraCssText: "border-radius: 14px; box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);",
       padding: [12, 14],
       textStyle: {
-        color: "var(--text-main)",
+        color: "#e5eefc",
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       },
     },
@@ -34,21 +59,24 @@ export function LineChart({ labels, values }: LineChartProps) {
       data: labels,
       boundaryGap: false,
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: "var(--border-light)" } },
+      axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.18)" } },
       axisLabel: {
-        color: "var(--text-muted)",
+        color: "#94a3b8",
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         fontSize: 11,
         margin: 12,
+        interval: xAxisLabelInterval,
       },
     },
     yAxis: {
       type: "value",
-      splitLine: { lineStyle: { color: "var(--border-light)", type: "dashed" } },
+      max: yAxisMax,
+      splitLine: { lineStyle: { color: "rgba(71, 85, 105, 0.42)", type: "dashed" } },
       axisLabel: {
-        color: "var(--text-muted)",
+        color: "#94a3b8",
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         fontSize: 11,
+        formatter: (value: number) => (Math.abs(value) >= 1_000 ? `${(value / 1_000).toFixed(0)}k` : `${value}`),
       },
     },
     series: [
@@ -59,30 +87,26 @@ export function LineChart({ labels, values }: LineChartProps) {
         showSymbol: false,
         symbolSize: 8,
         lineStyle: {
-          width: 4,
-          color: "#16a34a",
-          shadowBlur: 18,
-          shadowColor: "rgba(22, 163, 74, 0.24)",
+          width: 3,
+          color: lineColor,
         },
         itemStyle: {
-          color: "#facc15",
-          borderColor: "#16a34a",
+          color: "#ffffff",
+          borderColor: lineColor,
           borderWidth: 2,
         },
-        areaStyle: {
-          color: {
-            type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: "rgba(250, 204, 21, 0.24)" },
-              { offset: 0.35, color: "rgba(22, 163, 74, 0.18)" },
-              { offset: 1, color: "transparent" },
-            ],
-          },
-        },
+        areaStyle: showArea
+          ? {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: areaStops,
+              },
+            }
+          : undefined,
         emphasis: {
           focus: "series",
         },
@@ -91,9 +115,10 @@ export function LineChart({ labels, values }: LineChartProps) {
   };
 
   return (
-    <div className="chart-card">
+    <div className="chart-card chart-card--themed">
+      {chartTitle ? <ChartPanelHeader title={chartTitle} /> : null}
       <ReactEChartsCore
-        className="echart-canvas"
+        className={heightClassName ? `echart-canvas chart-card__canvas ${heightClassName}` : "echart-canvas chart-card__canvas"}
         echarts={echarts}
         lazyUpdate
         notMerge

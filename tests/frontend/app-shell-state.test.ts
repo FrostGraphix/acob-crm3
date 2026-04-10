@@ -68,9 +68,9 @@ test("opened tabs are pruned when user access changes", () => {
 
 test("closing the active tab routes to the previous visible tab", () => {
   const result = closeTabAndResolveNextPath(
-    [pagesByPath["/dashboard"], pagesByPath["/management/customer"], pagesByPath["/site-consumption"]],
-    "/site-consumption",
-    "/site-consumption",
+    [pagesByPath["/dashboard"], pagesByPath["/management/customer"], pagesByPath["/data-report/site-consumption"]],
+    "/data-report/site-consumption",
+    "/data-report/site-consumption",
     "/dashboard",
   );
 

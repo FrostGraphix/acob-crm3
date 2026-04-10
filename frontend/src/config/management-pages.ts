@@ -28,6 +28,14 @@ import {
 } from "./page-catalog-shared.ts";
 
 export const managementPages: AppPageConfig[] = [
+  {
+    kind: "dashboard",
+    path: "/management/analytics",
+    title: "Management Analytics",
+    menuLabel: "Analytics",
+    description: "Robust data trends and site-wide energy consumption analysis.",
+    sectionKey: "management",
+  },
   createManagementPage(
     "/management/customer",
     "Customer Management",
@@ -80,9 +88,12 @@ export const managementPages: AppPageConfig[] = [
     "/management/item",
     "Item Management",
     "Item",
-    "/api/item/read",
+    "/api/item/readItemList",
     itemColumns,
-    { formFields: itemManagementFields },
+    {
+      formFields: itemManagementFields,
+      actionBasePath: "/api/item/read",
+    },
   ),
   createManagementPage(
     "/protocol/dlms",
@@ -125,6 +136,11 @@ export const managementPages: AppPageConfig[] = [
     filters: [searchFilter, ...dateRangeFilters],
     columns: eventNotificationColumns,
     toolbarActions: [createClientExportAction("/API/EventNotification/Read")],
+    live: { enabled: true, intervalMs: 10_000, pauseOnHidden: true, critical: true },
+    riskIntegration: {
+      canOpenCase: true,
+      riskSignals: ["tamper-event", "relay-event", "event-correlation"],
+    },
     requiredPermissions: [
       "EventNotification.EventNotification",
       "EventNotification.Read",
@@ -143,6 +159,11 @@ export const managementPages: AppPageConfig[] = [
     filters: [searchFilter, ...dateRangeFilters],
     columns: logColumns,
     toolbarActions: [createClientExportAction("/api/Log/read")],
+    live: { enabled: true, intervalMs: 12_000, pauseOnHidden: true, critical: true },
+    riskIntegration: {
+      canOpenCase: true,
+      riskSignals: ["audit-anomaly", "suspicious-ops"],
+    },
     requiredRole: "admin",
     requiredPermissions: [
       "SystemLog.SystemLog",

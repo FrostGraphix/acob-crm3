@@ -70,6 +70,22 @@ function RuntimeEngineCard({
           Source Window: {status.sourceWindow.fromDate} to {status.sourceWindow.toDate}
         </p>
       ) : null}
+      {status.theftMetrics ? (
+        <div className="runtime-engine-grid">
+          <div>
+            <span className="runtime-engine-label">Active Signals</span>
+            <strong>{status.theftMetrics.activeSignals}</strong>
+          </div>
+          <div>
+            <span className="runtime-engine-label">Open Cases</span>
+            <strong>{status.theftMetrics.openCases}</strong>
+          </div>
+          <div>
+            <span className="runtime-engine-label">Critical Signals</span>
+            <strong>{status.theftMetrics.criticalSignals}</strong>
+          </div>
+        </div>
+      ) : null}
       {status.lastError ? <p className="status-banner status-banner-error">{status.lastError}</p> : null}
       {status.leader.lastLeadershipError ? (
         <p className="status-banner status-banner-error">{status.leader.lastLeadershipError}</p>
