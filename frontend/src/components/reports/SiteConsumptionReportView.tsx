@@ -15,7 +15,7 @@ import { request } from "../../services/api";
 import { SITE_CONSUMPTION_SITES } from "../../services/site-consumption-report";
 import type { DataRow, TableColumn } from "../../types";
 
-import { DataPageSnapshot } from "../../pages/DataPage";
+import type { DataPageSnapshot } from "../../pages/DataPage";
 
 interface SiteConsumptionReportViewProps {
   onSnapshotChange: (snapshot: DataPageSnapshot) => void;

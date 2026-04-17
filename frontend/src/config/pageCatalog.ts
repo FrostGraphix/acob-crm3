@@ -50,7 +50,6 @@ const sectionDefinitions: Array<{
   { key: "load-profile", label: "Load Profile", iconKey: "load-profile" },
   { key: "management", label: "Management", iconKey: "management" },
   { key: "meter", label: "Meter", iconKey: "meter" },
-  { key: "runtime-ops", label: "Runtime Ops", iconKey: "runtime-ops" },
   { key: "event", label: "Events", iconKey: "event" },
   { key: "log", label: "System Log", iconKey: "log" },
   { key: "wallet-admin-home", label: "Wallet Command", iconKey: "wallet" },

@@ -1,5 +1,4 @@
 import { VwBadge } from "./VendorPortalPrimitives.tsx";
-import type { VwBadgeVariant } from "./VendorPortalPrimitives.tsx";
 
 import { getStatusTone } from "./VendorPortalUtils";
 

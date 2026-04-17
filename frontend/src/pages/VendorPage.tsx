@@ -65,6 +65,21 @@ interface VendorOnboardingFormState {
   onboardingNotes: string;
 }
 
+interface VendorQueueItem {
+  id: string;
+  businessName?: string;
+  legalName?: string;
+  vendorCode: string;
+  siteName?: string;
+  status: string;
+}
+
+interface HeroNavItem {
+  label: string;
+  value: string;
+  warn?: boolean;
+}
+
 function formatMoney(value: number) {
   return NGN(value);
 }
@@ -216,11 +231,11 @@ function VendorDashboardView({
             { label: "Posted Float", value: formatMoney(postedFloat) },
             { label: "Reserved", value: formatMoney(reservedBalance) },
             { label: "Today's Spend", value: formatMoney(todaySpend) },
-            { label: "Daily Remaining", value: formatMoney(Math.max(dailyLimit - todaySpend, 0)), warn: limitPercent > 80 },
-          ].map((item) => (
+            { label: "Daily Remaining", value: formatMoney(Math.max(dailyLimit - todaySpend, 0)), warn: limitPercent > 80 } as HeroNavItem,
+          ].map((item: HeroNavItem) => (
             <div key={item.label}>
               <div className="vw-hero__grid-item-label">{item.label}</div>
-              <div className={`vw-hero__grid-item-value${(item as any).warn ? " vw-hero__grid-item-value--warn" : ""}`}>
+              <div className={`vw-hero__grid-item-value${item.warn ? " vw-hero__grid-item-value--warn" : ""}`}>
                 {item.value}
               </div>
             </div>
@@ -1222,15 +1237,15 @@ function VendorOnboardingView({
 
 function AdminVendorQueueView() {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [queue, setQueue] = useState<any[] | null>(null);
+  const [queue, setQueue] = useState<VendorQueueItem[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reviewVendor, setReviewVendor] = useState<any | null>(null);
+  const [reviewVendor, setReviewVendor] = useState<VendorQueueItem | null>(null);
   const [actionModal, setActionModal] = useState<"approve" | "reject" | null>(null);
 
   const fetchQueue = async () => {
     setLoading(true);
     try {
-      const data = await request<any[]>("/api/vendor/onboarding/queue");
+      const data = await request<VendorQueueItem[]>("/api/vendor/onboarding/queue");
       setQueue(data);
     } catch (err) {
       console.error("Failed to fetch queue", err);

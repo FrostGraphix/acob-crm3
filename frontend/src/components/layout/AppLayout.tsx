@@ -74,9 +74,7 @@ export function AppLayout({
         <Header
           currentPage={currentPage}
           isSidebarCollapsed={isSidebarCollapsed}
-          onLogout={onLogout}
           onNavigate={handleNavigate}
-          onToggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onToggleSidebarCollapse={() => setIsSidebarCollapsed((current) => !current)}
         />
         <div className="crm-workspace">

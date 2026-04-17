@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApproveVendorModal } from "../components/vendor/ApproveVendorModal";
 import { CreateVendorAccountModal } from "../components/vendor/CreateVendorAccountModal";
 import {
@@ -141,7 +141,7 @@ export function WalletAdminVendorOnboardingPage({ page }: { page: DataPageConfig
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [decisionModal, setDecisionModal] = useState<"approve" | "reject" | null>(null);
 
-  const loadQueue = async () => {
+  const loadQueue = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -160,7 +160,7 @@ export function WalletAdminVendorOnboardingPage({ page }: { page: DataPageConfig
     } finally {
       setLoading(false);
     }
-  };
+  }, [normalizeTableData, page.readEndpoint, page.readMethod, toVendorOnboardingRecord]);
 
   useEffect(() => {
     void loadQueue();

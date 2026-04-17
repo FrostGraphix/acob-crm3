@@ -19,5 +19,9 @@
     "test:backend": "npm run test:unit -w backend",
     "test": "npm run test -w backend && npm run test -w frontend",
     "test:supabase": "npm run test:supabase -w backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

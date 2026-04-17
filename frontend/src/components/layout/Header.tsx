@@ -7,18 +7,14 @@ import { NotificationBell } from "./NotificationBell";
 interface HeaderProps {
   currentPage: AppPageConfig;
   isSidebarCollapsed: boolean;
-  onLogout: () => Promise<void>;
   onNavigate: (path: string) => void;
-  onToggleMenu: () => void;
   onToggleSidebarCollapse: () => void;
 }
 
 export function Header({
   currentPage,
   isSidebarCollapsed,
-  onLogout,
   onNavigate,
-  onToggleMenu,
   onToggleSidebarCollapse,
 }: HeaderProps) {
   const { user } = useAuth();

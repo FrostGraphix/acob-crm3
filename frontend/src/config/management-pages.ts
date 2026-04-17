@@ -136,14 +136,4 @@ export const managementPages: AppPageConfig[] = [
     sectionKey: "management",
     includeInNavigation: false,
   },
-  {
-    kind: "runtime-admin",
-    path: "/system/runtime",
-    title: "Runtime Operations",
-    menuLabel: "Runtime Ops",
-    description: "Operational controls for background engines and scheduler leadership.",
-    sectionKey: "runtime-ops",
-    requiredRole: "admin",
-  },
-
 ];
