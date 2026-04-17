@@ -164,7 +164,7 @@ export function WalletAdminVendorOnboardingPage({ page }: { page: DataPageConfig
 
   useEffect(() => {
     void loadQueue();
-  }, []);
+  }, [loadQueue]);
 
   const filteredRecords = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();

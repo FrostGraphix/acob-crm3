@@ -14,7 +14,7 @@ import {
   VendorTable,
   type VendorTableColumn,
 } from "./VendorPortalPrimitives.tsx";
-import { formatDateTime, getStatusTone } from "./VendorPortalShared.tsx";
+import { formatDateTime, getStatusTone } from "./VendorPortalUtils";
 
 interface AsyncState<T> {
   data: T | null;

@@ -40,6 +40,7 @@ export function ReportsPage() {
     reportConfigs.find((config) => config.path === location.pathname)?.path ?? reportConfigs[0]?.path ?? "";
   const activeConfig = reportConfigs.find((config) => config.path === activeTabPath);
   const isAnalyticsReport = activeConfig?.reportDisplayMode === "analytics";
+  const isConsumptionStatistics = activeConfig?.path === "/data-report/consumption-statistics";
   const isSiteConsumption = activeConfig?.path === "/data-report/site-consumption";
 
   const { stats: rawStats, chartData } = buildReportAnalytics(
@@ -68,9 +69,7 @@ export function ReportsPage() {
 
   return (
     <div className="premium-dashboard ds-page">
-
-
-      {!isSiteConsumption && (
+      {isConsumptionStatistics && (
         <div className="analytics-mix-grid mb-6">
           <AnalyticsMixPanel endpoint="/api/dashboard/risk-overlay" query={dashboardMixQuery} />
           <AnalyticsMixPanel endpoint="/api/dashboard/revenue-vs-usage" query={dashboardMixQuery} />

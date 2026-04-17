@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { NGN, VwBadge, VwBtn, VwInfoBox, VwKPI } from "../vendor/VendorPortalPrimitives.tsx";
+import type { VwBadgeVariant } from "../vendor/VendorPortalPrimitives.tsx";
 import type { ActionConfig, DataPageConfig, DataRow } from "../../types";
 
 interface WalletAdminWorkspaceProps {
@@ -34,7 +35,7 @@ function readNumber(row: DataRow | undefined, keys: string[]) {
   return 0;
 }
 
-function badgeForStatus(value: string) {
+function badgeForStatus(value: string): VwBadgeVariant {
   const lower = value.toLowerCase();
   if (lower.includes("active") || lower.includes("posted") || lower.includes("approved") || lower.includes("successful") || lower.includes("locked")) return "success";
   if (lower.includes("pending") || lower.includes("review") || lower.includes("confirmed") || lower.includes("assigned")) return "lemon";
@@ -212,7 +213,7 @@ export function WalletAdminWorkspace({
                     <td><strong>{NGN(readNumber(row, ["amount"]))}</strong></td>
                     <td>{readText(row, ["channel"])}</td>
                     <td>{readText(row, ["proofStatus"])}</td>
-                    <td><VwBadge variant={badgeForStatus(readText(row, ["status"])) as any}>{readText(row, ["status"]).replace(/_/g, " ")}</VwBadge></td>
+                    <td><VwBadge variant={badgeForStatus(readText(row, ["status"]))}>{readText(row, ["status"]).replace(/_/g, " ")}</VwBadge></td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
                         {(page.rowActions ?? []).map((action) => (
@@ -278,9 +279,9 @@ export function WalletAdminWorkspace({
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                      <VwBadge variant={badgeForStatus(severity) as any}>{severity.toUpperCase()}</VwBadge>
+                      <VwBadge variant={badgeForStatus(severity)}>{severity.toUpperCase()}</VwBadge>
                       <span style={{ fontSize: 11, color: "var(--vw-primary)", fontFamily: "var(--vw-mono)", fontWeight: 700 }}>{readText(row, ["type"])}</span>
-                      <VwBadge variant={badgeForStatus(readText(row, ["status"])) as any}>{readText(row, ["status"])}</VwBadge>
+                      <VwBadge variant={badgeForStatus(readText(row, ["status"]))}>{readText(row, ["status"])}</VwBadge>
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--vw-text)", marginBottom: 5 }}>{readText(row, ["summary"])}</div>
                     <div style={{ fontSize: 13, color: "var(--vw-muted)", marginBottom: 8, lineHeight: 1.65 }}>{readText(row, ["siteCode"])} · {readText(row, ["assignee"], "Unassigned")}</div>
@@ -314,7 +315,7 @@ export function WalletAdminWorkspace({
                   <div style={{ fontSize: 16, fontWeight: 800, color: "var(--vw-text)" }}>{readText(row, ["businessDate"])}</div>
                   <div style={{ fontSize: 12, color: "var(--vw-muted)", marginTop: 3 }}>{readText(row, ["status"])} · {readText(row, ["itemCount"])} items</div>
                 </div>
-                <VwBadge variant={badgeForStatus(readText(row, ["status"])) as any}>{readText(row, ["status"])}</VwBadge>
+                <VwBadge variant={badgeForStatus(readText(row, ["status"]))}>{readText(row, ["status"])}</VwBadge>
               </div>
               <div className="vw-grid-4">
                 {[

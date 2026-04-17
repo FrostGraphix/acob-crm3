@@ -20,7 +20,8 @@ import {
   VendorKeyValueGrid,
   VendorLoadingPanel,
 } from "./VendorPortalPrimitives.tsx";
-import { formatDateOnly, formatDateTime, formatTokenValue, getStatusTone, StatusMessage } from "./VendorPortalShared.tsx";
+import { formatDateOnly, formatDateTime, formatTokenValue, getStatusTone } from "./VendorPortalUtils";
+import { StatusMessage } from "./VendorPortalShared";
 
 interface AsyncState<T> {
   data: T | null;

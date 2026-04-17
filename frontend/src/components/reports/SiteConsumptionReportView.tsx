@@ -15,8 +15,10 @@ import { request } from "../../services/api";
 import { SITE_CONSUMPTION_SITES } from "../../services/site-consumption-report";
 import type { DataRow, TableColumn } from "../../types";
 
+import { DataPageSnapshot } from "../../pages/DataPage";
+
 interface SiteConsumptionReportViewProps {
-  onSnapshotChange: (snapshot: any) => void;
+  onSnapshotChange: (snapshot: DataPageSnapshot) => void;
 }
 
 function SmartSearchAction({ label, onClick }: { label: string; onClick: () => void }) {

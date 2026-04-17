@@ -16,9 +16,9 @@ interface HeaderProps {
 export function Header({
   currentPage,
   isSidebarCollapsed,
-  onLogout: _onLogout,
+  onLogout,
   onNavigate,
-  onToggleMenu: _onToggleMenu,
+  onToggleMenu,
   onToggleSidebarCollapse,
 }: HeaderProps) {
   const { user } = useAuth();
