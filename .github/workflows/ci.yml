@@ -8,8 +8,6 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -38,8 +36,11 @@ jobs:
       - name: Backend dependency health smoke
         run: npm run test:health --prefix backend
 
-      - name: Unit tests
-        run: npm test
+      - name: Backend unit tests
+        run: npm run test:unit --prefix backend
+
+      - name: Frontend unit tests
+        run: npm test --prefix frontend
 
       - name: Build backend artifact
         run: npm run build --prefix backend

@@ -422,6 +422,8 @@ managementAnalyticsRouter.get("/meter-consumption", async (request, response) =>
   const offset = (Math.max(1, pageNumber) - 1) * limit;
 
   try {
+    console.log(`[API] SiteConsumptionReport - Params: site=${selectedSite}, page=${pageNumber}, size=${pageSize}, searchCust=${customerName}, searchMeter=${meterId}`);
+    
     if (isSupabaseDbEnabled()) {
       const { rows: rankedRows, total } = await listMeterConsumptionRanking({
         siteId: selectedSite,

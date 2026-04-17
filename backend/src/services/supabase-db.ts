@@ -1207,10 +1207,13 @@ export async function listMeterConsumptionRanking(options?: {
 
   // Handle Search Filters
   if (options?.searchTerms?.meterId) {
+    console.log(`[SupabaseDB] Filtering by meterId: ${options.searchTerms.meterId}`);
     query = query.ilike("meter_sn", `%${options.searchTerms.meterId}%`);
   }
 
   if (options?.searchTerms?.customerName) {
+    console.log(`[SupabaseDB] Filtering by customerName: ${options.searchTerms.customerName}`);
+    
     // 1. Resolve customer IDs matching the name
     const { data: customers } = await client
       .from("customers")
@@ -1219,10 +1222,33 @@ export async function listMeterConsumptionRanking(options?: {
       .limit(100);
     
     const customerIds = (customers ?? []).map(c => c.id);
+    
+    // 2. Resolve meter serials linked to these customers (as a bridge)
+    let meterSnsForCustomers: string[] = [];
     if (customerIds.length > 0) {
-      query = query.in("customer_id", customerIds);
+      const { data: linkedMeters } = await client
+        .from("meters")
+        .select("meter_sn")
+        .in("customer_id", customerIds);
+      
+      meterSnsForCustomers = (linkedMeters ?? []).map(m => m.meter_sn).filter((sn): sn is string => !!sn);
+    }
+
+    if (customerIds.length > 0 || meterSnsForCustomers.length > 0) {
+      // Build an OR filter string for Supabase
+      const filterParts = [];
+      if (customerIds.length > 0) {
+        filterParts.push(`customer_id.in.(${customerIds.join(',')})`);
+      }
+      if (meterSnsForCustomers.length > 0) {
+        filterParts.push(`meter_sn.in.(${meterSnsForCustomers.join(',')})`);
+      }
+      
+      if (filterParts.length > 0) {
+        query = query.or(filterParts.join(','));
+      }
     } else {
-      // If no customers match, ensure no results return
+      // If no customers or linked meters match, ensure no results return
       query = query.eq("customer_id", "00000000-0000-0000-0000-000000000000");
     }
   }
