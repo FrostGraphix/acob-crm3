@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { AuthUser } from "../../../common/types/index.js";
+import { applyAdminIdentityOverrides } from "./admin-identities.js";
 import { env } from "./env.js";
 
 type SupabaseModule = typeof import("@supabase/supabase-js");
@@ -28,8 +29,30 @@ function mapSupabaseUser(user: User): AuthUser {
     username;
   const role =
     readString(appMetadata.role) ??
+    readString(appMetadata.app_role) ??
     readString(metadata.role) ??
+    readString(metadata.app_role) ??
     "User";
+  const appRole =
+    readString(appMetadata.app_role) ??
+    readString(appMetadata.role) ??
+    readString(metadata.app_role) ??
+    readString(metadata.role);
+  const siteCode =
+    readString(appMetadata.site_code) ??
+    readString(metadata.site_code) ??
+    readString(appMetadata.siteCode) ??
+    readString(metadata.siteCode);
+  const vendorId =
+    readString(appMetadata.vendor_id) ??
+    readString(metadata.vendor_id) ??
+    readString(appMetadata.vendorId) ??
+    readString(metadata.vendorId);
+  const forcePasswordChange =
+    metadata.force_password_change === true ||
+    metadata.forcePasswordChange === true ||
+    appMetadata.force_password_change === true ||
+    appMetadata.forcePasswordChange === true;
   const email = readString(user.email) ?? readString(metadata.email);
   const phone = readString(user.phone) ?? readString(metadata.phone);
   const address =
@@ -39,15 +62,20 @@ function mapSupabaseUser(user: User): AuthUser {
     readString(metadata.remark) ??
     readString(metadata.note);
 
-  return {
+  return applyAdminIdentityOverrides({
+    id: user.id,
     username,
     displayName,
     role,
+    appRole: appRole ?? undefined,
+    siteCode: siteCode ?? null,
+    vendorId: vendorId ?? null,
+    forcePasswordChange,
     email: email ?? undefined,
     phone: phone ?? undefined,
     address: address ?? undefined,
     remark: remark ?? undefined,
-  };
+  });
 }
 
 let supabaseModulePromise: Promise<SupabaseModule> | null = null;
@@ -77,7 +105,9 @@ async function createSupabaseClient(supabaseKey: string) {
 const hasSupabaseBaseConfig = env.supabaseUrl.length > 0 && env.supabaseAnonKey.length > 0;
 const hasSupabaseServiceRoleConfig =
   hasSupabaseBaseConfig &&
-  env.supabaseServiceRoleKey.length > 0 &&
+  env.supabaseServiceRoleKey.length > 0;
+const hasSupabaseStorageConfig =
+  hasSupabaseServiceRoleConfig &&
   env.supabaseStorageBucket.length > 0;
 
 async function getAuthClient() {
@@ -93,8 +123,20 @@ async function getAuthClient() {
 }
 
 async function getStorageClient() {
-  if (!hasSupabaseServiceRoleConfig) {
+  if (!hasSupabaseStorageConfig) {
     throw new Error("Supabase storage is not configured");
+  }
+
+  if (!supabaseAdminClientPromise) {
+    supabaseAdminClientPromise = createSupabaseClient(env.supabaseServiceRoleKey);
+  }
+
+  return supabaseAdminClientPromise;
+}
+
+async function getAdminClient() {
+  if (!hasSupabaseServiceRoleConfig) {
+    throw new Error("Supabase admin auth is not configured");
   }
 
   if (!supabaseAdminClientPromise) {
@@ -117,7 +159,11 @@ export function isSupabaseAuthEnabled() {
 }
 
 export function isSupabaseStorageEnabled() {
-  return env.supabaseStorageEnabled && hasSupabaseServiceRoleConfig;
+  return env.supabaseStorageEnabled && hasSupabaseStorageConfig;
+}
+
+export function isSupabaseAdminEnabled() {
+  return isSupabaseAuthEnabled() && hasSupabaseServiceRoleConfig;
 }
 
 export interface SupabaseAuthSession {
@@ -253,6 +299,78 @@ export async function revokeSupabaseSession(accessToken: string) {
   });
 
   await scopedClient.auth.signOut();
+}
+
+export async function createSupabaseAdminUser(input: {
+  email: string;
+  password: string;
+  userMetadata?: Record<string, unknown>;
+  appMetadata?: Record<string, unknown>;
+  emailConfirm?: boolean;
+}) {
+  const adminClient = await getAdminClient();
+  const { data, error } = await adminClient.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    user_metadata: input.userMetadata ?? {},
+    app_metadata: input.appMetadata ?? {},
+    email_confirm: input.emailConfirm ?? true,
+  });
+
+  if (error || !data.user) {
+    throw new Error(error?.message ?? "Failed to create Supabase user");
+  }
+
+  return {
+    id: data.user.id,
+    email: data.user.email ?? input.email,
+    user: mapSupabaseUser(data.user),
+  };
+}
+
+export async function updateSupabaseCurrentUserPassword(input: {
+  accessToken: string;
+  refreshToken?: string;
+  password: string;
+  userMetadata?: Record<string, unknown>;
+}) {
+  if (!hasSupabaseBaseConfig) {
+    throw new Error("Supabase auth is not configured");
+  }
+
+  const { createClient } = await getSupabaseModule();
+  const scopedClient = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${input.accessToken}`,
+      },
+    },
+  });
+
+  const sessionResult = await scopedClient.auth.setSession({
+    access_token: input.accessToken,
+    refresh_token: input.refreshToken ?? "",
+  });
+
+  if (sessionResult.error) {
+    throw new Error(sessionResult.error.message);
+  }
+
+  const { data, error } = await scopedClient.auth.updateUser({
+    password: input.password,
+    data: input.userMetadata,
+  });
+
+  if (error || !data.user) {
+    throw new Error(error?.message ?? "Failed to update Supabase user password");
+  }
+
+  return mapSupabaseUser(data.user);
 }
 
 export async function listSupabaseStorageObjects(prefix: string, limit: number) {

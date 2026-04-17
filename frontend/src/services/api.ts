@@ -10,10 +10,15 @@ import type {
   ActionResponse,
   ApiDataResponse,
   AuthUser,
+  CustomerForecastsResponse,
+  CustomerSegmentsResponse,
   DashboardData,
   DashboardQueryWindow,
   DashboardSiteOption,
+  DataEngineCatalogResponse,
   Envelope,
+  OperationalPriorityResponse,
+  RevenueLeakageResponse,
   RuntimeEngineCollection,
 } from "../types";
 import {
@@ -63,6 +68,58 @@ export interface NotificationItem {
   meterId?: string;
 }
 
+export interface DocumentRecord {
+  id: string;
+  bucket_name: string;
+  storage_path: string;
+  file_name: string;
+  content_type?: string | null;
+  size_bytes?: number | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  site_code?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentUploadRequest {
+  fileName: string;
+  title?: string;
+  category?: string;
+  meterId?: string;
+  customerId?: string;
+  siteId?: string;
+  mimeType?: string;
+  fileSize?: number;
+}
+
+export interface DocumentUploadResponse {
+  upload: {
+    path: string;
+    token: string;
+    signedUrl: string;
+  };
+  document?: DocumentRecord | null;
+}
+
+export interface GlobalSearchResult {
+  entityType: "customer" | "meter" | "document" | "theft-case";
+  id: string;
+  title: string;
+  subtitle: string;
+  siteCode: string | null;
+  metadata: Record<string, unknown>;
+  updatedAt: string | null;
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  total: number;
+  counts: Record<string, number>;
+  results: GlobalSearchResult[];
+}
+
 const httpClient = axios.create({
   baseURL: "/",
   withCredentials: true,
@@ -109,7 +166,22 @@ httpClient.interceptors.request.use((config) => {
 function toErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<Envelope<null>>;
-    return axiosError.response?.data?.reason ?? axiosError.message;
+    const reason = axiosError.response?.data?.reason;
+    if (reason) {
+      return reason;
+    }
+
+    const statusCode = axiosError.response?.status;
+    const requestPath = typeof axiosError.config?.url === "string" ? axiosError.config.url : "";
+    if (statusCode === 500 && requestPath.includes("/api/user/login")) {
+      return "Sign-in service is unavailable. Restart the backend and try again.";
+    }
+
+    if (statusCode === 500) {
+      return "Server error. Restart the backend and try again.";
+    }
+
+    return axiosError.message;
   }
 
   return error instanceof Error ? error.message : "Request failed";
@@ -547,6 +619,9 @@ export function getUserInfo() {
 export async function loginRequest(credentials: {
   username: string;
   password: string;
+  portal?: "staff" | "vendor";
+  upstreamUsername?: string;
+  upstreamPassword?: string;
 }) {
   const result = await request<{ user: AuthUser }>("/api/user/login", {
     body: credentials,
@@ -886,23 +961,106 @@ export function loadRuntimeEngines() {
   });
 }
 
-export function startRuntimeEngine(engine: "analysis" | "site-consumption") {
+export function loadRuntimeEngineCatalog() {
+  return request<DataEngineCatalogResponse>("/api/runtime/engine-catalog", {
+    method: "GET",
+  });
+}
+
+export function startRuntimeEngine(
+  engine: "analysis" | "site-consumption" | "customer-facts" | "revenue-leakage" | "operational-priority",
+) {
   return request<{ status: unknown }>(`/api/runtime/engines/${engine}/start`, {
     body: {},
   });
 }
 
-export function stopRuntimeEngine(engine: "analysis" | "site-consumption") {
+export function stopRuntimeEngine(
+  engine: "analysis" | "site-consumption" | "customer-facts" | "revenue-leakage" | "operational-priority",
+) {
   return request<{ status: unknown }>(`/api/runtime/engines/${engine}/stop`, {
     body: {},
   });
 }
 
-export function runRuntimeEngine(engine: "analysis" | "site-consumption") {
+export function runRuntimeEngine(
+  engine: "analysis" | "site-consumption" | "customer-facts" | "revenue-leakage" | "operational-priority",
+) {
   return request<{ status: unknown; runResult: { accepted: boolean; reason: string } }>(
     `/api/runtime/engines/${engine}/run`,
     {
       body: {},
     },
   );
+}
+
+export function loadCustomerSegments(params: { siteId?: string; limit?: number } = {}) {
+  return request<CustomerSegmentsResponse>("/api/customer/segments", {
+    method: "GET",
+    query: params,
+  });
+}
+
+export function loadCustomerForecasts(params: { siteId?: string; limit?: number } = {}) {
+  return request<CustomerForecastsResponse>("/api/customer/forecasts", {
+    method: "GET",
+    query: params,
+  });
+}
+
+export function loadRevenueLeakage(params: { siteId?: string } = {}) {
+  return request<RevenueLeakageResponse>("/api/runtime/revenue-leakage", {
+    method: "GET",
+    query: params,
+  });
+}
+
+export function loadOperationalPriority(params: { siteId?: string } = {}) {
+  return request<OperationalPriorityResponse>("/api/runtime/operational-priority", {
+    method: "GET",
+    query: params,
+  });
+}
+
+export function listDocuments(params: {
+  category?: string;
+  meterId?: string;
+  customerId?: string;
+  siteId?: string;
+  limit?: number;
+} = {}) {
+  return request<DocumentRecord[]>("/api/documents", {
+    method: "GET",
+    query: params,
+  });
+}
+
+export function createDocumentUploadUrl(payload: DocumentUploadRequest) {
+  return request<DocumentUploadResponse>("/api/documents/upload-url", {
+    body: payload as unknown as Record<string, unknown>,
+  });
+}
+
+export function createDocumentDownloadUrl(payload: {
+  storagePath: string;
+  expiresIn?: number;
+}) {
+  return request<{ path: string; signedUrl: string }>("/api/documents/download-url", {
+    body: payload,
+  });
+}
+
+export function searchGlobal(params: {
+  query: string;
+  siteId?: string;
+  limit?: number;
+}) {
+  return request<GlobalSearchResponse>("/api/search/global", {
+    method: "GET",
+    query: {
+      q: params.query,
+      siteId: params.siteId,
+      limit: params.limit,
+    },
+  });
 }

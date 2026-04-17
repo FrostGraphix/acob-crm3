@@ -206,6 +206,11 @@ export function ProfilePage() {
 
         {statusMessage ? <p className="status-banner">{statusMessage}</p> : null}
         {errorMessage ? <p className="status-banner status-banner-error">{errorMessage}</p> : null}
+        {user?.forcePasswordChange ? (
+          <p className="status-banner status-banner-error">
+            Your temporary password must be changed before vendor wallet actions are available.
+          </p>
+        ) : null}
 
         {activeTab === "information" ? (
           <form

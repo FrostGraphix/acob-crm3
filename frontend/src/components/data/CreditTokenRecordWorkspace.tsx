@@ -18,6 +18,7 @@ interface CreditTokenRecordWorkspaceProps {
   onGenerate: () => void;
   onExport?: () => void;
   onRefresh: () => void;
+  insights?: ReactNode;
   table: ReactNode;
 }
 
@@ -32,6 +33,7 @@ export function CreditTokenRecordWorkspace({
   onGenerate,
   onExport,
   onRefresh,
+  insights,
   table,
 }: CreditTokenRecordWorkspaceProps) {
   const lastUpdatedLabel =
@@ -86,6 +88,7 @@ export function CreditTokenRecordWorkspace({
 
       {feedback ? <p className="status-banner">{feedback}</p> : null}
       {error ? <p className="status-banner status-banner-error">{error}</p> : null}
+      {insights}
 
       {table}
     </section>

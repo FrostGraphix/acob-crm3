@@ -1,7 +1,6 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
-import { TabBar } from "./TabBar";
 import type { AppPageConfig, NavigationSection } from "../../types";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "acob-sidebar-collapsed";
@@ -11,8 +10,6 @@ interface AppLayoutProps extends PropsWithChildren {
   sections: NavigationSection[];
   onNavigate: (path: string) => void;
   onLogout: () => Promise<void>;
-  tabs?: AppPageConfig[];
-  onCloseTab?: (path: string) => void;
 }
 
 export function AppLayout({
@@ -20,8 +17,6 @@ export function AppLayout({
   sections,
   onNavigate,
   onLogout,
-  tabs,
-  onCloseTab,
   children,
 }: AppLayoutProps) {
   const isDashboardView = currentPage.path === "/dashboard";
@@ -83,9 +78,6 @@ export function AppLayout({
           onToggleSidebarCollapse={() => setIsSidebarCollapsed((current) => !current)}
         />
         <div className="crm-workspace">
-          {tabs && onCloseTab && !isDashboardView ? (
-            <TabBar tabs={tabs} activePath={currentPage.path} onClose={onCloseTab} />
-          ) : null}
           <main className={`crm-content ${isDashboardView ? "crm-content--dashboard" : ""}`}>
             {children}
           </main>

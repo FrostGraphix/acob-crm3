@@ -3,12 +3,18 @@ import jwt from "jsonwebtoken";
 import type { AuthSessionToken, AuthUser } from "../../../common/types/index.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 import {
+  REFRESH_COOKIE_NAME,
   buildSessionCookieOptions,
   SESSION_COOKIE_NAME,
 } from "../services/auth-cookie.js";
 import { env } from "../services/env.js";
 import { sendEnvelope } from "../services/response.js";
 import { sanitizeRequestBody } from "../services/request-validation.js";
+import { activateVendorCredentials } from "../services/wallet-persistence.js";
+import {
+  getSupabaseUserFromAccessToken,
+  updateSupabaseCurrentUserPassword,
+} from "../services/supabase.js";
 import {
   forwardWithUpstreamSessionRecovery,
   UpstreamSessionError,
@@ -68,9 +74,14 @@ function buildUpdatedUser(
     undefined;
 
   return {
+    id: currentUser.id,
     username,
     displayName,
     role: currentUser.role,
+    appRole: currentUser.appRole,
+    siteCode: currentUser.siteCode ?? null,
+    vendorId: currentUser.vendorId ?? null,
+    forcePasswordChange: currentUser.forcePasswordChange,
     permissions: currentUser.permissions,
     email,
     phone,
@@ -179,8 +190,75 @@ userRouter.post("/updateInfo", async (request, response) => {
 });
 
 userRouter.post("/modifyLoginPassword", async (request, response) => {
+  const authRequest = request as AuthenticatedRequest;
+  if (authRequest.authProvider === "supabase") {
+    const body = sanitizeRequestBody(request.body);
+    const newPassword = pickFirstString(body, ["newPassword", "password", "new_password"]);
+    const confirmPassword = pickFirstString(body, ["confirmPassword", "confirm_password"]);
+    const accessToken =
+      authRequest.supabaseAccessToken ??
+      (request.cookies?.[SESSION_COOKIE_NAME] as string | undefined);
+    const refreshToken =
+      authRequest.supabaseRefreshToken ??
+      (request.cookies?.[REFRESH_COOKIE_NAME] as string | undefined);
+
+    if (!newPassword || !confirmPassword) {
+      sendEnvelope(response, 400, null, "New password and confirmation are required", 1);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      sendEnvelope(response, 400, null, "Password confirmation does not match", 1);
+      return;
+    }
+
+    if (newPassword.length < 12) {
+      sendEnvelope(response, 400, null, "New password must be at least 12 characters", 1);
+      return;
+    }
+
+    if (!accessToken) {
+      sendEnvelope(response, 401, null, "Not authenticated", 1);
+      return;
+    }
+
+    try {
+      const user = await updateSupabaseCurrentUserPassword({
+        accessToken,
+        refreshToken,
+        password: newPassword,
+        userMetadata: {
+          force_password_change: false,
+          forcePasswordChange: false,
+        },
+      });
+      if (user.id) {
+        activateVendorCredentials(user.id);
+      }
+
+      sendEnvelope(
+        response,
+        200,
+        {
+          success: true,
+          message: "Login password updated",
+          user: {
+            ...user,
+            forcePasswordChange: false,
+          },
+        },
+        "Login password updated",
+      );
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update password";
+      sendEnvelope(response, 400, null, message, 1);
+      return;
+    }
+  }
+
   await forwardUserMutation(
-    request as AuthenticatedRequest,
+    authRequest,
     response,
     "/api/user/modifyLoginPassword",
     {

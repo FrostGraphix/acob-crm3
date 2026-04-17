@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node --test --test-isolation=none ../tests/frontend/page-catalog.test.ts ../tests/frontend/page-catalog-report-filters.test.ts ../tests/frontend/page-endpoints.test.ts ../tests/frontend/remote-pages.test.ts ../tests/frontend/report-analytics.test.ts ../tests/frontend/table-data.test.ts ../tests/frontend/payload-mapper.test.ts ../tests/frontend/payload-mapper.remote.test.ts ../tests/frontend/dashboard-mapper.test.ts ../tests/frontend/dashboard-api-resilience.test.ts ../tests/frontend/dashboard-bootstrap.test.ts ../tests/frontend/form-modal.test.ts ../tests/frontend/app-shell-state.test.ts ../tests/frontend/lazy-page.test.ts ../tests/frontend/meter-drilldown.test.ts",
+    "test": "node --test --test-isolation=none ../tests/frontend/page-catalog.test.ts ../tests/frontend/page-catalog-report-filters.test.ts ../tests/frontend/page-endpoints.test.ts ../tests/frontend/remote-pages.test.ts ../tests/frontend/remote-token-flow.smoke.test.ts ../tests/frontend/report-analytics.test.ts ../tests/frontend/table-data.test.ts ../tests/frontend/payload-mapper.test.ts ../tests/frontend/payload-mapper.remote.test.ts ../tests/frontend/token-generate-flow.test.ts ../tests/frontend/dashboard-mapper.test.ts ../tests/frontend/dashboard-api-resilience.test.ts ../tests/frontend/dashboard-bootstrap.test.ts ../tests/frontend/form-modal.test.ts ../tests/frontend/app-shell-state.test.ts ../tests/frontend/lazy-page.test.ts ../tests/frontend/meter-drilldown.test.ts ../tests/frontend/vendor-wallet.test.ts",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.13.6",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",

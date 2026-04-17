@@ -9,6 +9,15 @@ import {
 import { env } from "./env.js";
 import { forwardToUpstream, loginToUpstream } from "./upstream.js";
 import {
+  createAnalysisRun,
+  isSupabaseDbEnabled,
+  updateAnalysisRun,
+  upsertMeterDailyReads,
+  upsertWarehouseMeters,
+  type DbMeterDailyRead,
+  type DbWarehouseMeter,
+} from "./supabase-db.js";
+import {
   createEmptySiteConsumptionState,
   loadSiteConsumptionState,
   saveSiteConsumptionState,
@@ -499,6 +508,9 @@ class SiteConsumptionEngine {
     const monthlyLabels = createMonthRange(startDate, endDate);
     const yearlyLabels = createYearRange(startDate, endDate);
 
+    const dailyReadsToUpsert: DbMeterDailyRead[] = [];
+    const metersToUpsert: DbWarehouseMeter[] = [];
+
     const dailyBuckets = new Map<string, Map<SiteConsumptionSite, number>>();
     const monthlyBuckets = new Map<string, Map<SiteConsumptionSite, number>>();
     const yearlyBuckets = new Map<string, Map<SiteConsumptionSite, number>>();
@@ -531,6 +543,24 @@ class SiteConsumptionEngine {
           continue;
         }
 
+        const meterId = readString(row, ["meterId", "meterCode", "meterSn", "sn", "deviceId"]);
+        if (meterId && consumption > 0) {
+          dailyReadsToUpsert.push({
+            meter_id: meterId,
+            site_id: site,
+            read_date: dateKey,
+            consumption_kwh: consumption,
+            source: "site-consumption-engine",
+          });
+          metersToUpsert.push({
+            upstream_meter_id: meterId,
+            meter_sn: meterId,
+            site_code: site,
+            last_seen_at: readString(row, ["lastReadAt", "updateTime", "createTime"]) ?? `${dateKey}T00:00:00.000Z`,
+            raw_payload: row,
+          });
+        }
+
         const monthKey = dateKey.slice(0, 7);
         const yearKey = dateKey.slice(0, 4);
 
@@ -548,6 +578,27 @@ class SiteConsumptionEngine {
         yearMap.set(site, (yearMap.get(site) ?? 0) + consumption);
         yearlyBuckets.set(yearKey, yearMap);
       }
+    }
+
+    if (isSupabaseDbEnabled() && (dailyReadsToUpsert.length > 0 || metersToUpsert.length > 0)) {
+      // Chunk upserts to avoid overloading the statement
+      void (async () => {
+        try {
+          const meterChunkSize = 500;
+          for (let i = 0; i < metersToUpsert.length; i += meterChunkSize) {
+            const chunk = metersToUpsert.slice(i, i + meterChunkSize);
+            await upsertWarehouseMeters(chunk);
+          }
+
+          const chunkSize = 500;
+          for (let i = 0; i < dailyReadsToUpsert.length; i += chunkSize) {
+            const chunk = dailyReadsToUpsert.slice(i, i + chunkSize);
+            await upsertMeterDailyReads(chunk);
+          }
+        } catch (error) {
+          console.error("[SiteConsumptionEngine] failed to upsert mapped daily reads", error);
+        }
+      })();
     }
 
     const buildSeries = (
@@ -597,6 +648,13 @@ class SiteConsumptionEngine {
     this.refreshPromise = (async () => {
       const startedAt = Date.now();
       this.lastRunStartedAt = new Date(startedAt).toISOString();
+      const runRecord = isSupabaseDbEnabled()
+        ? await createAnalysisRun({
+            engine_name: "site-consumption-engine",
+            status: "running",
+            started_at: this.lastRunStartedAt,
+          })
+        : null;
       this.setRefreshing(true);
       const sourceWindow = {
         fromDate: getRecentWindowStartDate(),
@@ -613,6 +671,14 @@ class SiteConsumptionEngine {
             lastAttemptAt: new Date().toISOString(),
           };
           this.persistState();
+          if (runRecord?.id) {
+            void updateAnalysisRun(runRecord.id, {
+              status: "failed",
+              completed_at: new Date().toISOString(),
+              duration_ms: Date.now() - startedAt,
+              error_message: "Upstream authentication unavailable",
+            });
+          }
           return;
         }
 
@@ -636,6 +702,17 @@ class SiteConsumptionEngine {
         this.setSnapshot(snapshot);
         this.lastRunCompletedAt = new Date().toISOString();
         this.lastRunDurationMs = Date.now() - startedAt;
+        if (runRecord?.id) {
+          void updateAnalysisRun(runRecord.id, {
+            status: "completed",
+            completed_at: this.lastRunCompletedAt,
+            duration_ms: this.lastRunDurationMs,
+            metadata: {
+              sourceWindow,
+              sites: SITE_CONSUMPTION_SITES,
+            },
+          });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Site consumption refresh failed";
         this.setError(message);
@@ -645,6 +722,14 @@ class SiteConsumptionEngine {
           lastAttemptAt: new Date().toISOString(),
         };
         this.persistState();
+        if (runRecord?.id) {
+          void updateAnalysisRun(runRecord.id, {
+            status: "failed",
+            completed_at: new Date().toISOString(),
+            duration_ms: Date.now() - startedAt,
+            error_message: message,
+          });
+        }
       } finally {
         this.refreshPromise = null;
       }

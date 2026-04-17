@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { ReactEChartsCore, echarts } from "../../services/echarts";
 import { MetricCard } from "../../design-system";
+import { AnalyticsMixPanel } from "../analytics/AnalyticsMixPanel";
+import { Modal } from "../ui/Modal";
+import {
+  loadManagementMeterConsumption,
+  type ManagementMeterConsumptionRow,
+} from "../../services/management-analytics";
 import {
   SITE_CONSUMPTION_SITES,
   createDefaultSiteConsumptionQuery,
@@ -167,23 +173,46 @@ function createEmptySnapshot(): DataPageSnapshot {
   };
 }
 
-function toDataRows(report: SiteConsumptionReportResponse): DataRow[] {
-  return report.rows.map((row) => ({
-    periodLabel: row.periodLabel,
+function toCustomerSnapshotRows(rows: ManagementMeterConsumptionRow[]): DataRow[] {
+  return rows.map((row) => ({
+    customerName: row.customerName,
+    meterId: row.meterId,
     site: row.site,
-    consumption: row.consumption,
-    unitLabel: row.unitLabel,
+    totalKwh: row.totalKwh,
+    dayKwh: row.dayKwh,
+    nightKwh: row.nightKwh,
+    percentDay: row.percentDay,
+    snapshotDate: row.snapshotDate,
+    updatedAt: row.updatedAt,
   }));
 }
 
 export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionReportViewProps) {
+  const customerTableLimit = 500;
   const [query, setQuery] = useState<SiteConsumptionReportQuery>(createDefaultSiteConsumptionQuery);
   const [draftQuery, setDraftQuery] = useState<SiteConsumptionReportQuery>(createDefaultSiteConsumptionQuery);
   const [report, setReport] = useState<SiteConsumptionReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customerSite, setCustomerSite] = useState<string>("ALL");
+  const [customerRows, setCustomerRows] = useState<ManagementMeterConsumptionRow[]>([]);
+  const [customerLoading, setCustomerLoading] = useState(true);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  const [customerSites, setCustomerSites] = useState<string[]>(SITE_CONSUMPTION_SITES.slice());
+  const [selectedCustomer, setSelectedCustomer] = useState<ManagementMeterConsumptionRow | null>(null);
   const lastSuccessfulReport = useRef<SiteConsumptionReportResponse | null>(null);
+  const lastSuccessfulCustomerRows = useRef<ManagementMeterConsumptionRow[]>([]);
+  const draftAppliedFilters = useMemo(
+    () => ({
+      fromDate: draftQuery.fromDate ?? "",
+      toDate: draftQuery.toDate ?? "",
+      granularity: draftQuery.granularity,
+      sites: draftQuery.sites.join(","),
+      compareMode: draftQuery.compareMode,
+    }),
+    [draftQuery.compareMode, draftQuery.fromDate, draftQuery.granularity, draftQuery.sites, draftQuery.toDate],
+  );
 
   useEffect(() => {
     onSnapshotChange(createEmptySnapshot());
@@ -202,41 +231,12 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
         if (!cancelled) {
           setReport(next);
           lastSuccessfulReport.current = next;
-          const exportRows = toDataRows(next);
-          onSnapshotChange({
-            rows: exportRows,
-            total: exportRows.length,
-            loading: false,
-            error: next.refreshStatus.lastError ?? null,
-            appliedFilters: {
-              fromDate: next.requestedRange.fromDate,
-              toDate: next.requestedRange.toDate,
-              granularity: next.granularity,
-              sites: next.selectedSites.join(","),
-              compareMode: next.compareMode,
-            },
-          });
         }
       } catch (caughtError) {
         if (!cancelled) {
           const message =
             caughtError instanceof Error ? caughtError.message : "Failed to load site consumption report.";
           setError(message);
-          const preservedReport = lastSuccessfulReport.current;
-          const exportRows = preservedReport ? toDataRows(preservedReport) : [];
-          onSnapshotChange({
-            rows: exportRows,
-            total: exportRows.length,
-            loading: false,
-            error: message,
-            appliedFilters: {
-              fromDate: draftQuery.fromDate ?? "",
-              toDate: draftQuery.toDate ?? "",
-              granularity: draftQuery.granularity,
-              sites: draftQuery.sites.join(","),
-              compareMode: draftQuery.compareMode,
-            },
-          });
         }
       } finally {
         if (!cancelled) {
@@ -251,7 +251,90 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
     return () => {
       cancelled = true;
     };
-  }, [onSnapshotChange, query]);
+  }, [draftAppliedFilters, onSnapshotChange, query]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCustomerConsumption() {
+      setCustomerLoading(true);
+      setCustomerError(null);
+
+      try {
+        const next = await loadManagementMeterConsumption(
+          customerSite === "ALL" ? null : customerSite,
+          customerTableLimit,
+        );
+        if (!cancelled) {
+          const availableSites =
+            next.availableSites.length > 0 ? next.availableSites : SITE_CONSUMPTION_SITES.slice();
+          setCustomerSites(availableSites);
+          setCustomerRows(next.rows);
+          lastSuccessfulCustomerRows.current = next.rows;
+          onSnapshotChange({
+            rows: toCustomerSnapshotRows(next.rows),
+            total: next.rows.length,
+            loading: false,
+            error: null,
+            appliedFilters: {
+              site: customerSite,
+              fromDate: query.fromDate ?? "",
+              toDate: query.toDate ?? "",
+              granularity: query.granularity,
+              compareMode: query.compareMode,
+              exportSource: "customer-consumption-by-site",
+            },
+          });
+        }
+      } catch (caughtError) {
+        if (!cancelled) {
+          const message =
+            caughtError instanceof Error ? caughtError.message : "Failed to load customer consumption table.";
+          const preservedRows = lastSuccessfulCustomerRows.current;
+          setCustomerError(message);
+          setCustomerRows(preservedRows);
+          onSnapshotChange({
+            rows: toCustomerSnapshotRows(preservedRows),
+            total: preservedRows.length,
+            loading: false,
+            error: message,
+            appliedFilters: {
+              site: customerSite,
+              fromDate: query.fromDate ?? "",
+              toDate: query.toDate ?? "",
+              granularity: query.granularity,
+              compareMode: query.compareMode,
+              exportSource: "customer-consumption-by-site",
+            },
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setCustomerLoading(false);
+        }
+      }
+    }
+
+    void loadCustomerConsumption();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerSite, onSnapshotChange, query.compareMode, query.fromDate, query.granularity, query.toDate]);
+
+  useEffect(() => {
+    if (!selectedCustomer) {
+      return;
+    }
+
+    const stillVisible = customerRows.some(
+      (row) => row.meterId === selectedCustomer.meterId && row.site === selectedCustomer.site,
+    );
+
+    if (!stillVisible) {
+      setSelectedCustomer(null);
+    }
+  }, [customerRows, selectedCustomer]);
 
   const totalConsumption = useMemo(
     () => report?.summary.reduce((total, entry) => total + (entry.totalConsumption ?? 0), 0) ?? 0,
@@ -278,218 +361,77 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
 
   return (
     <section className="site-consumption-report" aria-live="polite">
-      <div className="premium-card site-report-controls">
-        <div className="site-report-simple-header">
-          <div className="site-report-simple-copy">
-            <strong>Simple flow</strong>
-            <span>Choose dates and sites, click Show Result, then export if you need the rows.</span>
-          </div>
-          <div className="site-report-compact-meta">
-            <span>{selectedSiteCount} site(s)</span>
-            <span>{compareModeLabel}</span>
-            <span>{refreshing ? "Updating result..." : `Last sync ${formatDateLabel(report?.lastUpdatedAt ?? null)}`}</span>
-          </div>
-        </div>
-        <div className="site-report-control-grid">
-          <label className="site-report-field">
-            <span>From date</span>
-            <input
-              type="date"
-              value={draftQuery.fromDate ?? ""}
-              onChange={(event) =>
-                setDraftQuery((current) => ({
-                  ...current,
-                  fromDate: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="site-report-field">
-            <span>To date</span>
-            <input
-              type="date"
-              value={draftQuery.toDate ?? ""}
-              onChange={(event) =>
-                setDraftQuery((current) => ({
-                  ...current,
-                  toDate: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="site-report-field">
-            <span>Show by</span>
-            <select
-              value={draftQuery.granularity}
-              onChange={(event) =>
-                setDraftQuery((current) => ({
-                  ...current,
-                  granularity: event.target.value as SiteConsumptionGranularity,
-                }))
-              }
-            >
-              <option value="daily">Daily</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </label>
-          <label className="site-report-field">
-            <span>Chart view</span>
-            <select
-              value={draftQuery.compareMode}
-              onChange={(event) =>
-                setDraftQuery((current) => ({
-                  ...current,
-                  compareMode: event.target.value as SiteConsumptionCompareMode,
-                }))
-              }
-            >
-              <option value="compare">Compare each site</option>
-              <option value="combined">Add all sites together</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="site-report-site-section">
-          <p className="site-report-helper-copy">Pick one or more sites.</p>
-          <div className="site-report-site-picker">
-            {SITE_CONSUMPTION_SITES.map((site) => {
-              const selected = draftQuery.sites.includes(site);
-              return (
-                <button
-                  key={site}
-                  className={`button ${selected ? "button-primary" : "button-ghost"}`}
-                  onClick={() =>
-                    setDraftQuery((current) => {
-                      const sites = current.sites.includes(site)
-                        ? current.sites.filter((entry) => entry !== site)
-                        : [...current.sites, site];
-
-                      return {
-                        ...current,
-                        sites,
-                      };
-                    })
-                  }
-                  type="button"
-                >
-                  {site}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="site-report-actions">
-          <button
-            className="button button-primary"
-            onClick={applyDraftQuery}
-            type="button"
-            disabled={loading || refreshing}
-          >
-            {refreshing ? "Updating..." : "Show Result"}
-          </button>
-          <button
-            className="button button-ghost"
-            onClick={resetToDefault}
-            type="button"
-          >
-            Start Over
-          </button>
-        </div>
-      </div>
-
       {error ? <p className="status-banner status-banner-error">{error}</p> : null}
+      {customerError ? <p className="status-banner status-banner-error">{customerError}</p> : null}
       {visibleIssues.length > 0 ? <p className="status-banner">{visibleIssues.join(" ")}</p> : null}
-
-      <div className="site-report-kpi-grid">
-        <MetricCard
-          className="site-report-kpi"
-          icon={<EnergyIcon />}
-          label="Total consumption"
-          meta={`${report?.units.label ?? "kWh"} across the current result`}
-          tone="success"
-          value={totalConsumption.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-        />
-        <MetricCard
-          className="site-report-kpi"
-          icon={<SiteIcon />}
-          label="Top site"
-          meta={formatValue(report?.topSite?.totalConsumption ?? null, report?.units.label ?? "kWh")}
-          tone="info"
-          value={report?.topSite?.site ?? "--"}
-        />
-        <MetricCard
-          className="site-report-kpi"
-          icon={<CompareIcon />}
-          label="Sites shown"
-          meta={compareModeLabel}
-          tone="neutral"
-          value={selectedSiteCount}
-        />
-      </div>
-
-      <section className="premium-chart-card">
-        <div className="chart-header">
-          <div>
-            <h3 className="chart-title">Usage trend</h3>
-            <span className="site-consumption-note">
-              {query.compareMode === "combined"
-                ? "One line showing the total for the selected sites."
-                : "A simple comparison line for each selected site."}
-            </span>
-          </div>
-        </div>
-        <div className="site-report-chart-shell">
-          {trendOption && report && report.series.labels.length > 0 ? (
-            <ReactEChartsCore echarts={echarts} lazyUpdate notMerge option={trendOption} style={{ height: "100%", width: "100%" }} />
-          ) : (
-            <div className="site-report-empty">No trend data is available for the selected filters.</div>
-          )}
-        </div>
-      </section>
 
       <section className="premium-card site-report-table-card">
         <div className="chart-header">
           <div>
-            <h3 className="chart-title">Exportable Period Rows</h3>
+            <h3 className="chart-title">Customer Consumption by Site</h3>
             <span className="site-consumption-note">
-              The shared report export button downloads these filtered rows as CSV.
+              The shared report export button now downloads this customer table as CSV.
             </span>
+          </div>
+          <div className="site-report-table-meta">
+            <span>{customerSite === "ALL" ? "All sites" : customerSite}</span>
+            <span>{customerRows.length.toLocaleString("en-US")} customers</span>
           </div>
         </div>
         <div className="site-report-table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Period</th>
+                <th>Customer</th>
+                <th>Meter Id</th>
                 <th>Site</th>
-                <th className="cell-align-end">Consumption</th>
-                <th>Unit</th>
+                <th className="cell-align-end">Total kWh</th>
+                <th className="cell-align-end">Day kWh</th>
+                <th className="cell-align-end">Night kWh</th>
+                <th className="cell-align-end">Day %</th>
+                <th>Snapshot</th>
               </tr>
             </thead>
             <tbody>
-              {loading && !report ? (
+              {customerLoading ? (
                 <tr>
-                  <td className="table-empty" colSpan={4}>
-                    Loading site consumption report...
+                  <td className="table-empty" colSpan={8}>
+                    Loading customer consumption table...
                   </td>
                 </tr>
-              ) : report?.rows.length ? (
-                report.rows.slice(0, 50).map((row) => (
-                  <tr key={`${row.periodLabel}-${row.site}`}>
-                    <td data-label="Period">{row.periodLabel}</td>
-                    <td data-label="Site">{row.site}</td>
-                    <td className="cell-align-end" data-label="Consumption">
-                      {row.consumption?.toLocaleString("en-US", { maximumFractionDigits: 2 }) ?? "--"}
+              ) : customerRows.length ? (
+                customerRows.map((row) => (
+                  <tr
+                    key={`${row.meterId}-${row.site}`}
+                    className="table-row-clickable site-customer-row"
+                    onClick={() => setSelectedCustomer(row)}
+                  >
+                    <td data-label="Customer">
+                      <button className="site-customer-link" type="button" onClick={() => setSelectedCustomer(row)}>
+                        {row.customerName || "Unnamed customer"}
+                      </button>
                     </td>
-                    <td data-label="Unit">{row.unitLabel}</td>
+                    <td data-label="Meter Id">{row.meterId || "--"}</td>
+                    <td data-label="Site">{row.site || "--"}</td>
+                    <td className="cell-align-end" data-label="Total kWh">
+                      {row.totalKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="cell-align-end" data-label="Day kWh">
+                      {row.dayKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="cell-align-end" data-label="Night kWh">
+                      {row.nightKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="cell-align-end" data-label="Day %">
+                      {row.percentDay.toLocaleString("en-US", { maximumFractionDigits: 0 })}%
+                    </td>
+                    <td data-label="Snapshot">{row.snapshotDate ?? "--"}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="table-empty" colSpan={4}>
-                    No period rows are available for the selected filters.
+                  <td className="table-empty" colSpan={8}>
+                    No customer consumption rows are available for the selected site.
                   </td>
                 </tr>
               )}
@@ -497,6 +439,50 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
           </table>
         </div>
       </section>
+
+      <Modal
+        open={selectedCustomer != null}
+        onClose={() => setSelectedCustomer(null)}
+        size="xl"
+        subtitle={
+          selectedCustomer
+            ? `${selectedCustomer.site || "Unknown site"} • Meter ${selectedCustomer.meterId || "--"}`
+            : undefined
+        }
+        title={selectedCustomer?.customerName || "Customer analytics"}
+      >
+        {selectedCustomer ? (
+          <div className="site-customer-modal">
+            <div className="site-customer-modal__summary">
+              <MetricCard
+                className="site-report-kpi"
+                icon={<EnergyIcon />}
+                label="Total consumption"
+                meta="Current selected site snapshot"
+                tone="success"
+                value={selectedCustomer.totalKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+              />
+              <MetricCard
+                className="site-report-kpi"
+                icon={<DayIcon />}
+                label="Day consumption"
+                meta={`${selectedCustomer.percentDay}% of total`}
+                tone="info"
+                value={selectedCustomer.dayKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+              />
+              <MetricCard
+                className="site-report-kpi"
+                icon={<NightIcon />}
+                label="Night consumption"
+                meta={selectedCustomer.snapshotDate ?? "No snapshot date"}
+                tone="neutral"
+                value={selectedCustomer.nightKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+              />
+            </div>
+            <AnalyticsMixPanel endpoint="/api/customer/360-lite" query={{ meterId: selectedCustomer.meterId }} />
+          </div>
+        ) : null}
+      </Modal>
     </section>
   );
 }
@@ -511,4 +497,12 @@ function SiteIcon() {
 
 function CompareIcon() {
   return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function DayIcon() {
+  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function NightIcon() {
+  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }

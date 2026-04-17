@@ -1,4 +1,5 @@
 import type { DataRow, TableColumn } from "../types";
+import { buildBrandedReceiptDocument } from "./receipt-branding";
 
 function readCellValue(value: DataRow[string]) {
   if (value === null || value === undefined) {
@@ -21,15 +22,6 @@ function sanitizeFileNameSegment(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 export function buildCsvContent(columns: TableColumn[], rows: DataRow[]) {
@@ -64,33 +56,17 @@ export function downloadRowsAsCsv(
 }
 
 function buildPrintableDocument(title: string, columns: TableColumn[], row: DataRow) {
-  const rowsHtml = columns
-    .map((column) => {
-      const value = escapeHtml(readCellValue(row[column.key]));
-      return `<tr><th>${escapeHtml(column.label)}</th><td>${value || "--"}</td></tr>`;
-    })
-    .join("");
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(title)}</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
-      h1 { margin-bottom: 16px; font-size: 20px; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; }
-      th { width: 35%; background: #f3f4f6; }
-    </style>
-  </head>
-  <body>
-    <h1>${escapeHtml(title)}</h1>
-    <table>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-  </body>
-</html>`;
+  return buildBrandedReceiptDocument({
+    documentTitle: title,
+    receiptTitle: title,
+    subtitle: "Official ACOB record generated from the platform.",
+    badgeText: "ACOB Record",
+    footerNote: "If any detail is incorrect, contact ACOB Lighting using the contact details above.",
+    rows: columns.map((column) => ({
+      label: column.label,
+      value: readCellValue(row[column.key]) || "--",
+    })),
+  });
 }
 
 function printWithPopup(html: string) {

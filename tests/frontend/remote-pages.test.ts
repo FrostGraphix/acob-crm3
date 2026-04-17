@@ -40,7 +40,7 @@ test("remote task monitor pages expose update actions only where upstream suppor
   assert.equal(pageByPath.get("/remote-operation-task/meter-reading-task")?.rowActions?.[0]?.endpoint, "/API/RemoteMeterTask/UpdateReadingTask");
   assert.equal(pageByPath.get("/remote-operation-task/meter-setting-task")?.rowActions?.[0]?.endpoint, "/API/RemoteMeterTask/UpdateSettingTask");
   assert.equal(pageByPath.get("/remote-operation-task/meter-control-task")?.rowActions?.[0]?.endpoint, "/API/RemoteMeterTask/UpdateControlTask");
-  assert.equal(pageByPath.get("/remote-operation-task/meter-token-task")?.rowActions?.[0]?.endpoint, "/API/RemoteMeterTask/UpdateTokenTask");
+  assert.equal(pageByPath.get("/remote-operation-task/meter-token-task")?.rowActions?.[0]?.endpoint, "/api/token/remote-task/update");
   assert.equal(pageByPath.get("/remote-operation-task/transparent-forwarding-task")?.rowActions, undefined);
 });
 
@@ -107,3 +107,5 @@ test("protocol 2.2 falls back to friendly reading names when the catalog is unav
     ],
   );
 });
+
+

@@ -313,6 +313,24 @@ export function ConsumptionStatisticsReportView({
   const [error, setError] = useState<string | null>(null);
   const lastSuccessfulReport = useRef<ConsumptionStatisticsReport | null>(null);
   const quickResultOptions = useMemo(() => createQuickResultOptions(), []);
+  const draftAppliedFilters = useMemo(
+    () => ({
+      customerId: draftQuery.customerId,
+      meterId: draftQuery.meterId,
+      fromDate: draftQuery.fromDate,
+      toDate: draftQuery.toDate,
+      metric: draftQuery.metric,
+      chartGranularity: draftQuery.chartGranularity,
+    }),
+    [
+      draftQuery.chartGranularity,
+      draftQuery.customerId,
+      draftQuery.fromDate,
+      draftQuery.meterId,
+      draftQuery.metric,
+      draftQuery.toDate,
+    ],
+  );
 
   useEffect(() => {
     onSnapshotChange(createEmptySnapshot());
@@ -361,14 +379,7 @@ export function ConsumptionStatisticsReportView({
             total: rows.length,
             loading: false,
             error: message,
-            appliedFilters: {
-              customerId: draftQuery.customerId,
-              meterId: draftQuery.meterId,
-              fromDate: draftQuery.fromDate,
-              toDate: draftQuery.toDate,
-              metric: draftQuery.metric,
-              chartGranularity: draftQuery.chartGranularity,
-            },
+            appliedFilters: draftAppliedFilters,
           });
         }
       } finally {
@@ -384,7 +395,7 @@ export function ConsumptionStatisticsReportView({
     return () => {
       cancelled = true;
     };
-  }, [onSnapshotChange, page, query]);
+  }, [draftAppliedFilters, onSnapshotChange, page, query]);
 
   const trendOption = useMemo(
     () => (report && report.chart.labels.length > 0 ? buildTrendOption(report) : null),

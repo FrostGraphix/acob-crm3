@@ -258,6 +258,71 @@ acob-crm3/
   - `frontend/src/components/reports/ReportContentPanel.tsx`
 - Operational control is now exposed inside the frontend through:
   - `frontend/src/pages/RuntimeAdminPage.tsx`
+
+## Additional Structure (April 2026 Vendor Wallet Subsystem Update)
+- Vendor wallet implementation now follows the canonical SOP in:
+  - `docs/ACOB_Vendor_Wallet_SOP_v2.md`
+- The earlier critique/plan remains historical context in:
+  - `docs/ACOB_Vendor_Wallet_Critique_and_Plan.md`
+  - `docs/VENDOR_WALLET_IMPLEMENTATION_CHECKLIST.md`
+- The wallet subsystem adds a new app-native operational domain built on Supabase plus Express while keeping token/remote delivery integrated through the existing upstream layer.
+- SOP v2 is adapted to this repo's established layout rather than forcing a parallel architecture:
+  - wallet APIs remain under `backend/src/api/`
+  - wallet business logic and runtime engines follow the existing backend service/runtime-engine pattern
+  - frontend vendor-wallet surfaces remain inside the existing page/config/service decomposition
+- Shared wallet contracts live in:
+  - `common/types/index.ts`
+- Backend wallet surfaces are expected to be grouped by domain under:
+  - `backend/src/api/vendor.ts`
+  - `backend/src/api/wallet.ts`
+  - `backend/src/api/reconciliation.ts`
+  - `backend/src/services/wallet-*.ts`
+  - `backend/src/services/vendor-wallet-risk.ts`
+  - `backend/src/services/wallet-hardening.ts`
+  - `backend/src/services/wallet-alerts.ts`
+- Vendor-wallet background processing should follow the established scheduler leadership/runtime-engine pattern rather than inventing a separate job runner:
+  - reconciliation engine
+  - settlement engine
+  - exception monitor
+- The implementation roadmap now includes:
+  - Phase 6: Supabase-authoritative reads with hydrate-on-miss cache behavior
+  - Phase 7: hardening and production-readiness controls
+- Commission and settlement flows now extend the wallet domain through the existing service/controller pattern:
+  - commission rule management
+  - commission accrual history and vendor summary surfaces
+  - finance KPI reporting for float, reserve, unsettled commission, failures, and exhaustion risk
+  - daily settlement preview and posting batches
+- Wallet route hydration now restores financial read models before protected route execution:
+  - `backend/src/services/wallet-persistence.ts`
+  - `backend/src/middleware/wallet-route-guard.ts`
+  - Supabase becomes the authoritative read source when enabled and schema-ready
+  - non-production fallback uses the write-mirror snapshot for restart-safe local and test behavior
+- Frontend vendor-wallet surfaces should remain within the existing page/service/config decomposition:
+  - vendor dashboard
+  - buy flow
+  - receipts
+  - transactions
+  - top-up
+  - statement
+  - profile
+  - commission summary/history
+- Internal finance wallet operations remain in the existing management page catalog:
+  - settlement batches
+  - commission rule administration
+  - wallet KPI reporting
+- Security model for the wallet subsystem:
+  - credential-first onboarding
+  - JWT claims must carry `app_role`, `site_code`, and `vendor_id` where applicable
+  - RLS enforces site-scoped vendor visibility for customer and meter search
+  - only backend service-role flows may post immutable ledger entries
+  - production wallet routes should fail closed when Supabase schema readiness is not satisfied
+  - hardening controls now route sensitive wallet actions through maker-checker approval requests
+  - wallet freeze/unfreeze is distinct from vendor suspension and can be triggered for fraud review
+  - vendor request activity logs IP, user-agent, and device fingerprint context for wallet security review
+  - rapid-purchase guardrails can auto-freeze wallets pending internal approval review
+  - per-vendor funding initiation throttles complement purchase throttling inside the wallet route guard path
+  - wallet-native operational alerts surface near-exhaustion, exception-escalation, and rate-limit events
+  - internal go-live readiness checks are exposed through the wallet domain instead of a separate rollout tool
   - `frontend/src/config/management-pages.ts` (`/system/runtime`, admin-only)
   - `frontend/src/components/layout/Header.tsx`
   - `frontend/src/services/api.ts` runtime-engine client methods

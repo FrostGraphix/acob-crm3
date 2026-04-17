@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { buildTheftPrioritization } from "../services/analytics-mix.js";
 import { sendEnvelope } from "../services/response.js";
 import { theftIntelligenceService } from "../services/theft-intelligence.js";
 
@@ -8,6 +9,16 @@ function sanitizeString(value: unknown) {
 }
 
 export const theftRouter = Router();
+
+theftRouter.get("/prioritization", async (request, response) => {
+  try {
+    const result = await buildTheftPrioritization(request as AuthenticatedRequest, response);
+    sendEnvelope(response, 200, result, "success");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load theft prioritization";
+    sendEnvelope(response, 502, null, message, 1);
+  }
+});
 
 theftRouter.post("/signals/read", (_request, response) => {
   sendEnvelope(response, 200, { rows: theftIntelligenceService.listSignals() }, "success");

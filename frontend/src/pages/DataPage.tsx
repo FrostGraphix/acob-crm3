@@ -4,6 +4,7 @@ import { ConfirmModal } from "../components/common/ConfirmModal";
 import { DataTable } from "../components/common/DataTable";
 import { FormModal } from "../components/common/FormModal";
 import { MeterDrilldownModal } from "../components/common/MeterDrilldownModal";
+import { AnalyticsMixPanel } from "../components/analytics/AnalyticsMixPanel";
 import { CreditTokenRecordWorkspace } from "../components/data/CreditTokenRecordWorkspace";
 import { DataPageToolbar } from "../components/data/DataPageToolbar";
 import { useDataTable } from "../hooks/useDataTable";
@@ -88,6 +89,26 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
   const exportAction = useMemo(
     () => page.toolbarActions?.find((action) => action.operationKind === "client-export") ?? null,
     [page.toolbarActions],
+  );
+  const insightQuery = useMemo(
+    () => Object.entries(appliedFilters).reduce<Record<string, string>>((accumulator, [key, value]) => {
+      if (value.trim().length > 0) {
+        accumulator[key] = value;
+      }
+      return accumulator;
+    }, {}),
+    [appliedFilters],
+  );
+  const insightPanels = useMemo(
+    () =>
+      page.insightPanels?.map((panel) => (
+        <AnalyticsMixPanel
+          key={panel.key}
+          endpoint={panel.endpoint}
+          query={{ ...panel.queryDefaults, ...insightQuery }}
+        />
+      )) ?? null,
+    [insightQuery, page.insightPanels],
   );
 
   useEffect(() => {
@@ -216,6 +237,7 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
                 setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
               );
           }}
+          insights={insightPanels}
           table={
             <DataTable
               columns={page.columns}
@@ -250,6 +272,8 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
         />
       ) : (
         <>
+          {insightPanels}
+
           <DataPageToolbar
             draftFilters={draftFilters}
             error={error}

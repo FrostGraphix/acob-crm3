@@ -12,9 +12,11 @@ import { debtRouter } from "./api/debt.js";
 import { dlmsRouter } from "./api/dlms.js";
 import { dlt645Router } from "./api/dlt645.js";
 import { dlt645TaskRouter } from "./api/dlt645-task.js";
+import { documentRouter } from "./api/documents.js";
 import { eventNotificationRouter } from "./api/event-notification.js";
 import { fileUploadRouter } from "./api/file-upload.js";
 import { gatewayRouter } from "./api/gateway.js";
+import { gprsMeterTaskRouter } from "./api/gprs-meter-task.js";
 import { itemRouter } from "./api/item.js";
 import { loadProfileRouter } from "./api/load-profile.js";
 import { logRouter } from "./api/log.js";
@@ -24,11 +26,15 @@ import { proxyHandler } from "./api/proxy.js";
 import { siteConsumptionRouter } from "./api/site-consumption.js";
 import { remoteRouter } from "./api/remote.js";
 import { reportRouter } from "./api/report.js";
+import { reconciliationRouter } from "./api/reconciliation.js";
 import { runtimeRouter } from "./api/runtime.js";
+import { searchRouter } from "./api/search.js";
 import { restAliasesRouter } from "./api/rest-aliases.js";
 import { tariffRouter } from "./api/tariff.js";
 import { tokenRouter } from "./api/token.js";
 import { userRouter } from "./api/user.js";
+import { vendorRouter } from "./api/vendor.js";
+import { walletRouter } from "./api/wallet.js";
 import { notificationRouter } from "./api/notification.js";
 import { requireAuth } from "./middleware/auth.js";
 import { requireRouteAccess } from "./middleware/authorization.js";
@@ -36,11 +42,13 @@ import { requireCsrf } from "./middleware/csrf.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { metricsMiddleware } from "./middleware/metrics.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
+import { requireWalletRouteAccess } from "./middleware/wallet-route-guard.js";
 import { env } from "./services/env.js";
 import { readMetricsSnapshot } from "./services/metrics.js";
 import { readRuntimeDiagnostics } from "./services/runtime-diagnostics.js";
 import { checkRuntimeStateStoreHealth } from "./services/runtime-state-store.js";
 import { checkSessionStoreHealth } from "./services/session-store.js";
+import { checkSupabaseDbHealth } from "./services/supabase-db.js";
 import { checkUpstreamHealth } from "./services/upstream.js";
 import { theftRouter } from "./api/theft.js";
 
@@ -75,10 +83,11 @@ export function createApp() {
   });
 
   app.get("/health/dependencies", async (_request, response) => {
-    const [upstream, sessionStore, runtimeStateStore] = await Promise.all([
+    const [upstream, sessionStore, runtimeStateStore, supabaseDb] = await Promise.all([
       checkUpstreamHealth(),
       checkSessionStoreHealth(),
       checkRuntimeStateStoreHealth(),
+      checkSupabaseDbHealth(),
     ]);
 
     const ok = upstream.ok && sessionStore.ok && runtimeStateStore.ok;
@@ -91,6 +100,7 @@ export function createApp() {
         upstream,
         sessionStore,
         runtimeStateStore,
+        supabaseDb,
       },
     });
   });
@@ -137,10 +147,23 @@ export function createApp() {
 
   // --- Remote & Reports ---
   app.use("/API/RemoteMeterTask", requireAuth, requireCsrf, requireRouteAccess, remoteRouter);
+  app.use("/API/GPRSMeterTask", requireAuth, requireCsrf, requireRouteAccess, gprsMeterTaskRouter);
   app.use("/API/PrepayReport", requireAuth, requireCsrf, requireRouteAccess, reportRouter);
   app.use("/api/notifications", requireAuth, requireCsrf, requireRouteAccess, notificationRouter);
   app.use("/api/runtime", requireAuth, requireCsrf, requireRouteAccess, runtimeRouter);
   app.use("/api/theft", requireAuth, requireCsrf, requireRouteAccess, theftRouter);
+  app.use("/api/documents", requireAuth, requireCsrf, requireRouteAccess, documentRouter);
+  app.use("/api/search", requireAuth, requireCsrf, requireRouteAccess, searchRouter);
+  app.use("/api/vendor", requireAuth, requireCsrf, requireRouteAccess, requireWalletRouteAccess, vendorRouter);
+  app.use("/api/wallet", requireAuth, requireCsrf, requireRouteAccess, requireWalletRouteAccess, walletRouter);
+  app.use(
+    "/api/reconciliation",
+    requireAuth,
+    requireCsrf,
+    requireRouteAccess,
+    requireWalletRouteAccess,
+    reconciliationRouter,
+  );
 
   // Endpoint registry still protects this route from unknown paths.
   app.post(/^\/(?:api|API)\//, requireAuth, requireCsrf, requireRouteAccess, proxyHandler);

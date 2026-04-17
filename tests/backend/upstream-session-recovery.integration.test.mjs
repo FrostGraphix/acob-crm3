@@ -7,6 +7,15 @@ let supabaseServer;
 let upstreamServer;
 let server;
 let baseUrl;
+const supabaseState = {
+  updatedAuthHeader: null,
+};
+const VALID_SUPABASE_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBhYmFzZS11c2VyLTEiLCJleHAiOjQ4MDAwMDAwMDAsImlhdCI6MTc3NjQxODEyMH0.-o4onqcurDFeVUs5m64daHykx66h81VJ5o9-Ff_Gflc";
+const EXPIRED_SUPABASE_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBhYmFzZS11c2VyLTEiLCJleHAiOjE3MDAwMDAwMDAsImlhdCI6MTc3NjQxODEyMH0.IE0yjt6hPdPXKzMWzmXjU3jmh5V8PJzsNaG7CaV5kL0";
+const FRESH_SUPABASE_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBhYmFzZS11c2VyLTEiLCJleHAiOjQ4MDAwMDAwMDAsImlhdCI6MTc3NjQxODEyMH0.-o4onqcurDFeVUs5m64daHykx66h81VJ5o9-Ff_Gflc";
 
 const upstreamState = {
   loginCount: 0,
@@ -85,7 +94,10 @@ test.before(async () => {
     const authHeader = request.headers.authorization ?? "";
 
     if (request.method === "GET" && pathname === "/auth/v1/user") {
-      if (authHeader === "Bearer valid-supabase-token") {
+      if (
+        authHeader === `Bearer ${VALID_SUPABASE_TOKEN}` ||
+        authHeader === `Bearer ${FRESH_SUPABASE_TOKEN}`
+      ) {
         sendJson(response, 200, {
           id: "supabase-user-1",
           email: "admin@example.com",
@@ -102,6 +114,53 @@ test.before(async () => {
       sendJson(response, 401, {
         error: "invalid_token",
         error_description: "JWT expired",
+      });
+      return;
+    }
+
+    if (request.method === "POST" && pathname === "/auth/v1/token") {
+      sendJson(response, 200, {
+        access_token: FRESH_SUPABASE_TOKEN,
+        refresh_token: "fresh-refresh-token",
+        expires_in: 3600,
+        token_type: "bearer",
+        user: {
+          id: "supabase-user-1",
+          email: "admin@example.com",
+          user_metadata: {
+            display_name: "Supabase Admin",
+          },
+          app_metadata: {
+            role: "Administrator",
+          },
+        },
+      });
+      return;
+    }
+
+    if (request.method === "PUT" && pathname === "/auth/v1/user") {
+      supabaseState.updatedAuthHeader = authHeader;
+
+      if (authHeader !== `Bearer ${FRESH_SUPABASE_TOKEN}`) {
+        sendJson(response, 401, {
+          code: 1,
+          msg: "Auth session missing!",
+        });
+        return;
+      }
+
+      sendJson(response, 200, {
+        user: {
+          id: "supabase-user-1",
+          email: "admin@example.com",
+          user_metadata: {
+            display_name: "Supabase Admin",
+            force_password_change: false,
+          },
+          app_metadata: {
+            role: "Administrator",
+          },
+        },
       });
       return;
     }
@@ -179,6 +238,7 @@ test.before(async () => {
   process.env.UPSTREAM_API_URL = `http://127.0.0.1:${upstreamAddress.port}`;
   process.env.UPSTREAM_USERNAME = "admin";
   process.env.UPSTREAM_PASSWORD = "ACOB_admin";
+  process.env.UPSTREAM_BEARER_TOKEN = "";
 
   const { createApp } = await import("../../backend/dist/backend/src/app.js");
   const app = createApp();
@@ -213,6 +273,7 @@ test.after(async () => {
 test.beforeEach(() => {
   upstreamState.loginCount = 0;
   upstreamState.currentSessionCookie = "JSESSIONID=upstream-session-1";
+  supabaseState.updatedAuthHeader = null;
 });
 
 test("missing upstream session is recreated for supabase-authenticated requests", async () => {
@@ -221,7 +282,7 @@ test("missing upstream session is recreated for supabase-authenticated requests"
     headers: {
       "Content-Type": "application/json",
       Cookie: buildCookieHeader(
-        "acob_session=valid-supabase-token",
+        `acob_session=${VALID_SUPABASE_TOKEN}`,
         "acob_csrf=recovery-csrf-token",
       ),
       "x-csrf-token": "recovery-csrf-token",
@@ -232,7 +293,7 @@ test("missing upstream session is recreated for supabase-authenticated requests"
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.code, 0);
-  assert.equal(upstreamState.loginCount, 1);
+  assert.equal(upstreamState.loginCount, 2);
   assert.ok(getCookieByName(response, "acob_upstream_session"));
 });
 
@@ -251,7 +312,7 @@ test("stale upstream session is retried with a fresh upstream login", async () =
     headers: {
       "Content-Type": "application/json",
       Cookie: buildCookieHeader(
-        "acob_session=valid-supabase-token",
+        `acob_session=${VALID_SUPABASE_TOKEN}`,
         "acob_upstream_session=stale-upstream-session",
         "acob_csrf=stale-csrf-token",
       ),
@@ -263,10 +324,10 @@ test("stale upstream session is retried with a fresh upstream login", async () =
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.code, 0);
-  assert.equal(upstreamState.loginCount, 1);
+  assert.equal(upstreamState.loginCount, 2);
 
   const refreshedSession = await getSession("stale-upstream-session");
-  assert.equal(refreshedSession?.upstreamCookie, "JSESSIONID=upstream-session-1");
+  assert.equal(refreshedSession?.upstreamCookie, "JSESSIONID=upstream-session-2");
 });
 
 test("supabase upstream routes proactively refresh the upstream session on each request", async () => {
@@ -275,7 +336,7 @@ test("supabase upstream routes proactively refresh the upstream session on each 
     headers: {
       "Content-Type": "application/json",
       Cookie: buildCookieHeader(
-        "acob_session=valid-supabase-token",
+        `acob_session=${VALID_SUPABASE_TOKEN}`,
         "acob_csrf=proactive-csrf-token",
       ),
       "x-csrf-token": "proactive-csrf-token",
@@ -286,14 +347,14 @@ test("supabase upstream routes proactively refresh the upstream session on each 
   assert.equal(firstResponse.status, 200);
   const upstreamSessionCookie = getCookieByName(firstResponse, "acob_upstream_session");
   assert.ok(upstreamSessionCookie);
-  assert.equal(upstreamState.loginCount, 1);
+  assert.equal(upstreamState.loginCount, 2);
 
   const secondResponse = await fetch(`${baseUrl}/api/customer/read`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Cookie: buildCookieHeader(
-        "acob_session=valid-supabase-token",
+        `acob_session=${VALID_SUPABASE_TOKEN}`,
         upstreamSessionCookie,
         "acob_csrf=proactive-csrf-token",
       ),
@@ -303,5 +364,30 @@ test("supabase upstream routes proactively refresh the upstream session on each 
   });
 
   assert.equal(secondResponse.status, 200);
-  assert.equal(upstreamState.loginCount, 2);
+  assert.equal(upstreamState.loginCount, 4);
+});
+
+test("password change uses the refreshed supabase access token in the same request", async () => {
+  const response = await fetch(`${baseUrl}/api/user/modifyLoginPassword`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: buildCookieHeader(
+        `acob_session=${EXPIRED_SUPABASE_TOKEN}`,
+        "acob_refresh=valid-refresh-token",
+        "acob_csrf=password-change-csrf-token",
+      ),
+      "x-csrf-token": "password-change-csrf-token",
+    },
+    body: JSON.stringify({
+      newPassword: "Vendor$Password123",
+      confirmPassword: "Vendor$Password123",
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.code, 0);
+  assert.equal(supabaseState.updatedAuthHeader, `Bearer ${FRESH_SUPABASE_TOKEN}`);
+  assert.equal(getCookieByName(response, "acob_session"), `acob_session=${FRESH_SUPABASE_TOKEN}`);
 });

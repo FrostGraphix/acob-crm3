@@ -105,6 +105,7 @@ export function FormModal({ action, row, onCancel, onSubmit }: FormModalProps) {
                     }
                     placeholder={field.placeholder}
                     type={field.type ?? "text"}
+                    autoComplete={field.type === "password" ? "current-password" : undefined}
                     value={values[field.key] ?? ""}
                   />
                 )}

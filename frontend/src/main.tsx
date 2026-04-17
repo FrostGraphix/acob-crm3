@@ -9,6 +9,7 @@ import "./styles/auth.css";
 import "./styles/modal.css";
 import "./styles/chart-enhancements.css";
 import "./styles/page-shells.css";
+import "./styles/vendor-wallet.css";
 import "./design-system/tokens.css";
 import "./design-system/primitives.css";
 import App from "./App.tsx";

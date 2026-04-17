@@ -1,6 +1,10 @@
 const UPSTREAM_PERMISSION_CLAIM =
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
+function normalizePermission(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function normalizePermissionEntry(value: unknown) {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
@@ -44,4 +48,16 @@ export function extractUpstreamPermissions(token: string | undefined) {
 
   const singlePermission = normalizePermissionEntry(permissionClaim);
   return singlePermission ? [singlePermission] : [];
+}
+
+export function hasUpstreamPermission(
+  permissionSource: string[] | string | undefined,
+  expectedPermission: string,
+) {
+  const permissions = Array.isArray(permissionSource)
+    ? permissionSource
+    : extractUpstreamPermissions(permissionSource);
+  const normalizedExpected = normalizePermission(expectedPermission);
+
+  return permissions.some((permission) => normalizePermission(permission) === normalizedExpected);
 }

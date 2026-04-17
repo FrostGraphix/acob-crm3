@@ -13,6 +13,8 @@ interface ReportControlPanelProps {
     value: string;
     accent: "teal" | "blue" | "green" | "orange";
   }>;
+  onExport?: () => void;
+  exportDisabled?: boolean;
 }
 
 function mapAccentClass(accent: "teal" | "blue" | "green" | "orange") {
@@ -39,17 +41,22 @@ export function ReportControlPanel({
   onViewModeChange,
   onTrendModeChange,
   stats,
+  onExport,
+  exportDisabled,
 }: ReportControlPanelProps) {
   const analyticsMode = activeConfig?.reportDisplayMode === "analytics";
+  const isSiteConsumption = activeConfig?.path === "/data-report/site-consumption";
 
   return (
     <Surface className="premium-card reports-control-panel" tone="raised">
       <div className="reports-control-row">
         {analyticsMode ? (
           <div className="reports-control-groups">
-            <span className="reports-record-count">
-              Guided analytics report. Use the quick actions inside the page for the easiest result path.
-            </span>
+            {!isSiteConsumption && (
+              <span className="reports-record-count">
+                Guided analytics report. Use the quick actions inside the page for the easiest result path.
+              </span>
+            )}
           </div>
         ) : (
           <div className="reports-control-groups">
@@ -97,7 +104,22 @@ export function ReportControlPanel({
           </div>
         )}
 
-        <span className="reports-record-count">{total} records loaded</span>
+        <div className="reports-control-summary">
+          <span className="reports-record-count">{total} records loaded</span>
+          {onExport && (
+            <Button
+              disabled={exportDisabled}
+              onClick={onExport}
+              size="sm"
+              tone="primary"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              Export Result
+            </Button>
+          )}
+        </div>
       </div>
 
       {stats.length > 0 ? (

@@ -2,10 +2,14 @@ import { pathToFileURL } from "node:url";
 import { isMainThread } from "node:worker_threads";
 import { createApp } from "./app.js";
 import { analysisEngine } from "./services/analysis-engine.js";
+import { customerFactEngine } from "./services/customer-fact-engine.js";
 import { env } from "./services/env.js";
+import { operationalPriorityEngine, revenueLeakageEngine } from "./services/priority-engines.js";
 import { readRuntimeDiagnostics } from "./services/runtime-diagnostics.js";
+import { walletReconciliationEngine } from "./services/wallet-reconciliation-engine.js";
 import { siteConsumptionEngine } from "./services/site-consumption-engine.js";
 import { checkSessionStoreHealth } from "./services/session-store.js";
+import { isSupabaseDbEnabled } from "./services/supabase-db.js";
 import { checkUpstreamHealth } from "./services/upstream.js";
 
 function isMainModule() {
@@ -32,6 +36,17 @@ export function startBackgroundEngines() {
     console.info(
       "Site consumption engine is disabled. Set ENABLE_SITE_CONSUMPTION_ENGINE=true to enable it.",
     );
+  }
+
+  walletReconciliationEngine.start();
+
+  if (isSupabaseDbEnabled()) {
+    customerFactEngine.start();
+    revenueLeakageEngine.start();
+    operationalPriorityEngine.start();
+  } else {
+    // eslint-disable-next-line no-console
+    console.info("Supabase DB is not configured. Customer fact and risk engines will remain idle.");
   }
 }
 

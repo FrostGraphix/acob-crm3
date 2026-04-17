@@ -19,6 +19,8 @@ export interface UpstreamHealth {
 const upstreamClient: AxiosInstance = axios.create({
   baseURL: env.upstreamApiUrl,
   timeout: 12_000,
+  // Bypass ambient HTTP(S)_PROXY settings for direct server-to-server calls.
+  proxy: false,
   headers: {
     "Content-Type": "application/json",
   },
@@ -94,6 +96,7 @@ export async function forwardToUpstream(
   const response = await upstreamClient.post(pathname, body, {
     headers: buildAuthHeaders(authToken),
     timeout: options.timeoutMs,
+    proxy: false,
     validateStatus: () => true,
   });
 
@@ -113,6 +116,7 @@ export async function forwardToUpstreamGet(
     headers: buildAuthHeaders(authToken),
     params,
     timeout: options.timeoutMs,
+    proxy: false,
     validateStatus: () => true,
   });
 
@@ -139,13 +143,18 @@ export async function loginToUpstream(
   credentials: { username: string; password: string },
 ): Promise<UpstreamLoginResult> {
   const username = credentials.username;
-  const response = await upstreamClient.post("/api/user/login", {
-    userId: username,
-    username,
-    password: credentials.password,
-  }, {
-    validateStatus: () => true,
-  });
+  const response = await upstreamClient.post(
+    "/api/user/login",
+    {
+      userId: username,
+      username,
+      password: credentials.password,
+    },
+    {
+      proxy: false,
+      validateStatus: () => true,
+    },
+  );
 
   const payload = normalizePayload(response);
   const cookieFromHeader = extractCookieHeader(response.headers["set-cookie"]);
@@ -175,6 +184,7 @@ export async function logoutFromUpstream(authToken: string | undefined) {
     {},
     {
       headers,
+      proxy: false,
       validateStatus: () => true,
     },
   );
@@ -184,6 +194,7 @@ export async function checkUpstreamHealth(): Promise<UpstreamHealth> {
   try {
     const response = await upstreamClient.get("/", {
       timeout: 5_000,
+      proxy: false,
       validateStatus: () => true,
     });
 

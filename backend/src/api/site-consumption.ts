@@ -1,4 +1,6 @@
 import { Router } from "express";
+import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { buildSiteLossExposure } from "../services/analytics-mix.js";
 import { siteConsumptionEngine } from "../services/site-consumption-engine.js";
 import {
   SITE_CONSUMPTION_SITES,
@@ -230,6 +232,16 @@ siteConsumptionRouter.get("/status", (_request, response) => {
     },
     "success",
   );
+});
+
+siteConsumptionRouter.get("/loss-exposure", async (request, response) => {
+  try {
+    const result = await buildSiteLossExposure(request as AuthenticatedRequest, response);
+    sendEnvelope(response, 200, result, "success");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load site loss exposure";
+    sendEnvelope(response, 502, null, message, 1);
+  }
 });
 
 export function buildSiteConsumptionReportResponse(options: {

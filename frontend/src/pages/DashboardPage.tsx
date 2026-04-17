@@ -202,26 +202,22 @@ export function DashboardPage() {
   const [from] = useState(DEFAULT_FROM);
   const [queryWindowEnd, setQueryWindowEnd] = useState(() => new Date().toISOString());
   const [selectedSite, setSelectedSite] = useState<SiteId | "ALL">("ALL");
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingRefreshTimestamp, setPendingRefreshTimestamp] = useState<string | null>(null);
   const { data: dashboardData, loading, error } = useDashboard(
     from,
     queryWindowEnd,
     selectedSite === "ALL" ? undefined : selectedSite,
   );
+  const isRefreshing = loading && pendingRefreshTimestamp === queryWindowEnd;
 
   useAutoRefresh(() => {
     setQueryWindowEnd(new Date().toISOString());
   });
 
-  useEffect(() => {
-    if (!loading) {
-      setIsRefreshing(false);
-    }
-  }, [loading]);
-
   async function handleRefresh() {
-    setIsRefreshing(true);
-    setQueryWindowEnd(new Date().toISOString());
+    const nextTimestamp = new Date().toISOString();
+    setPendingRefreshTimestamp(nextTimestamp);
+    setQueryWindowEnd(nextTimestamp);
   }
 
   const referenceStats = useMemo(
@@ -251,6 +247,10 @@ export function DashboardPage() {
   );
   const dailyConsumptionSeries = useMemo(
     () => mapSeries(dashboardData?.charts?.dailyConsumption?.xData, dashboardData?.charts?.dailyConsumption?.yData),
+    [dashboardData],
+  );
+  const trendOverviewSeries = useMemo(
+    () => mapSeries(dashboardData?.charts?.trendOverview?.xData, dashboardData?.charts?.trendOverview?.yData),
     [dashboardData],
   );
 
@@ -315,6 +315,25 @@ export function DashboardPage() {
       ) : null}
 
       <div className="flex flex-col gap-6 animate-fade-in">
+        <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
+          <div className="flex items-center justify-center mb-4">
+            <h3 className="text-lg font-display text-odyssey-electric font-semibold">Trend Overview</h3>
+          </div>
+          <ChartHost heightClassName="h-[300px]" loading={loading}>
+            {({ width, height }) => (
+              <LineChart width={width} height={height} data={trendOverviewSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: CHART_TICK }} axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: "#09120c", borderColor: CHART_GRID, borderRadius: "8px" }}
+                  itemStyle={{ color: "#fff" }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            )}
+          </ChartHost>
+        </div>
         <div className="glass rounded-xl border border-odyssey-border p-6 shadow-sm">
           <div className="flex items-center justify-center mb-4">
             <h3 className="text-lg font-display text-odyssey-electric font-semibold">Purchase Money</h3>

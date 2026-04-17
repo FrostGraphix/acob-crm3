@@ -55,6 +55,21 @@ test("routing falls back to an accessible page when the current page is unauthor
   assert.equal(resolved.path, "/dashboard");
 });
 
+test("vendor users cannot access wallet admin pages", () => {
+  const walletAdminPage = pagesByPath["/wallet-admin/overview"];
+  assert.ok(walletAdminPage);
+
+  const vendorUser = {
+    username: "vendor1",
+    displayName: "Vendor User",
+    role: "vendor_manager",
+    appRole: "vendor_manager",
+  };
+
+  assert.equal(userCanAccessPage(vendorUser, walletAdminPage), false);
+  assert.equal(userCanAccessPage(adminUser, walletAdminPage), true);
+});
+
 test("opened tabs are pruned when user access changes", () => {
   const fallbackPage = pagesByPath["/dashboard"];
   const nextTabs = syncOpenedTabsWithUserAccess(

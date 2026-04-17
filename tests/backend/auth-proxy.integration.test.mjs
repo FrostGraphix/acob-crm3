@@ -178,6 +178,63 @@ test.before(async () => {
       return;
     }
 
+    if (pathname === "/api/account/read") {
+      const pageNumber = Number(body.pageNumber ?? 1);
+      const pageSize = Number(body.pageSize ?? 20);
+      const start = (Math.max(1, pageNumber) - 1) * Math.max(1, pageSize);
+      const end = start + Math.max(1, pageSize);
+      const rows = upstreamState.customers.slice(start, end).map((customer) => ({
+        customerId: customer.id,
+        customerName: customer.name,
+        meterId: `METER-${customer.id}`,
+        meterType: "STS",
+        tariffId: "TAR-001",
+        protocolVersion: "2.2",
+        stationId: customer.stationId,
+        createTime: customer.createTime,
+      }));
+
+      sendUpstreamEnvelope(response, 200, {
+        rows,
+        total: upstreamState.customers.length,
+      });
+      return;
+    }
+
+    if (
+      pathname === "/api/token/creditToken/generate" ||
+      pathname === "/api/token/clearTamperToken/generate" ||
+      pathname === "/api/token/clearCreditToken/generate" ||
+      pathname === "/api/token/setMaximumPowerLimitToken/generate" ||
+      pathname === "/api/token/setMaximumPhasePowerUnbalanceLimitToken/generate" ||
+      pathname === "/api/token/changeMeterKeyToken/generate" ||
+      pathname === "/api/token/setMaximumOverdraftLimitToken/generate"
+    ) {
+      if (typeof body.MeterId !== "string" || body.MeterId.length === 0) {
+        response.writeHead(400, {
+          "Content-Type": "application/json",
+        });
+        response.end(
+          JSON.stringify({
+            type: "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            title: "One or more validation errors occurred.",
+            status: 400,
+            errors: {
+              MeterId: ["The MeterId field is required."],
+            },
+          }),
+        );
+        return;
+      }
+
+      sendUpstreamEnvelope(response, 200, {
+        success: true,
+        meterId: body.MeterId,
+        token: "TEST-TOKEN-123456",
+      });
+      return;
+    }
+
     if (
       pathname === "/API/PrepayReport/LowPurchaseSituation" ||
       pathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
@@ -558,6 +615,44 @@ async function loginAndCreateSession() {
     cookieHeader: buildCookieHeader(sessionCookie, csrfCookie),
   };
 }
+
+test("token generation forwards MeterId aliases derived from the selected account row", async () => {
+  const { csrfToken, cookieHeader } = await loginAndCreateSession();
+
+  const readResponse = await fetch(`${baseUrl}/api/account/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({ pageNumber: 1, pageSize: 1 }),
+  });
+  assert.equal(readResponse.status, 200);
+  const readPayload = await readResponse.json();
+  const row = readPayload.result.rows[0];
+  assert.ok(row);
+
+  const generateResponse = await fetch(`${baseUrl}/api/token/creditToken/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify({
+      row,
+      amount: 2500,
+      unit: 120,
+    }),
+  });
+
+  assert.equal(generateResponse.status, 200);
+  const generatePayload = await generateResponse.json();
+  assert.equal(generatePayload.code, 0);
+  assert.equal(generatePayload.result.success, true);
+  assert.equal(generatePayload.result.meterId, row.meterId);
+});
 
 test("legacy proxy requests recover a stale upstream session when service credentials are configured", async () => {
   const loginResponse = await fetch(`${baseUrl}/api/user/login`, {

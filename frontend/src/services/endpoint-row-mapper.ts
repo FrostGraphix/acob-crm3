@@ -415,6 +415,33 @@ function getAliasMapForEndpoint(endpoint: string): RowAliasMap | null {
         updateTime: updateTimeAliases,
       };
 
+    case "/API/RemoteMeterTask/GetTokenTask":
+      return {
+        customerId: [...customerIdAliases, "id"],
+        customerName: customerNameAliases,
+        meterId: meterIdAliases,
+        dataItem: ["dataItem", "item", "tokenType", "taskType", "type"],
+        token: tokenAliases,
+        status: ["status", "taskStatus", "state"],
+        createTime: createTimeAliases,
+        updateTime: updateTimeAliases,
+        stationId: ["stationId", "site", "siteId", "station", "sectionId"],
+      };
+
+    case "/API/GPRSMeterTask/GPRSGetTokenTask":
+      return {
+        customerId: [...customerIdAliases, "id"],
+        customerName: customerNameAliases,
+        meterId: meterIdAliases,
+        gatewayId: gatewayIdAliases,
+        dataItem: ["dataItem", "item", "tokenType", "taskType", "type", "name"],
+        token: ["token", "tokenCode", "clearToken", "stsToken", "data"],
+        status: ["status", "taskStatus", "state"],
+        createTime: createTimeAliases,
+        updateTime: updateTimeAliases,
+        stationId: ["stationId", "site", "siteId", "station", "sectionId"],
+      };
+
     case "/API/PrepayReport/LongNonpurchaseSituation":
     case "/api/reports/non-purchase":
       return {
@@ -567,3 +594,4 @@ export function mapEndpointRows(endpoint: string | undefined, rows: DataRow[]): 
 
   return rows.map((row) => applyAliasMap(row, aliasMap));
 }
+

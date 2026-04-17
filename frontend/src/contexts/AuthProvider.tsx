@@ -46,10 +46,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   };
 
-  const login = async (credentials: { username: string; password: string }) => {
+  const login = async (credentials: {
+    username: string;
+    password: string;
+    portal?: "staff" | "vendor";
+    upstreamUsername?: string;
+    upstreamPassword?: string;
+  }): Promise<AuthUser> => {
     const currentUser = await loginRequest(credentials);
     setUser(currentUser);
+    return currentUser;
   };
+
 
   const logout = async () => {
     await logoutRequest();

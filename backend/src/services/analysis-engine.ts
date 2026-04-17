@@ -15,6 +15,16 @@ import {
   type AnalysisStateSnapshot,
 } from "./runtime-state-store.js";
 import { SchedulerLeader, type SchedulerLeaderStatus } from "./scheduler-leader.js";
+import {
+  createAnalysisRun,
+  insertNotification as dbInsertNotification,
+  listUnreadNotifications as dbListUnread,
+  markNotificationsRead as dbMarkRead,
+  markAllNotificationsRead as dbMarkAllRead,
+  isSupabaseDbEnabled,
+  type DbNotification,
+  updateAnalysisRun,
+} from "./supabase-db.js";
 import { theftIntelligenceService } from "./theft-intelligence.js";
 import { forwardToUpstream, loginToUpstream } from "./upstream.js";
 
@@ -227,11 +237,29 @@ class AnalysisEngine {
     const startedAt = Date.now();
     this.lastRunStartedAt = new Date(startedAt).toISOString();
     this.lastError = null;
+    const runRecord = isSupabaseDbEnabled()
+      ? await createAnalysisRun({
+          engine_name: "analysis-engine",
+          status: "running",
+          started_at: this.lastRunStartedAt,
+          metadata: {
+            schedulerRunning: this.schedulerRunning,
+          },
+        })
+      : null;
     console.log("[AnalysisEngine] Starting scheduled analysis cycle...");
     const authToken = await this.getUpstreamAuth();
 
     if (!authToken) {
       this.lastError = "Upstream authentication failed";
+      if (runRecord?.id) {
+        void updateAnalysisRun(runRecord.id, {
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          duration_ms: Date.now() - startedAt,
+          error_message: this.lastError,
+        });
+      }
       console.error("[AnalysisEngine] Aborting cycle because upstream authentication failed.");
       return;
     }
@@ -329,6 +357,17 @@ class AnalysisEngine {
 
     this.lastRunCompletedAt = new Date().toISOString();
     this.lastRunDurationMs = Date.now() - startedAt;
+    if (runRecord?.id) {
+      void updateAnalysisRun(runRecord.id, {
+        status: "completed",
+        completed_at: this.lastRunCompletedAt,
+        duration_ms: this.lastRunDurationMs,
+        metadata: {
+          notificationsCount: this.notifications.length,
+          activeUnread: this.notifications.filter((notification) => !notification.read).length,
+        },
+      });
+    }
 
     console.log(
       `[AnalysisEngine] Cycle complete. Active notifications: ${this.notifications.filter((notification) => !notification.read).length}`,
@@ -348,13 +387,52 @@ class AnalysisEngine {
     if (this.notifications.length > 500) {
       this.notifications.pop();
     }
+
+    // Write to Supabase (fire-and-forget, non-blocking)
+    if (isSupabaseDbEnabled()) {
+      const severityMap: Record<string, DbNotification["severity"]> = {
+        warning: "warning",
+        critical: "critical",
+        info: "info",
+      };
+      void dbInsertNotification({
+        severity: severityMap[data.type] ?? "info",
+        title: data.title,
+        message: data.message,
+        meter_id: data.meterId ?? null,
+        source: "analysis-engine",
+      });
+    }
   }
 
-  public getUnreadNotifications() {
+  public async getUnreadNotifications(userId?: string | null): Promise<NotificationItem[]> {
+    // Prefer Supabase when available, fall back to in-memory
+    if (isSupabaseDbEnabled()) {
+      try {
+        const rows = await dbListUnread(userId);
+        return rows.map((row) => ({
+          id: row.id as string,
+          type: row.severity === "warning" ? "warning" as const
+            : row.severity === "critical" ? "critical" as const
+            : "info" as const,
+          title: row.title,
+          message: row.message,
+          timestamp: row.created_at,
+          read: false,
+          meterId:
+            typeof (row.payload as Record<string, unknown> | null)?.meterId === "string"
+              ? ((row.payload as Record<string, unknown>).meterId as string)
+              : undefined,
+        }));
+      } catch {
+        // Fall through to in-memory
+      }
+    }
+
     return this.notifications.filter((notification) => !notification.read);
   }
 
-  public dismissNotifications(ids: string[]) {
+  public async dismissNotifications(ids: string[], userId?: string | null) {
     const idSet = new Set(ids);
     let dismissedCount = 0;
 
@@ -369,10 +447,15 @@ class AnalysisEngine {
       void this.persistState();
     }
 
+    // Also mark read in Supabase
+    if (isSupabaseDbEnabled()) {
+      void dbMarkRead(ids, userId);
+    }
+
     return dismissedCount;
   }
 
-  public dismissAllNotifications() {
+  public async dismissAllNotifications(userId?: string | null) {
     let dismissedCount = 0;
 
     for (const notification of this.notifications) {
@@ -384,6 +467,11 @@ class AnalysisEngine {
 
     if (dismissedCount > 0) {
       void this.persistState();
+    }
+
+    // Also mark all read in Supabase
+    if (isSupabaseDbEnabled()) {
+      void dbMarkAllRead(userId);
     }
 
     return dismissedCount;

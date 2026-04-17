@@ -29,8 +29,14 @@ function createCsrfToken() {
   return randomUUID().replace(/-/g, "");
 }
 
+function resolveServiceUpstreamToken() {
+  return env.upstreamBearerToken.trim();
+}
+
 function hasServiceCredentials() {
-  return env.upstreamUsername.trim().length > 0 && env.upstreamPassword.trim().length > 0;
+  return resolveServiceUpstreamToken().length > 0 || (
+    env.upstreamUsername.trim().length > 0 && env.upstreamPassword.trim().length > 0
+  );
 }
 
 function resolveCsrfToken(request: AuthenticatedRequest) {
@@ -76,19 +82,26 @@ async function recoverUpstreamSession(
     throw new UpstreamSessionError();
   }
 
-  const upstreamLogin = await loginToUpstream({
-    username: env.upstreamUsername.trim(),
-    password: env.upstreamPassword.trim(),
-  });
-  const authenticated =
-    upstreamLogin.statusCode < 400 &&
-    upstreamLogin.payload.code === 0 &&
-    typeof upstreamLogin.upstreamCookie === "string";
+  const configuredBearerToken = resolveServiceUpstreamToken();
+  let upstreamCookie = configuredBearerToken;
 
-  if (!authenticated || !upstreamLogin.upstreamCookie) {
-    throw new UpstreamSessionError(
-      upstreamLogin.payload.reason || "Upstream session expired or invalid",
-    );
+  if (!upstreamCookie) {
+    const upstreamLogin = await loginToUpstream({
+      username: env.upstreamUsername.trim(),
+      password: env.upstreamPassword.trim(),
+    });
+    const authenticated =
+      upstreamLogin.statusCode < 400 &&
+      upstreamLogin.payload.code === 0 &&
+      typeof upstreamLogin.upstreamCookie === "string";
+
+    if (!authenticated || !upstreamLogin.upstreamCookie) {
+      throw new UpstreamSessionError(
+        upstreamLogin.payload.reason || "Upstream session expired or invalid",
+      );
+    }
+
+    upstreamCookie = upstreamLogin.upstreamCookie;
   }
 
   const sessionId =
@@ -98,7 +111,7 @@ async function recoverUpstreamSession(
   const { csrfToken, shouldSetCookie } = resolveCsrfToken(request);
 
   await createSession(sessionId, {
-    upstreamCookie: upstreamLogin.upstreamCookie,
+    upstreamCookie,
     csrfToken,
   });
 
@@ -116,11 +129,11 @@ async function recoverUpstreamSession(
     );
   }
 
-  request.upstreamCookie = upstreamLogin.upstreamCookie;
+  request.upstreamCookie = upstreamCookie;
   request.upstreamSessionId = sessionId;
   request.csrfToken = csrfToken;
 
-  return upstreamLogin.upstreamCookie;
+  return upstreamCookie;
 }
 
 export async function ensureUpstreamSession(
@@ -128,6 +141,14 @@ export async function ensureUpstreamSession(
   response: Response,
   options: EnsureUpstreamSessionOptions = {},
 ) {
+  const configuredServiceToken = resolveServiceUpstreamToken();
+  if (
+    configuredServiceToken.length > 0 &&
+    request.upstreamCookie !== configuredServiceToken
+  ) {
+    return recoverUpstreamSession(request, response);
+  }
+
   if (request.upstreamCookie && !options.forceRefresh) {
     return request.upstreamCookie;
   }
@@ -156,3 +177,4 @@ export async function forwardWithUpstreamSessionRecovery(
 
   return result;
 }
+

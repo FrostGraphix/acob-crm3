@@ -3,6 +3,8 @@ import { managementPages } from "./management-pages.ts";
 import { remotePages } from "./remote-pages.ts";
 import { reportPages } from "./report-pages.ts";
 import { tokenPages } from "./token-pages.ts";
+import { vendorPages } from "./vendor-pages.ts";
+import { walletAdminPages } from "./wallet-admin-pages.ts";
 
 const dashboardPage: AppPageConfig = {
   kind: "dashboard",
@@ -30,6 +32,8 @@ const pages: AppPageConfig[] = [
   ...remotePages,
   ...reportPages,
   ...managementPages,
+  ...vendorPages,
+  ...walletAdminPages,
 ];
 
 const sectionDefinitions: Array<{
@@ -46,11 +50,18 @@ const sectionDefinitions: Array<{
   { key: "load-profile", label: "Load Profile", iconKey: "load-profile" },
   { key: "management", label: "Management", iconKey: "management" },
   { key: "meter", label: "Meter", iconKey: "meter" },
-  { key: "debt", label: "Debt", iconKey: "debt" },
-  { key: "protocol", label: "Protocol", iconKey: "protocol" },
   { key: "runtime-ops", label: "Runtime Ops", iconKey: "runtime-ops" },
   { key: "event", label: "Events", iconKey: "event" },
   { key: "log", label: "System Log", iconKey: "log" },
+  { key: "wallet-admin-home", label: "Wallet Command", iconKey: "wallet" },
+  { key: "wallet-admin-vendors", label: "Vendor Ops", iconKey: "management" },
+  { key: "wallet-admin-funding", label: "Wallet Controls", iconKey: "wallet" },
+  { key: "wallet-admin-settlement", label: "Settlement", iconKey: "token-record" },
+  { key: "vendor-dashboard", label: "Vendor Dashboard", iconKey: "dashboard" },
+  { key: "vendor-buy", label: "Buy Units", iconKey: "token-generate" },
+  { key: "vendor-history", label: "History", iconKey: "token-record" },
+  { key: "vendor-wallet", label: "Wallet", iconKey: "wallet" },
+  { key: "vendor-account", label: "Profile", iconKey: "management" },
 ];
 
 export const defaultPath = "/dashboard";

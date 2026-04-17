@@ -276,26 +276,13 @@ export function DataTable({
                     ))}
                     {rowActions.length > 0 ? (
                       <td className="row-actions table-actions-column" data-label="Actions">
-                        {rowActions.map((action) => (
-                          <Button
-                            className={`mini-button mini-button-${action.tone ?? "neutral"}`}
-                            key={action.key}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRowAction(action, row);
-                            }}
-                            size="sm"
-                            tone={
-                              action.tone === "primary"
-                                ? "primary"
-                                : action.tone === "danger"
-                                  ? "danger"
-                                  : "ghost"
-                            }
-                          >
-                            {action.label}
-                          </Button>
-                        ))}
+                        <RowActionsMenu
+                          actions={rowActions}
+                          row={row}
+                          onAction={(action, currentRow) => {
+                            onRowAction(action, currentRow);
+                          }}
+                        />
                       </td>
                     ) : null}
                   </tr>
@@ -444,6 +431,78 @@ function ColumnFilter({
           >
             Apply
           </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RowActionsMenu({
+  actions,
+  row,
+  onAction,
+}: {
+  actions: ActionConfig[];
+  row: DataRow;
+  onAction: (action: ActionConfig, row: DataRow) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="table-filter-shell" ref={containerRef} onClick={(e) => e.stopPropagation()}>
+      <Button
+        className={`table-filter-trigger${isOpen ? " is-active" : ""}`}
+        onClick={() => setIsOpen(!isOpen)}
+        size="icon"
+        title="Actions"
+        tone={isOpen ? "secondary" : "ghost"}
+      >
+        <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="5" r="1.5" fill="currentColor"/>
+          <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+          <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+        </svg>
+      </Button>
+
+      {isOpen ? (
+        <div className="table-filter-popover" style={{ minWidth: "120px", padding: '0.4rem', right: 0, left: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {actions.map((action) => (
+            <Button
+              key={action.key}
+              className={`mini-button mini-button-${action.tone ?? "neutral"}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsOpen(false);
+                onAction(action, row);
+              }}
+              size="sm"
+              tone={
+                action.tone === "primary"
+                  ? "primary"
+                  : action.tone === "danger"
+                    ? "danger"
+                    : "ghost"
+              }
+              style={{ width: '100%', justifyContent: 'flex-start' }}
+            >
+              {action.label}
+            </Button>
+          ))}
         </div>
       ) : null}
     </div>

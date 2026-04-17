@@ -1,3 +1,8 @@
+import {
+  isSupabaseDbEnabled,
+  loadSiteConsumptionStateRecord,
+  saveSiteConsumptionStateRecord,
+} from "./supabase-db.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state-store.js";
 
 export const SITE_CONSUMPTION_SITES = [
@@ -230,11 +235,25 @@ function normalizeState(value: unknown): SiteConsumptionState | null {
 }
 
 export async function loadSiteConsumptionState(): Promise<SiteConsumptionState | null> {
+  if (isSupabaseDbEnabled()) {
+    const dbState = await loadSiteConsumptionStateRecord();
+    if (dbState) {
+      return normalizeState(dbState);
+    }
+  }
+
   const runtimeState = await loadRuntimeState<unknown>("site-consumption");
   return normalizeState(runtimeState);
 }
 
 export async function saveSiteConsumptionState(state: SiteConsumptionState): Promise<void> {
+  if (isSupabaseDbEnabled()) {
+    const saved = await saveSiteConsumptionStateRecord(state);
+    if (saved) {
+      return;
+    }
+  }
+
   await saveRuntimeState("site-consumption", state);
 }
 

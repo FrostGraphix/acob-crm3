@@ -1,14 +1,35 @@
 import { Router } from "express";
+import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { analysisEngine } from "../services/analysis-engine.js";
+import { buildNotificationsCorrelatedFeed } from "../services/analytics-mix.js";
 import { sendEnvelope } from "../services/response.js";
 
 export const notificationRouter = Router();
 
-notificationRouter.get("/", (_request, res) => {
-  sendEnvelope(res, 200, analysisEngine.getUnreadNotifications(), "success");
+notificationRouter.get("/correlated-feed", async (request, response) => {
+  try {
+    const result = await buildNotificationsCorrelatedFeed(request as AuthenticatedRequest, response);
+    sendEnvelope(response, 200, result, "success");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load notification correlations";
+    sendEnvelope(response, 502, null, message, 1);
+  }
 });
 
-notificationRouter.post("/dismiss", (req, res) => {
+notificationRouter.get("/", async (request, res) => {
+  try {
+    const authRequest = request as AuthenticatedRequest;
+    const notifications = await analysisEngine.getUnreadNotifications(
+      authRequest.authSession?.user.id ?? null,
+    );
+    sendEnvelope(res, 200, notifications, "success");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch notifications";
+    sendEnvelope(res, 500, null, message, 1);
+  }
+});
+
+notificationRouter.post("/dismiss", async (req, res) => {
   const { ids } = req.body as { ids: unknown };
 
   if (!Array.isArray(ids)) {
@@ -22,11 +43,18 @@ notificationRouter.post("/dismiss", (req, res) => {
     return;
   }
 
-  const dismissedCount = analysisEngine.dismissNotifications(normalizedIds);
+  const authRequest = req as AuthenticatedRequest;
+  const dismissedCount = await analysisEngine.dismissNotifications(
+    normalizedIds,
+    authRequest.authSession?.user.id ?? null,
+  );
   sendEnvelope(res, 200, { dismissedCount }, "success");
 });
 
-notificationRouter.post("/dismiss-all", (req, res) => {
-  const dismissedCount = analysisEngine.dismissAllNotifications();
+notificationRouter.post("/dismiss-all", async (req, res) => {
+  const authRequest = req as AuthenticatedRequest;
+  const dismissedCount = await analysisEngine.dismissAllNotifications(
+    authRequest.authSession?.user.id ?? null,
+  );
   sendEnvelope(res, 200, { dismissedCount }, "success");
 });

@@ -323,14 +323,6 @@ export const dlt645Columns: TableColumn[] = [
   { key: "remark", label: "Remark" },
 ];
 
-export const itemColumns: TableColumn[] = [
-  { key: "id", label: "Id", searchable: true },
-  { key: "name", label: "Name", searchable: true },
-  { key: "unit", label: "Unit" },
-  { key: "dataType", label: "Data Type" },
-  { key: "remark", label: "Remark" },
-  { key: "createTime", label: "Create Time" },
-];
 
 export const loadProfileColumns: TableColumn[] = [
   { key: "meterId", label: "Meter Id", searchable: true },
@@ -633,12 +625,6 @@ export const dlt645ManagementFields = [
   field("remark", "Remark", "Optional note"),
 ];
 
-export const itemManagementFields = [
-  field("name", "Name", "Item name"),
-  field("unit", "Unit", "Unit of measurement"),
-  field("dataType", "Data Type", "Data type"),
-  field("remark", "Remark", "Optional note"),
-];
 
 export function createClientExportAction(endpoint: string): ActionConfig {
   return {
@@ -684,7 +670,7 @@ export function createTokenGenerateAction(options: {
   operationKind: "token-generate-credit" | "token-generate-limit" | "token-generate-basic";
   successRedirectPath?: string;
 }): ActionConfig {
-  const fields: ActionField[] =
+  const tokenInputFields: ActionField[] =
     options.operationKind === "token-generate-credit"
       ? [
           {
@@ -710,6 +696,18 @@ export function createTokenGenerateAction(options: {
             },
           ]
         : [];
+
+  const fields: ActionField[] = [
+    ...tokenInputFields,
+    {
+      key: "authorizationPassword",
+      label: "Authorization Password",
+      type: "password",
+      placeholder: "Enter authorization password",
+      required: true,
+      helpText: "Required by the upstream meter system before issuing tokens.",
+    },
+  ];
 
   return {
     key: "generate",
@@ -767,6 +765,7 @@ interface TokenRecordPageOptions {
   filters?: FilterField[];
   toolbarActions?: ActionConfig[];
   rowActions?: ActionConfig[];
+  insightPanels?: DataPageConfig["insightPanels"];
 }
 
 export function createTokenRecordPage(
@@ -789,6 +788,7 @@ export function createTokenRecordPage(
     columns: options.columns,
     toolbarActions: [createClientExportAction(readEndpoint), ...(options.toolbarActions ?? [])],
     rowActions: [createClientPrintAction(readEndpoint), ...(options.rowActions ?? [])],
+    insightPanels: options.insightPanels,
     live: { enabled: true, intervalMs: 8_000, pauseOnHidden: true, critical: true },
     riskIntegration: {
       canOpenCase: true,
@@ -886,6 +886,7 @@ interface ManagementPageOptions {
   extraRowActions?: ActionConfig[];
   sectionKey?: string;
   actionBasePath?: string;
+  insightPanels?: DataPageConfig["insightPanels"];
 }
 
 export function createManagementPage(
@@ -919,6 +920,7 @@ export function createManagementPage(
     readOperationKind: "table-read",
     filters: [searchFilter],
     columns,
+    insightPanels: options.insightPanels,
     live: { enabled: false, intervalMs: 0, pauseOnHidden: true },
     toolbarActions: [
       {

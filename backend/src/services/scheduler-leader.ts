@@ -16,20 +16,6 @@ export interface SchedulerLeaderStatus {
   lastLeadershipError: string | null;
 }
 
-const RENEW_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("PSETEX", KEYS[1], ARGV[2], ARGV[1])
-end
-return 0
-`;
-
-const RELEASE_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("DEL", KEYS[1])
-end
-return 0
-`;
-
 export class SchedulerLeader {
   private readonly instanceId = randomUUID();
   private readonly leaseKey: string;
@@ -88,34 +74,14 @@ export class SchedulerLeader {
     }
 
     try {
-      const client = await getRedisClient();
-      if (!client) {
-        this.recordLeadershipError("Redis client unavailable");
-        if (this.isLeader) {
-          this.loseLeadership();
+      const acquired = await this.tryAcquireRedisLease();
+
+      if (acquired) {
+        if (!this.isLeader) {
+          this.becomeLeader();
         }
-        return;
-      }
-
-      if (this.isLeader) {
-        const renewed = await client.eval(RENEW_SCRIPT, {
-          keys: [this.leaseKey],
-          arguments: [this.instanceId, String(env.schedulerLeaderLeaseMs)],
-        });
-
-        if (renewed === 0) {
-          this.loseLeadership();
-        }
-        return;
-      }
-
-      const acquired = await client.set(this.leaseKey, this.instanceId, {
-        NX: true,
-        PX: env.schedulerLeaderLeaseMs,
-      });
-
-      if (acquired === "OK") {
-        this.becomeLeader();
+      } else if (this.isLeader) {
+        this.loseLeadership();
       }
     } catch (error) {
       this.recordLeadershipError(
@@ -125,6 +91,29 @@ export class SchedulerLeader {
         this.loseLeadership();
       }
     }
+  }
+
+  private async tryAcquireRedisLease() {
+    const client = await getRedisClient();
+    const leaseMs = env.schedulerLeaderLeaseMs;
+    const acquired = await client.set(this.leaseKey, this.instanceId, {
+      NX: true,
+      PX: leaseMs,
+    });
+
+    if (acquired === "OK") {
+      this.lastLeadershipError = null;
+      return true;
+    }
+
+    const currentOwner = await client.get(this.leaseKey);
+    if (currentOwner === this.instanceId) {
+      await client.pExpire(this.leaseKey, leaseMs);
+      this.lastLeadershipError = null;
+      return true;
+    }
+
+    return false;
   }
 
   private async releaseLeadership() {
@@ -137,11 +126,9 @@ export class SchedulerLeader {
 
     try {
       const client = await getRedisClient();
-      if (client && this.isLeader) {
-        await client.eval(RELEASE_SCRIPT, {
-          keys: [this.leaseKey],
-          arguments: [this.instanceId],
-        });
+      const currentOwner = await client.get(this.leaseKey);
+      if (currentOwner === this.instanceId) {
+        await client.del(this.leaseKey);
       }
     } catch (error) {
       this.recordLeadershipError(

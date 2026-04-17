@@ -29,5 +29,10 @@ export function errorHandler(
       ? error.message
       : "Unexpected server error";
 
+  // eslint-disable-next-line no-console
+  if (statusCode === 500) {
+    console.error("[ErrorHandler] Unhandled server error:", error);
+  }
+
   sendEnvelope(response, statusCode, null, message, 1);
 }

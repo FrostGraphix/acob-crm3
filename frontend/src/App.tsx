@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
@@ -8,16 +8,16 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { allPages, defaultPath, navigationSections, pagesByPath } from "./config/pageCatalog";
 import { useAuth } from "./hooks/useAuth";
 import {
-  closeTabAndResolveNextPath,
-  ensureCurrentTabVisible,
   filterNavigationSectionsForUser,
   filterPagesForUser,
+  isVendorWorkspaceUser,
   resolveAccessiblePage,
-  syncOpenedTabsWithUserAccess,
 } from "./services/app-shell-state";
 import { LoginPage } from "./pages/LoginPage";
+import { VendorLoginPage } from "./pages/VendorLoginPage";
+import { VendorChangePasswordPage } from "./pages/VendorChangePasswordPage";
 import { loadLazyPage } from "./services/lazy-page";
-import type { AppPageConfig } from "./types";
+import type { AppPageConfig, AppWorkspace, NavigationSection } from "./types";
 
 const DashboardPage = lazy(() =>
   loadLazyPage("DashboardPage", () => import("./pages/DashboardPage"), "DashboardPage"),
@@ -31,6 +31,9 @@ const ManagementAnalyticsPage = lazy(() =>
 );
 
 const DataPage = lazy(() => loadLazyPage("DataPage", () => import("./pages/DataPage"), "DataPage"));
+const TokenGeneratePage = lazy(() =>
+  loadLazyPage("TokenGeneratePage", () => import("./pages/TokenGeneratePage"), "TokenGeneratePage"),
+);
 const RemoteOperationPage = lazy(() =>
   loadLazyPage(
     "RemoteOperationPage",
@@ -52,6 +55,27 @@ const ProfilePage = lazy(() =>
 const RuntimeAdminPage = lazy(() =>
   loadLazyPage("RuntimeAdminPage", () => import("./pages/RuntimeAdminPage"), "RuntimeAdminPage"),
 );
+const DocumentsPage = lazy(() =>
+  loadLazyPage("DocumentsPage", () => import("./pages/DocumentsPage"), "DocumentsPage"),
+);
+
+const VendorPage = lazy(() =>
+  loadLazyPage("VendorPage", () => import("./pages/VendorPage"), "VendorPage"),
+);
+const WalletAdminHomePage = lazy(() =>
+  loadLazyPage(
+    "WalletAdminHomePage",
+    () => import("./pages/WalletAdminHomePage"),
+    "WalletAdminHomePage",
+  ),
+);
+const WalletAdminVendorOnboardingPage = lazy(() =>
+  loadLazyPage(
+    "WalletAdminVendorOnboardingPage",
+    () => import("./pages/WalletAdminVendorOnboardingPage"),
+    "WalletAdminVendorOnboardingPage",
+  ),
+);
 
 function LoadingFallback() {
   return (
@@ -67,12 +91,18 @@ function renderPage(page: AppPageConfig) {
       <Suspense fallback={<LoadingFallback />}>
         {page.path === "/management/analytics" ? <ManagementAnalyticsPage /> : null}
         {page.path === "/design-system" ? <DesignSystemPage /> : null}
+        {page.kind === "data" && page.path === "/wallet-admin/vendor-onboarding" ? (
+          <WalletAdminVendorOnboardingPage page={page} />
+        ) : null}
         {page.kind === "dashboard" && page.path !== "/management/analytics" ? <DashboardPage /> : null}
         {page.kind === "data" && (page.sectionKey === "data-report" || page.sectionKey === "load-profile") ? (
           <ReportsPage />
         ) : null}
+        {page.kind === "data" && page.sectionKey === "token-generate" ? <TokenGeneratePage page={page} /> : null}
         {page.kind === "data" && page.sectionKey === "remote-operation" ? <RemoteOperationPage page={page} /> : null}
         {page.kind === "data" &&
+        page.path !== "/wallet-admin/vendor-onboarding" &&
+        page.sectionKey !== "token-generate" &&
         page.sectionKey !== "data-report" &&
         page.sectionKey !== "load-profile" &&
         page.sectionKey !== "remote-operation" ? (
@@ -80,9 +110,51 @@ function renderPage(page: AppPageConfig) {
         ) : null}
         {page.kind === "profile" && page.path !== "/design-system" ? <ProfilePage /> : null}
         {page.kind === "runtime-admin" ? <RuntimeAdminPage /> : null}
+        {page.kind === "documents" ? <DocumentsPage /> : null}
+
+        {page.kind === "vendor" ? <VendorPage page={page} /> : null}
+        {page.kind === "wallet-admin-home" ? <WalletAdminHomePage page={page} /> : null}
       </Suspense>
     </ErrorBoundary>
   );
+}
+
+function pageWorkspaceOf(page: AppPageConfig): AppWorkspace {
+  return page.workspace ?? "operations";
+}
+
+function buildWorkspaceSections(
+  sections: NavigationSection[],
+  currentWorkspace: AppWorkspace,
+): NavigationSection[] {
+  const accessibleWalletLauncher =
+    sections
+      .flatMap((section) => section.items)
+      .find((page) => page.path === "/wallet-admin/overview") ?? null;
+  const filteredSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((page) => pageWorkspaceOf(page) === currentWorkspace),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  if (currentWorkspace !== "operations") {
+    return filteredSections;
+  }
+
+  if (!accessibleWalletLauncher) {
+    return filteredSections;
+  }
+
+  return [
+    ...filteredSections,
+    {
+      key: "wallet-admin-launcher",
+      label: "Vending Wallet",
+      iconKey: "wallet",
+      items: [accessibleWalletLauncher],
+    },
+  ];
 }
 
 function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
@@ -100,18 +172,13 @@ function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
   );
 }
 
-function sameTabPaths(left: AppPageConfig[], right: AppPageConfig[]) {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index]?.path !== right[index]?.path) {
-      return false;
-    }
-  }
-
-  return true;
+/** Guard: vendor token users cannot access the internal CRM shell. */
+function VendorUserRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate("/vendor/dashboard", { replace: true });
+  }, [navigate]);
+  return null;
 }
 
 function AppContent() {
@@ -119,6 +186,11 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
+
+  // If authenticated, vendor workspace users must sit in the vendor shell —
+  // they cannot enter the CRM shell at all.
+  const isVendor = isVendorWorkspaceUser(user);
+
   const accessiblePages = useMemo(() => filterPagesForUser(allPages, user), [user]);
   const fallbackPage = useMemo(
     () => accessiblePages.find((page) => page.path === defaultPath) ?? accessiblePages[0] ?? allPages[0],
@@ -128,26 +200,34 @@ function AppContent() {
     () => resolveAccessiblePage(pathname, pagesByPath, fallbackPage, user),
     [pathname, fallbackPage, user],
   );
-  const accessibleSections = useMemo(
-    () => filterNavigationSectionsForUser(navigationSections, user),
-    [user],
-  );
-
-  const [openedTabs, setOpenedTabs] = useState<AppPageConfig[]>([pagesByPath[defaultPath]]);
-  const visibleTabs = useMemo(
-    () => (pathname === "/login" ? openedTabs : ensureCurrentTabVisible(openedTabs, currentPage)),
-    [pathname, openedTabs, currentPage],
-  );
+  const currentWorkspace = pageWorkspaceOf(currentPage);
+  const accessibleSections = useMemo(() => {
+    const userSections = filterNavigationSectionsForUser(navigationSections, user);
+    return buildWorkspaceSections(userSections, currentWorkspace);
+  }, [currentWorkspace, user]);
 
   useEffect(() => {
     if (loading) return;
 
+    // Unauthenticated users → staff login
     if (!user && pathname !== "/login") {
       navigate("/login", { replace: true });
       return;
     }
 
-    if (user && !accessiblePages.some((page) => page.path === pathname) && pathname !== "/login") {
+    // Vendor workspace users → redirect to their own shell
+    if (user && isVendor && !pathname.startsWith("/vendor/")) {
+      navigate("/vendor/dashboard", { replace: true });
+      return;
+    }
+
+    // Staff trying to access vendor shell paths → redirect to CRM dashboard
+    if (user && !isVendor && pathname.startsWith("/vendor/")) {
+      navigate(defaultPath, { replace: true });
+      return;
+    }
+
+    if (user && !isVendor && !accessiblePages.some((page) => page.path === pathname) && pathname !== "/login") {
       navigate(fallbackPage.path, { replace: true });
       return;
     }
@@ -155,49 +235,9 @@ function AppContent() {
     if (user && pathname === "/login") {
       navigate(defaultPath, { replace: true });
     }
-  }, [accessiblePages, fallbackPage.path, loading, navigate, pathname, user]);
+  }, [accessiblePages, fallbackPage.path, loading, navigate, pathname, user, isVendor]);
 
-  useEffect(() => {
-    if (loading || !user || pathname === "/login") return;
-
-    const page = accessiblePages.find((entry) => entry.path === pathname);
-    if (page) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpenedTabs((prev: AppPageConfig[]) => {
-        const nextTabs = prev.find((t: AppPageConfig) => t.path === page.path)
-          ? prev
-          : [...prev, page];
-        if (sameTabPaths(prev, nextTabs)) {
-          return prev;
-        }
-        return nextTabs;
-      });
-    }
-  }, [accessiblePages, pathname, loading, user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setOpenedTabs((prev) => {
-      const nextTabs = syncOpenedTabsWithUserAccess(prev, accessiblePages, fallbackPage);
-      if (sameTabPaths(prev, nextTabs)) {
-        return prev;
-      }
-      return nextTabs;
-    });
-  }, [accessiblePages, fallbackPage, user]);
-
-  const handleCloseTab = (path: string) => {
-    setOpenedTabs((prev: AppPageConfig[]) => {
-      const { nextTabs, nextPath } = closeTabAndResolveNextPath(prev, path, pathname, defaultPath);
-      if (nextPath !== pathname) {
-        navigate(nextPath);
-      }
-      return nextTabs;
-    });
-  };
+  // Tabs state removed
 
   if (loading) {
     return <div className="loading-screen">Preparing CRM workspace...</div>;
@@ -215,6 +255,11 @@ function AppContent() {
     );
   }
 
+  // Vendor users never see the CRM AppLayout
+  if (isVendor) {
+    return <VendorUserRedirect />;
+  }
+
   return (
     <AppLayout
       currentPage={currentPage}
@@ -224,8 +269,6 @@ function AppContent() {
       }}
       onNavigate={(path) => navigate(path)}
       sections={accessibleSections}
-      tabs={visibleTabs}
-      onCloseTab={handleCloseTab}
     >
       <AppRoutes pages={accessiblePages} />
     </AppLayout>
@@ -236,10 +279,68 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        {/* Public routes served outside the auth-gated AppContent tree */}
+        <PublicShellRoutes />
       </AuthProvider>
     </ThemeProvider>
   );
+}
+
+/**
+ * Manages the top-level routing split:
+ * - /vendor/login and /vendor/change-password are always public (no auth required)
+ * - Everything else is handled by AppContent which applies auth guards
+ */
+function PublicShellRoutes() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const isVendorPath = pathname.startsWith("/vendor/");
+
+  if (loading) {
+    return <div className="loading-screen">Preparing CRM workspace...</div>;
+  }
+
+  // These paths are served without any auth wrapper
+  if (pathname === "/vendor/login") {
+    if (!user) {
+      return <VendorLoginPage />;
+    }
+
+    if (user.forcePasswordChange && isVendorWorkspaceUser(user)) {
+      return <Navigate replace to="/vendor/change-password" />;
+    }
+
+    return <Navigate replace to={isVendorWorkspaceUser(user) ? "/vendor/dashboard" : defaultPath} />;
+  }
+
+  if (pathname === "/vendor/change-password") {
+    if (!user) {
+      return <Navigate replace to="/vendor/login" />;
+    }
+
+    if (!isVendorWorkspaceUser(user)) {
+      return <Navigate replace to={defaultPath} />;
+    }
+
+    return <VendorChangePasswordPage />;
+  }
+
+  if (isVendorPath) {
+    if (!user) {
+      return <Navigate replace to="/vendor/login" />;
+    }
+
+    if (!isVendorWorkspaceUser(user)) {
+      return <Navigate replace to={defaultPath} />;
+    }
+
+    if (user.forcePasswordChange) {
+      return <Navigate replace to="/vendor/change-password" />;
+    }
+  }
+
+  return <AppContent />;
 }
 
 export default App;

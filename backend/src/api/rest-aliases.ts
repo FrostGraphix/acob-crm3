@@ -7,6 +7,11 @@ import {
   relayUpstreamResult,
   sendAliasFailure,
 } from "./alias-utils.js";
+import type { AuthenticatedRequest } from "../middleware/auth.js";
+import {
+  buildCollectionsPriority,
+  buildMasterDataConsistency,
+} from "../services/analytics-mix.js";
 import { sendEnvelope } from "../services/response.js";
 import { siteConsumptionEngine } from "../services/site-consumption-engine.js";
 import { SITE_CONSUMPTION_SITES } from "../services/site-consumption-store.js";
@@ -246,6 +251,15 @@ restAliasesRouter.get("/reports/consumption", async (request, response) => {
   return proxyFromQuery(request, response, "/API/PrepayReport/ConsumptionStatistics");
 });
 
+restAliasesRouter.get("/reports/collections-priority", async (request, response) => {
+  try {
+    const result = await buildCollectionsPriority(request as AuthenticatedRequest, response);
+    sendEnvelope(response, 200, result, "success");
+  } catch (error) {
+    sendAliasFailure(response, error, "Failed to load collections priority");
+  }
+});
+
 restAliasesRouter.get("/reports/daily-amr", async (request, response) => {
   return proxyFromQuery(request, response, "/API/LoadProfile/DailyData");
 });
@@ -299,6 +313,15 @@ restAliasesRouter.get("/reports/events", async (request, response) => {
 
 restAliasesRouter.get("/reports/instantaneous", async (request, response) => {
   return proxyFromQuery(request, response, "/API/LoadProfile/InstantaneousValueCurve");
+});
+
+restAliasesRouter.get("/master-data/consistency", async (request, response) => {
+  try {
+    const result = await buildMasterDataConsistency(request as AuthenticatedRequest, response);
+    sendEnvelope(response, 200, result, "success");
+  } catch (error) {
+    sendAliasFailure(response, error, "Failed to load master data consistency");
+  }
 });
 
 restAliasesRouter.get("/DailyDataMeter/readHourly", async (request, response) => {

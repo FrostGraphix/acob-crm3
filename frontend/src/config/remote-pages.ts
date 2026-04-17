@@ -63,7 +63,7 @@ export const remotePages: AppPageConfig[] = [
     "/remote-operation/meter-token",
     "Meter Token",
     "Meter Token",
-    "/API/RemoteMeterTask/CreateTokenTask",
+    "/api/token/remote-send",
     {
       remoteTaskType: "token",
       payloadBuilderKey: "token",
@@ -156,7 +156,7 @@ export const remotePages: AppPageConfig[] = [
     "/remote-operation-task/meter-token-task",
     "Meter Token Task",
     "Meter Token Task",
-    "/API/RemoteMeterTask/GetTokenTask",
+    "/api/token/remote-task/read",
     {
       columns: meterTokenTaskColumns,
       filters: [searchFilter],
@@ -164,7 +164,7 @@ export const remotePages: AppPageConfig[] = [
         {
           key: "retry-token",
           label: "Retry",
-          endpoint: "/API/RemoteMeterTask/UpdateTokenTask",
+          endpoint: "/api/token/remote-task/update",
           operationKind: "task-update",
           tone: "danger",
           fields: [field("remark", "Remark", "Optional retry note")],
@@ -181,3 +181,5 @@ export const remotePages: AppPageConfig[] = [
     { columns: genericTaskColumns, filters: [searchFilter] },
   ),
 ];
+
+

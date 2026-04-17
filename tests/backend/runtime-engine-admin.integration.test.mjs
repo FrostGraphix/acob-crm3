@@ -65,7 +65,7 @@ async function createAdminCookieHeader() {
   };
 }
 
-test("runtime engine admin endpoints expose engine status and allow local scheduler control", async () => {
+test("runtime engine admin endpoints expose all managed engine status surfaces", async () => {
   const auth = await createAdminCookieHeader();
 
   const statusResponse = await fetch(`${baseUrl}/api/runtime/engines`, {
@@ -78,6 +78,10 @@ test("runtime engine admin endpoints expose engine status and allow local schedu
   const statusPayload = await statusResponse.json();
   assert.equal(statusPayload.result.engines.analysis.name, "analysis-engine");
   assert.equal(statusPayload.result.engines.siteConsumption.name, "site-consumption-engine");
+  assert.equal(statusPayload.result.engines.customerFacts.name, "customer-fact-engine");
+  assert.equal(statusPayload.result.engines.revenueLeakage.name, "revenue-leakage-engine");
+  assert.equal(statusPayload.result.engines.operationalPriority.name, "operational-priority-engine");
+  assert.equal(statusPayload.result.engines.walletReconciliation.name, "wallet-reconciliation-engine");
 
   const startResponse = await fetch(`${baseUrl}/api/runtime/engines/analysis/start`, {
     method: "POST",
@@ -106,4 +110,18 @@ test("runtime engine admin endpoints expose engine status and allow local schedu
   assert.equal(stopResponse.status, 200);
   const stopPayload = await stopResponse.json();
   assert.equal(stopPayload.result.status.schedulerRunning, false);
+
+  const leakageResponse = await fetch(`${baseUrl}/api/runtime/revenue-leakage`, {
+    headers: { cookie: auth.cookie },
+  });
+  assert.equal(leakageResponse.status, 200);
+  const leakagePayload = await leakageResponse.json();
+  assert.ok(Array.isArray(leakagePayload.result.rows));
+
+  const priorityResponse = await fetch(`${baseUrl}/api/runtime/operational-priority`, {
+    headers: { cookie: auth.cookie },
+  });
+  assert.equal(priorityResponse.status, 200);
+  const priorityPayload = await priorityResponse.json();
+  assert.ok(Array.isArray(priorityPayload.result.rows));
 });

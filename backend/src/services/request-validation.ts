@@ -331,6 +331,29 @@ export function validateRequestBodyByPathname(
     return { valid: true };
   }
 
+  if (pathname.startsWith("/API/GPRSMeterTask/") || pathname.startsWith("/api/GPRSMeterTask/")) {
+    if (pathname.includes("/Update")) {
+      const row = toRecord(body.row);
+      if (!hasRowIdentifier(row) && !hasRowIdentifier(body)) {
+        return { valid: false, message: "task update requires a target row identifier" };
+      }
+
+      return { valid: true };
+    }
+
+    if (pathname.includes("/Create")) {
+      const target = toRecord(body.target);
+      if (Object.keys(target).length > 0) {
+        const targetValidation = validateRemoteTarget(target);
+        if (!targetValidation.valid) {
+          return targetValidation;
+        }
+      }
+    }
+
+    return { valid: true };
+  }
+
   if (pathname.startsWith("/API/PrepayReport/")) {
     const dateRange = validateDateRange(body, {
       required:
@@ -421,3 +444,4 @@ export function validateRequestBodyByPathname(
 
   return { valid: true };
 }
+

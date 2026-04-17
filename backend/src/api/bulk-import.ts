@@ -3,6 +3,11 @@ import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { sanitizeRequestBody } from "../services/request-validation.js";
 import { sendEnvelope } from "../services/response.js";
 import {
+  createImportJob,
+  isSupabaseDbEnabled,
+  updateImportJob,
+} from "../services/supabase-db.js";
+import {
   forwardWithUpstreamSessionRecovery,
   UpstreamSessionError,
 } from "../services/upstream-session.js";
@@ -45,6 +50,19 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
 
     const failures: BulkImportResult["failures"] = [];
     let importedCount = 0;
+    const startedAt = new Date().toISOString();
+    const importJob = isSupabaseDbEnabled()
+      ? await createImportJob({
+          entity_type: entityLabel.toLowerCase().replace(/\s+/g, "-"),
+          status: "running",
+          requested_by: request.authSession?.user.id ?? null,
+          started_at: startedAt,
+          summary: {
+            totalRecords: records.length,
+            createPath,
+          },
+        })
+      : null;
 
     for (const [index, record] of records.entries()) {
       try {
@@ -64,6 +82,19 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
         importedCount += 1;
       } catch (error) {
         if (error instanceof UpstreamSessionError) {
+          if (importJob?.id) {
+            void updateImportJob(importJob.id, {
+              status: "failed",
+              completed_at: new Date().toISOString(),
+              error_message: error.message,
+              summary: {
+                totalRecords: records.length,
+                importedCount,
+                failedCount: failures.length,
+                failures,
+              },
+            });
+          }
           sendEnvelope(response, 401, null, error.message, 1);
           return;
         }
@@ -86,6 +117,20 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
       failedCount,
       failures,
     };
+
+    if (importJob?.id) {
+      void updateImportJob(importJob.id, {
+        status: failedCount === 0 ? "completed" : "failed",
+        completed_at: new Date().toISOString(),
+        error_message: failedCount === 0 ? null : `${failedCount} record(s) failed`,
+        summary: {
+          totalRecords: records.length,
+          importedCount,
+          failedCount,
+          failures,
+        },
+      });
+    }
 
     sendEnvelope(
       response,

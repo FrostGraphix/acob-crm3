@@ -58,6 +58,63 @@ function parseString(value: string | undefined, fallback = "") {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
+function parseDirectSendCredentialMap(value: string | undefined) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return {} as Record<string, { username: string; password: string }>;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.entries(parsed).reduce<Record<string, { username: string; password: string }>>(
+      (accumulator, [stationId, entry]) => {
+        if (typeof stationId !== "string") {
+          return accumulator;
+        }
+
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          return accumulator;
+        }
+
+        const record = entry as Record<string, unknown>;
+        const username =
+          typeof record.username === "string" && record.username.trim().length > 0
+            ? record.username.trim()
+            : null;
+        const password =
+          typeof record.password === "string" && record.password.trim().length > 0
+            ? record.password.trim()
+            : null;
+
+        if (!username || !password) {
+          return accumulator;
+        }
+
+        accumulator[stationId.trim().toUpperCase()] = { username, password };
+        return accumulator;
+      },
+      {},
+    );
+  } catch {
+    return {};
+  }
+}
+
+function parseBearerToken(value: string | undefined) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+
+  return trimmed.replace(/^Bearer\s+/i, "").trim();
+}
 function parseSessionStoreMode(value: string | undefined): "redis" | "memory" {
   return value === "memory" ? "memory" : "redis";
 }
@@ -83,6 +140,12 @@ export interface AppEnv {
   upstreamApiUrl: string;
   upstreamUsername: string;
   upstreamPassword: string;
+  upstreamBearerToken: string;
+  gprsUpstreamBearerToken: string;
+  remoteSendAuthorizationPassword: string;
+  directSendUpstreamAccounts: Record<string, { username: string; password: string }>;
+  adminUsernames: string[];
+  adminEmails: string[];
   jwtSecret: string;
   sessionStoreMode: "redis" | "memory";
   runtimeStateStoreMode: "redis" | "file";
@@ -116,6 +179,17 @@ export const env: AppEnv = {
   upstreamApiUrl: process.env.UPSTREAM_API_URL ?? "http://8.208.16.168:9310",
   upstreamUsername: process.env.UPSTREAM_USERNAME ?? "admin",
   upstreamPassword: process.env.UPSTREAM_PASSWORD ?? "",
+  upstreamBearerToken: parseBearerToken(process.env.UPSTREAM_BEARER_TOKEN),
+  gprsUpstreamBearerToken: parseBearerToken(process.env.GPRS_UPSTREAM_BEARER_TOKEN),
+  remoteSendAuthorizationPassword: parseString(
+    process.env.REMOTE_SEND_AUTHORIZATION_PASSWORD,
+    "123456",
+  ),
+  directSendUpstreamAccounts: parseDirectSendCredentialMap(
+    process.env.DIRECT_SEND_UPSTREAM_ACCOUNTS,
+  ),
+  adminUsernames: parseCsv(process.env.ADMIN_USERNAMES, []),
+  adminEmails: parseCsv(process.env.ADMIN_EMAILS, []),
   jwtSecret: jwtSecret || randomUUID(),
   sessionStoreMode: parseSessionStoreMode(process.env.SESSION_STORE_MODE),
   runtimeStateStoreMode:
@@ -179,3 +253,7 @@ if (nodeEnv === "production" && env.runtimeStateStoreMode !== "redis") {
 if (nodeEnv === "production" && env.schedulerCoordinationMode !== "redis") {
   throw new Error("SCHEDULER_COORDINATION_MODE must resolve to redis in production.");
 }
+
+
+
+

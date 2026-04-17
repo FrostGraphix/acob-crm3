@@ -988,3 +988,91 @@ test("normalizeTableData maps meter reading task aliases into the task table key
     updateTime: "2026-03-11 08:12",
   });
 });
+
+test("normalizeTableData maps meter token task aliases into the task table keys", () => {
+  const result = normalizeTableData(
+    {
+      rows: [
+        {
+          consumerId: "C-301",
+          CustomerName: "Rabi Musa",
+          meterNo: "M-301",
+          tokenType: "Credit",
+          stsToken: "12345678901234567890",
+          taskStatus: "Queued",
+          createDate: "2026-03-11 09:00",
+          modifyTime: "2026-03-11 09:01",
+          sectionId: "MUSHA",
+        },
+      ],
+      total: 1,
+    },
+    "/API/RemoteMeterTask/GetTokenTask",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    consumerId: "C-301",
+    CustomerName: "Rabi Musa",
+    meterNo: "M-301",
+    tokenType: "Credit",
+    stsToken: "12345678901234567890",
+    taskStatus: "Queued",
+    createDate: "2026-03-11 09:00",
+    modifyTime: "2026-03-11 09:01",
+    sectionId: "MUSHA",
+    customerId: "C-301",
+    customerName: "Rabi Musa",
+    meterId: "M-301",
+    dataItem: "Credit",
+    token: "12345678901234567890",
+    status: "Queued",
+    createTime: "2026-03-11 09:00",
+    updateTime: "2026-03-11 09:01",
+    stationId: "MUSHA",
+  });
+});
+
+test("normalizeTableData maps GPRS meter token task aliases into the task table keys", () => {
+  const result = normalizeTableData(
+    {
+      result: {
+        total: 1,
+        data: [
+          {
+            id: 77,
+            customerId: "C-777",
+            customerName: "Maryam",
+            concentratorId: "DCU-01",
+            meterId: "M-777",
+            name: "Credit Token",
+            data: "12345678901234567890",
+            stationId: "UMAISHA",
+            status: 0,
+            createDate: "2026-04-16T10:26:46.008Z",
+            updateDate: "2026-04-16T10:28:46.404Z",
+          },
+        ],
+      },
+    },
+    "/API/GPRSMeterTask/GPRSGetTokenTask",
+  );
+
+  assert.deepEqual(result.rows[0], {
+    id: 77,
+    customerId: "C-777",
+    customerName: "Maryam",
+    concentratorId: "DCU-01",
+    meterId: "M-777",
+    name: "Credit Token",
+    data: "12345678901234567890",
+    stationId: "UMAISHA",
+    status: 0,
+    createDate: "2026-04-16T10:26:46.008Z",
+    updateDate: "2026-04-16T10:28:46.404Z",
+    gatewayId: "DCU-01",
+    dataItem: "Credit Token",
+    token: "12345678901234567890",
+    createTime: "2026-04-16T10:26:46.008Z",
+    updateTime: "2026-04-16T10:28:46.404Z",
+  });
+});

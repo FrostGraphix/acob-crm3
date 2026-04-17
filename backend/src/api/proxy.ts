@@ -14,6 +14,7 @@ import {
 } from "../services/upstream-session.js";
 import { buildUpstreamRequestPlan } from "../services/upstream-request-adapters.js";
 import { forwardToUpstream } from "../services/upstream.js";
+import { insertAuditLog, insertRemoteTask, isSupabaseDbEnabled } from "../services/supabase-db.js";
 
 function getRequestPath(request: Request) {
   const originalUrl = request.originalUrl || request.url;
@@ -208,24 +209,100 @@ export async function proxyCanonicalPath(
     }
 
     if (remoteAudit) {
+      const isSuccess = upstreamResult.payload.code === 0;
+
       console.info("[remote-operation]", {
         ...remoteAudit,
         durationMs: Date.now() - startedAt,
         upstreamStatusCode: upstreamResult.statusCode,
         upstreamCode: upstreamResult.payload.code,
-        success: upstreamResult.payload.code === 0,
+        success: isSuccess,
       });
+
+      if (isSupabaseDbEnabled() && remoteAudit.meterId) {
+        void insertRemoteTask({
+          meter_sn: remoteAudit.meterId,
+          site_code:
+            remoteTarget && typeof remoteTarget.stationId === "string"
+              ? remoteTarget.stationId
+              : undefined,
+          task_type: remoteAudit.taskType ?? upstreamPathname,
+          payload: remoteAudit.details,
+          result: upstreamResult.payload as unknown as Record<string, unknown>,
+          status: isSuccess ? "completed" : "failed",
+          initiated_by: authRequest.authSession?.user.id ?? null,
+          error_message: isSuccess ? null : (upstreamResult.payload as any)?.reason ?? "Unknown upstream error",
+          sent_at: new Date(startedAt).toISOString(),
+          completed_at: new Date().toISOString(),
+        });
+        void insertAuditLog({
+          actor_user_id: authRequest.authSession?.user.id ?? null,
+          action: isSuccess ? "remote-task-succeeded" : "remote-task-failed",
+          entity_type: "remote-task",
+          entity_id: remoteAudit.meterId,
+          site_code:
+            remoteTarget && typeof remoteTarget.stationId === "string"
+              ? remoteTarget.stationId
+              : undefined,
+          request_id:
+            typeof response.locals?.traceId === "string" ? response.locals.traceId : null,
+          metadata: {
+            endpoint: upstreamPathname,
+            taskType: remoteAudit.taskType ?? null,
+            durationMs: Date.now() - startedAt,
+            upstreamStatusCode: upstreamResult.statusCode,
+            upstreamCode: upstreamResult.payload.code,
+          },
+        });
+      }
     }
 
     response.status(upstreamResult.statusCode).json(upstreamResult.payload);
   } catch (error) {
     if (remoteAudit) {
+      const errorMessage = error instanceof Error ? error.message : "Upstream request failed";
+      
       console.warn("[remote-operation]", {
         ...remoteAudit,
         durationMs: Date.now() - startedAt,
         success: false,
-        error: error instanceof Error ? error.message : "Upstream request failed",
+        error: errorMessage,
       });
+
+      if (isSupabaseDbEnabled() && remoteAudit.meterId) {
+        void insertRemoteTask({
+          meter_sn: remoteAudit.meterId,
+          site_code:
+            remoteTarget && typeof remoteTarget.stationId === "string"
+              ? remoteTarget.stationId
+              : undefined,
+          task_type: remoteAudit.taskType ?? upstreamPathname,
+          payload: remoteAudit.details,
+          status: "failed",
+          initiated_by: authRequest.authSession?.user.id ?? null,
+          error_message: errorMessage,
+          sent_at: new Date(startedAt).toISOString(),
+          completed_at: new Date().toISOString(),
+        });
+        void insertAuditLog({
+          actor_user_id: authRequest.authSession?.user.id ?? null,
+          action: "remote-task-error",
+          entity_type: "remote-task",
+          entity_id: remoteAudit.meterId,
+          site_code:
+            remoteTarget && typeof remoteTarget.stationId === "string"
+              ? remoteTarget.stationId
+              : undefined,
+          request_id:
+            typeof response.locals?.traceId === "string" ? response.locals.traceId : null,
+          metadata: {
+            endpoint: upstreamPathname,
+            taskType: remoteAudit.taskType ?? null,
+            durationMs: Date.now() - startedAt,
+            error: errorMessage,
+          },
+        });
+      }
     }
 
     if (error instanceof UpstreamSessionError) {

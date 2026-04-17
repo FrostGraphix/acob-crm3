@@ -1,0 +1,1660 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACOB CRM3 — Vendor Wallet Design System
+   Green/Lemon Financial Theme · Poppins + DM Mono
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* ─── TOKENS ──────────────────────────────────────────────────────────────── */
+:root {
+  --vw-sidebar:       #021f0d;
+  --vw-sidebar-bg:    #011508;
+  --vw-primary:       #008000;
+  --vw-primary-dark:  #006600;
+  --vw-primary-light: #e6f4e6;
+  --vw-primary-glow:  rgba(0, 128, 0, 0.15);
+  --vw-lemon:         #C6E000;
+  --vw-lemon-dark:    #A5BB00;
+  --vw-lemon-light:   #F4FAC2;
+  --vw-lemon-text:    #2B3300;
+  --vw-lemon-glow:    rgba(198, 224, 0, 0.18);
+  --vw-bg:            #F2F4F2;
+  --vw-surface:       #FFFFFF;
+  --vw-surface2:      #FAFBFA;
+  --vw-text:          #0d1f10;
+  --vw-text-mid:      #374151;
+  --vw-muted:         #6B7280;
+  --vw-faint:         #9CA3AF;
+  --vw-border:        #E5EAE5;
+  --vw-border2:       #D1D8D1;
+  --vw-success:       #008000;
+  --vw-success-bg:    #e6f4e6;
+  --vw-success-text:  #014d01;
+  --vw-danger:        #DC2626;
+  --vw-danger-bg:     #FEF2F2;
+  --vw-danger-text:   #991B1B;
+  --vw-warning:       #D97706;
+  --vw-warning-bg:    #FFFBEB;
+  --vw-warning-text:  #92400E;
+  --vw-info:          #2563EB;
+  --vw-info-bg:       #EFF6FF;
+  --vw-info-text:     #1E40AF;
+  --vw-purple-bg:     #F5F3FF;
+  --vw-purple-text:   #5B21B6;
+  --vw-font:          'Poppins', sans-serif;
+  --vw-mono:          'DM Mono', monospace;
+  --vw-radius:        12px;
+  --vw-radius-lg:     16px;
+  --vw-radius-xl:     18px;
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────────────────────────────── */
+@keyframes vw-fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vw-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes vw-slideRight {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes vw-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+@keyframes vw-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes vw-glowGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 128, 0, 0.3); }
+  50%      { box-shadow: 0 0 0 8px rgba(0, 128, 0, 0); }
+}
+@keyframes vw-glowLemon {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 224, 0, 0.3); }
+  50%      { box-shadow: 0 0 0 8px rgba(198, 224, 0, 0); }
+}
+@keyframes vw-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+.vw-fadeUp    { animation: vw-fadeUp 0.35s ease both; }
+.vw-fadeIn    { animation: vw-fadeIn 0.25s ease both; }
+.vw-slideRight { animation: vw-slideRight 0.3s ease both; }
+
+/* ─── LAYOUT STACK ────────────────────────────────────────────────────────── */
+.vendor-wallet-stack {
+  display: grid;
+  gap: 1.25rem;
+  font-family: var(--vw-font);
+}
+
+/* ─── HERO BALANCE CARD ───────────────────────────────────────────────────── */
+.vw-hero {
+  background: linear-gradient(135deg, var(--vw-sidebar-bg) 0%, #013b18 100%);
+  border-radius: var(--vw-radius-xl);
+  padding: 26px 28px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(1, 21, 8, 0.22);
+  animation: vw-fadeUp 0.35s ease both;
+}
+.vw-hero::before {
+  content: '';
+  position: absolute;
+  right: -50px;
+  top: -50px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(198, 224, 0, 0.05);
+  pointer-events: none;
+}
+.vw-hero__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+}
+.vw-hero__eyebrow {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.vw-hero__balance {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  font-family: var(--vw-font);
+}
+.vw-hero__sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 8px;
+  font-family: var(--vw-mono);
+}
+.vw-hero__right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.vw-hero__active-badge {
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #4ade80;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.vw-hero__active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: vw-pulse 2s ease-in-out infinite;
+}
+.vw-hero__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  position: relative;
+}
+.vw-hero__grid-item-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--vw-font);
+  font-weight: 600;
+}
+.vw-hero__grid-item-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--vw-font);
+}
+.vw-hero__grid-item-value--warn {
+  color: #fcd34d;
+}
+
+/* ─── DAILY LIMIT BAR ─────────────────────────────────────────────────────── */
+.vw-limit-bar {
+  margin-top: 18px;
+  position: relative;
+}
+.vw-limit-bar__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 7px;
+  font-family: var(--vw-font);
+}
+.vw-limit-bar__header span:last-child {
+  font-family: var(--vw-mono);
+}
+.vw-limit-bar__track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.vw-limit-bar__fill {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.vw-limit-bar__fill--ok {
+  background: var(--vw-lemon);
+  box-shadow: 0 0 8px var(--vw-lemon-glow);
+}
+.vw-limit-bar__fill--danger {
+  background: var(--vw-danger);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+}
+
+/* ─── INFO BOX ────────────────────────────────────────────────────────────── */
+.vw-infobox {
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.65;
+  font-family: var(--vw-font);
+}
+.vw-infobox--info    { background: var(--vw-info-bg);    border: 1px solid #bfdbfe; color: var(--vw-info-text); }
+.vw-infobox--warning { background: var(--vw-warning-bg); border: 1px solid #fcd34d; color: var(--vw-warning-text); }
+.vw-infobox--success { background: var(--vw-success-bg); border: 1px solid #b7dfc8; color: var(--vw-success-text); }
+.vw-infobox--danger  { background: var(--vw-danger-bg);  border: 1px solid #fecaca; color: var(--vw-danger-text); }
+.vw-infobox--lemon   { background: var(--vw-lemon-light); border: 1px solid #d6ee66; color: var(--vw-lemon-text); }
+.vw-infobox__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─── BADGE ───────────────────────────────────────────────────────────────── */
+.vw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-family: var(--vw-font);
+}
+.vw-badge--lg { padding: 5px 13px; font-size: 12px; }
+.vw-badge--success { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid #b7dfc8; }
+.vw-badge--danger  { background: var(--vw-danger-bg);  color: var(--vw-danger-text);  border: 1px solid #fecaca; }
+.vw-badge--warning { background: var(--vw-warning-bg); color: var(--vw-warning-text); border: 1px solid #fcd34d; }
+.vw-badge--info    { background: var(--vw-info-bg);    color: var(--vw-info-text);    border: 1px solid #bfdbfe; }
+.vw-badge--lemon   { background: var(--vw-lemon-light); color: var(--vw-lemon-text);  border: 1px solid #d6ee66; }
+.vw-badge--gray    { background: #F9FAFB;              color: var(--vw-muted);        border: 1px solid var(--vw-border); }
+.vw-badge--green   { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid #b7dfc8; }
+.vw-badge--purple  { background: var(--vw-purple-bg);  color: var(--vw-purple-text);  border: 1px solid #DDD6FE; }
+.vw-badge__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vw-badge--success .vw-badge__dot { background: var(--vw-success-text); }
+.vw-badge--danger  .vw-badge__dot { background: var(--vw-danger-text); }
+.vw-badge--warning .vw-badge__dot { background: var(--vw-warning-text); }
+.vw-badge--info    .vw-badge__dot { background: var(--vw-info-text); }
+.vw-badge--lemon   .vw-badge__dot { background: var(--vw-lemon-text); }
+.vw-badge--green   .vw-badge__dot { background: var(--vw-success-text); }
+
+/* ─── BUTTON ──────────────────────────────────────────────────────────────── */
+.vw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: var(--vw-font);
+  transition: all 0.15s;
+  text-decoration: none;
+}
+.vw-btn:active { transform: scale(0.97); }
+.vw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vw-btn--md  { font-size: 13px; padding: 9px 18px; }
+.vw-btn--sm  { font-size: 12px; padding: 6px 14px; }
+.vw-btn--xs  { font-size: 11px; padding: 3px 9px; }
+.vw-btn--full { width: 100%; justify-content: center; }
+
+.vw-btn--primary { background: var(--vw-primary);  color: #fff; box-shadow: 0 1px 6px rgba(0, 128, 0, 0.3); }
+.vw-btn--lemon   { background: var(--vw-lemon);    color: var(--vw-lemon-text); box-shadow: 0 1px 6px var(--vw-lemon-glow); }
+.vw-btn--danger  { background: var(--vw-danger);   color: #fff; box-shadow: 0 1px 4px rgba(220, 38, 38, 0.25); }
+.vw-btn--outline { background: transparent;        color: var(--vw-text-mid); border: 1px solid var(--vw-border2); }
+.vw-btn--ghost   { background: transparent;        color: var(--vw-muted); border: 1px solid var(--vw-border); }
+.vw-btn--subtle  { background: var(--vw-primary-light); color: var(--vw-primary); border: 1px solid #b7dfc8; }
+.vw-btn--dark    { background: var(--vw-sidebar);  color: #fff; }
+
+/* ─── KPI CARD ────────────────────────────────────────────────────────────── */
+.vw-kpi {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: var(--vw-radius);
+  padding: 16px 18px;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+}
+.vw-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(2, 85, 34, 0.1);
+}
+.vw-kpi__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.vw-kpi__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vw-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.vw-kpi__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vw-kpi__value {
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+.vw-kpi__sub {
+  color: var(--vw-faint);
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+/* ─── QUICK ACTION CARDS ──────────────────────────────────────────────────── */
+.vw-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.vw-quick-card {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+.vw-quick-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(2, 85, 34, 0.1);
+}
+.vw-quick-card__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.vw-quick-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vw-text);
+  margin-bottom: 3px;
+}
+.vw-quick-card__desc {
+  font-size: 11px;
+  color: var(--vw-muted);
+}
+
+/* ─── SURFACE / PANEL ─────────────────────────────────────────────────────── */
+.vw-surface {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  font-family: var(--vw-font);
+}
+.vw-surface--padded  { padding: 22px; }
+.vw-surface__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--vw-border);
+}
+.vw-surface__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--vw-text);
+}
+.vw-page-title {
+  font-family: var(--vw-font);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--vw-text);
+  margin: 0;
+}
+.vw-page-sub {
+  font-size: 13px;
+  color: var(--vw-muted);
+  margin-top: 2px;
+  font-family: var(--vw-font);
+}
+
+/* ─── TABLE ───────────────────────────────────────────────────────────────── */
+.vw-table-wrap {
+  overflow-x: auto;
+}
+.vw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--vw-font);
+}
+.vw-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vw-muted);
+  border-bottom: 1px solid var(--vw-border);
+  white-space: nowrap;
+  background: var(--vw-surface2);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.vw-table th.vw-th--center { text-align: center; }
+.vw-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--vw-border);
+  font-size: 13px;
+  color: var(--vw-text);
+}
+.vw-table td.vw-td--mono   { font-family: var(--vw-mono); }
+.vw-table td.vw-td--muted  { color: var(--vw-muted); }
+.vw-table td.vw-td--bold   { font-weight: 600; }
+.vw-table td.vw-td--danger { color: var(--vw-danger); }
+.vw-table td.vw-td--success { color: var(--vw-success); }
+.vw-table td.vw-td--center { text-align: center; }
+.vw-table tbody tr {
+  transition: background 0.12s;
+}
+.vw-table tbody tr:hover {
+  background: #f6faf6;
+}
+.vw-table tbody tr.vw-row--clickable {
+  cursor: pointer;
+}
+
+/* ─── FILTER PILLS ────────────────────────────────────────────────────────── */
+.vw-filter-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vw-filter-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--vw-border);
+  background: var(--vw-surface);
+  color: var(--vw-muted);
+  font-weight: 400;
+  font-family: var(--vw-font);
+  transition: all 0.15s;
+}
+.vw-filter-pill--active {
+  border-color: var(--vw-primary);
+  background: var(--vw-primary-light);
+  color: var(--vw-primary);
+  font-weight: 700;
+}
+.vw-filter-pill--dark.vw-filter-pill--active {
+  background: var(--vw-sidebar);
+  color: #fff;
+  border-color: var(--vw-sidebar);
+}
+
+/* ─── TAB BAR ─────────────────────────────────────────────────────────────── */
+.vw-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--vw-border);
+}
+.vw-tab {
+  padding: 10px 20px;
+  border-bottom: 2px solid transparent;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  color: var(--vw-muted);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  font-family: var(--vw-font);
+  transition: all 0.15s;
+}
+.vw-tab--active {
+  border-bottom-color: var(--vw-primary);
+  color: var(--vw-primary);
+  font-weight: 700;
+}
+
+/* ─── STEP / PROGRESS BAR ─────────────────────────────────────────────────── */
+.vw-steps {
+  display: flex;
+  align-items: center;
+}
+.vw-step {
+  display: flex;
+  align-items: center;
+}
+.vw-step__content {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.vw-step__circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  transition: all 0.2s;
+}
+.vw-step__circle--done    { background: var(--vw-primary); color: #fff; }
+.vw-step__circle--active  { background: var(--vw-primary); color: #fff; box-shadow: 0 0 0 4px var(--vw-primary-light); }
+.vw-step__circle--pending { background: var(--vw-border);  color: var(--vw-faint); }
+.vw-step__circle--lemon   { background: var(--vw-lemon);   color: var(--vw-lemon-text); }
+.vw-step__label {
+  font-size: 12px;
+  font-family: var(--vw-font);
+}
+.vw-step__label--active  { color: var(--vw-text);    font-weight: 700; }
+.vw-step__label--done    { color: var(--vw-primary); font-weight: 400; }
+.vw-step__label--pending { color: var(--vw-muted);   font-weight: 400; }
+.vw-step__connector {
+  flex: 1;
+  height: 2px;
+  margin: 0 10px;
+  border-radius: 1px;
+}
+.vw-step__connector--done    { background: var(--vw-primary); }
+.vw-step__connector--pending { background: var(--vw-border); }
+
+/* ─── VERTICAL STEP PROGRESS ──────────────────────────────────────────────── */
+.vw-vsteps {
+  display: flex;
+  align-items: flex-start;
+}
+.vw-vstep {
+  display: flex;
+  align-items: center;
+}
+.vw-vstep__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vw-vstep__label {
+  font-size: 9px;
+  margin-top: 5px;
+  white-space: nowrap;
+  font-family: var(--vw-font);
+  font-weight: 600;
+  max-width: 64px;
+  text-align: center;
+}
+.vw-vstep__connector {
+  flex: 1;
+  height: 2px;
+  margin: 0 4px 14px 4px;
+  border-radius: 1px;
+}
+
+/* ─── FORM FIELDS ─────────────────────────────────────────────────────────── */
+.vw-field {
+  margin-bottom: 14px;
+  font-family: var(--vw-font);
+}
+.vw-field__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vw-muted);
+  margin-bottom: 5px;
+}
+.vw-field__input-wrap {
+  position: relative;
+}
+.vw-field__prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--vw-muted);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.vw-field input,
+.vw-field select,
+.vw-field textarea {
+  width: 100%;
+  padding: 9px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--vw-border2);
+  background: var(--vw-surface);
+  color: var(--vw-text);
+  font-size: 13px;
+  font-family: var(--vw-font);
+  resize: none;
+}
+.vw-field input:focus,
+.vw-field select:focus,
+.vw-field textarea:focus {
+  outline: none;
+  border-color: var(--vw-primary);
+  box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
+}
+.vw-field--prefixed input {
+  padding-left: 28px;
+}
+.vw-field__hint {
+  color: var(--vw-faint);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* ─── AMOUNT QUICK PICKS ──────────────────────────────────────────────────── */
+.vw-amount-picks {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.vw-amount-pick {
+  background: var(--vw-bg);
+  border: 1px solid var(--vw-border);
+  border-radius: 7px;
+  padding: 5px 11px;
+  color: var(--vw-muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 400;
+  font-family: var(--vw-font);
+  transition: all 0.15s;
+}
+.vw-amount-pick--active {
+  background: var(--vw-primary-light);
+  border-color: var(--vw-primary);
+  color: var(--vw-primary);
+  font-weight: 700;
+}
+
+/* ─── DELIVERY METHOD CARDS ───────────────────────────────────────────────── */
+.vw-delivery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.vw-delivery-card {
+  background: var(--vw-surface);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--vw-border);
+  padding: 16px;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+}
+.vw-delivery-card--selected {
+  border-width: 2px;
+}
+.vw-delivery-card--token.vw-delivery-card--selected {
+  background: var(--vw-primary-light);
+  border-color: var(--vw-primary);
+}
+.vw-delivery-card--remote.vw-delivery-card--selected {
+  background: var(--vw-lemon-light);
+  border-color: var(--vw-lemon-dark);
+}
+.vw-delivery-card__emoji {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.vw-delivery-card__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.vw-delivery-card__desc {
+  font-size: 11px;
+  color: var(--vw-muted);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+.vw-delivery-card__check {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── CONFIRM TABLE ───────────────────────────────────────────────────────── */
+.vw-confirm-table {
+  border: 1px solid var(--vw-border);
+  border-radius: var(--vw-radius);
+  overflow: hidden;
+}
+.vw-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-family: var(--vw-font);
+}
+.vw-confirm-row:not(:last-child) {
+  border-bottom: 1px solid var(--vw-border);
+}
+.vw-confirm-row:nth-child(even) {
+  background: var(--vw-surface2);
+}
+.vw-confirm-row__key {
+  color: var(--vw-muted);
+}
+.vw-confirm-row__val {
+  font-weight: 700;
+  color: var(--vw-text);
+}
+.vw-confirm-row__val--mono {
+  font-family: var(--vw-mono);
+}
+.vw-confirm-row__val--primary {
+  color: var(--vw-primary);
+}
+
+/* ─── RECEIPT SUCCESS ─────────────────────────────────────────────────────── */
+.vw-receipt-success {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: var(--vw-radius-lg);
+  overflow: hidden;
+  animation: vw-fadeIn 0.25s ease both;
+}
+.vw-receipt-success__header {
+  background: linear-gradient(135deg, var(--vw-sidebar-bg), #013b18);
+  padding: 24px 28px;
+  text-align: center;
+}
+.vw-receipt-success__check {
+  width: 52px;
+  height: 52px;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  animation: vw-glowGreen 2s ease-in-out infinite;
+}
+.vw-receipt-success__title {
+  color: #fff;
+  font-weight: 800;
+  font-size: 20px;
+  font-family: var(--vw-font);
+}
+.vw-receipt-success__sub {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+  margin-top: 4px;
+  font-family: var(--vw-font);
+}
+.vw-receipt-success__body {
+  padding: 22px;
+}
+.vw-receipt-success__brand {
+  background: var(--vw-bg);
+  border-radius: 9px;
+  padding: 8px 14px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  font-size: 11px;
+  border: 1px solid var(--vw-border);
+  font-family: var(--vw-font);
+}
+.vw-receipt-success__brand-name {
+  color: var(--vw-muted);
+}
+.vw-receipt-success__brand-ref {
+  color: var(--vw-primary);
+  font-family: var(--vw-mono);
+  font-weight: 700;
+}
+
+/* ─── TOKEN DISPLAY ───────────────────────────────────────────────────────── */
+.vw-token-display {
+  margin: 18px 0;
+  background: var(--vw-primary-light);
+  border: 2px solid var(--vw-primary);
+  border-radius: 14px;
+  padding: 18px 22px;
+  text-align: center;
+}
+.vw-token-display__eyebrow {
+  font-size: 11px;
+  color: var(--vw-success-text);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  font-family: var(--vw-font);
+}
+.vw-token-display__code {
+  font-size: 28px;
+  font-weight: 900;
+  font-family: var(--vw-mono);
+  letter-spacing: 4px;
+  color: var(--vw-sidebar);
+  word-spacing: 14px;
+}
+.vw-token-display__hint {
+  font-size: 11px;
+  color: var(--vw-primary);
+  margin-top: 8px;
+  font-family: var(--vw-font);
+}
+
+/* ─── REMOTE SEND DISPLAY ─────────────────────────────────────────────────── */
+.vw-remote-display {
+  margin: 18px 0;
+}
+.vw-remote-display__box {
+  background: var(--vw-success-bg);
+  border: 1px solid #b7dfc8;
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.vw-remote-display__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--vw-success-text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--vw-font);
+}
+.vw-remote-display__ref {
+  font-size: 11px;
+  font-family: var(--vw-mono);
+  color: var(--vw-primary);
+}
+
+/* ─── FILE UPLOAD ─────────────────────────────────────────────────────────── */
+.vw-upload-zone {
+  border: 2px dashed var(--vw-border2);
+  border-radius: 12px;
+  padding: 26px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+}
+.vw-upload-zone:hover {
+  border-color: var(--vw-primary);
+}
+.vw-upload-zone__text {
+  font-size: 13px;
+  color: var(--vw-muted);
+}
+.vw-upload-zone__hint {
+  font-size: 11px;
+  color: var(--vw-faint);
+  margin-top: 4px;
+}
+
+/* ─── FUNDING REFERENCE DISPLAY ───────────────────────────────────────────── */
+.vw-funding-ref {
+  text-align: center;
+  background: var(--vw-bg);
+  border-radius: 12px;
+  padding: 20px 16px;
+  border: 1px solid var(--vw-border);
+}
+.vw-funding-ref__label {
+  font-size: 12px;
+  color: var(--vw-muted);
+  margin-bottom: 6px;
+  font-family: var(--vw-font);
+}
+.vw-funding-ref__code {
+  font-size: 26px;
+  font-weight: 900;
+  font-family: var(--vw-mono);
+  color: var(--vw-sidebar);
+  letter-spacing: 2px;
+}
+.vw-funding-ref__expiry {
+  font-size: 12px;
+  color: var(--vw-danger);
+  margin-top: 6px;
+  font-weight: 700;
+  font-family: var(--vw-font);
+}
+
+/* ─── BANK DETAILS TABLE ──────────────────────────────────────────────────── */
+.vw-bank-details {
+  background: var(--vw-bg);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--vw-border);
+}
+.vw-bank-details__header {
+  font-size: 11px;
+  color: var(--vw-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+  font-family: var(--vw-font);
+}
+.vw-bank-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--vw-border);
+  font-size: 13px;
+  font-family: var(--vw-font);
+}
+.vw-bank-row__key {
+  color: var(--vw-muted);
+}
+.vw-bank-row__val {
+  font-weight: 600;
+  color: var(--vw-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── RECEIPT CARDS GRID ──────────────────────────────────────────────────── */
+.vw-receipt-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+.vw-receipt-card {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+}
+.vw-receipt-card:hover {
+  border-color: var(--vw-primary);
+  box-shadow: 0 0 0 2px var(--vw-primary-light);
+  transform: translateY(-2px);
+}
+
+/* ─── PROFILE SECTIONS ────────────────────────────────────────────────────── */
+.vw-profile-section {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  font-family: var(--vw-font);
+}
+.vw-profile-section__header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--vw-border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vw-text);
+  background: var(--vw-surface2);
+  border-radius: 14px 14px 0 0;
+}
+.vw-profile-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--vw-border);
+  font-size: 13px;
+}
+.vw-profile-row:last-child {
+  border-bottom: none;
+}
+.vw-profile-row__key {
+  color: var(--vw-muted);
+}
+.vw-profile-row__val {
+  font-weight: 600;
+  color: var(--vw-text);
+}
+.vw-profile-row__val--success {
+  color: var(--vw-success);
+}
+
+/* ─── DIVIDER ─────────────────────────────────────────────────────────────── */
+.vw-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+.vw-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--vw-border);
+}
+.vw-divider__label {
+  font-size: 10px;
+  color: var(--vw-faint);
+  font-family: var(--vw-font);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* ─── MODAL ───────────────────────────────────────────────────────────────── */
+.vw-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 21, 8, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: vw-fadeIn 0.25s ease both;
+}
+.vw-modal {
+  background: var(--vw-surface);
+  border-radius: 18px;
+  border: 1px solid var(--vw-border);
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 28px 80px rgba(1, 21, 8, 0.25);
+  animation: vw-fadeUp 0.35s ease both;
+}
+.vw-modal--sm    { max-width: 480px; }
+.vw-modal--md    { max-width: 600px; }
+.vw-modal--lg    { max-width: 800px; }
+.vw-modal__header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--vw-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.vw-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--vw-text);
+  font-family: var(--vw-font);
+}
+.vw-modal__subtitle {
+  font-size: 12px;
+  color: var(--vw-muted);
+  margin-top: 2px;
+  font-family: var(--vw-font);
+}
+.vw-modal__close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--vw-bg);
+  border: 1px solid var(--vw-border);
+  color: var(--vw-muted);
+}
+.vw-modal__body {
+  padding: 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+.vw-modal__footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--vw-border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--vw-surface2);
+  border-radius: 0 0 18px 18px;
+}
+
+/* ─── ADMIN STYLES ────────────────────────────────────────────────────────── */
+.vw-grid-2   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.vw-grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.vw-grid-4   { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+/* ─── ADMIN VENDOR/WALLET CARDS ───────────────────────────────────────────── */
+.vw-vendor-card {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  padding: 22px;
+  font-family: var(--vw-font);
+}
+.vw-vendor-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.vw-vendor-card__name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--vw-text);
+}
+.vw-vendor-card__sub {
+  font-size: 12px;
+  color: var(--vw-muted);
+  margin-top: 2px;
+}
+.vw-vendor-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.vw-vendor-card__metric {
+  background: var(--vw-bg);
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--vw-border);
+}
+.vw-vendor-card__metric-label {
+  font-size: 10px;
+  color: var(--vw-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.vw-vendor-card__metric-value {
+  font-size: 16px;
+  font-weight: 800;
+}
+.vw-vendor-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── EXCEPTION CARDS ─────────────────────────────────────────────────────── */
+.vw-exception-card {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  padding: 20px;
+  font-family: var(--vw-font);
+}
+.vw-exception-card--critical { border-left: 4px solid var(--vw-danger); }
+.vw-exception-card--high     { border-left: 4px solid var(--vw-warning); }
+.vw-exception-card--medium   { border-left: 4px solid var(--vw-info); }
+.vw-exception-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.vw-exception-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── SETTLEMENT BATCH ────────────────────────────────────────────────────── */
+.vw-settlement-card {
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 14px;
+  font-family: var(--vw-font);
+}
+
+/* ─── BAR CHART (Simple CSS) ──────────────────────────────────────────────── */
+.vw-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+}
+.vw-bar-chart__bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  min-width: 6px;
+}
+.vw-bar-chart__bar:hover {
+  opacity: 0.7;
+}
+.vw-bar-chart__bar--accent {
+  background: var(--vw-primary);
+}
+.vw-bar-chart__bar--muted {
+  background: #b7dfc8;
+}
+.vw-bar-chart__footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--vw-faint);
+  margin-top: 8px;
+  font-family: var(--vw-mono);
+}
+
+/* ─── SPINNER ─────────────────────────────────────────────────────────────── */
+.vw-spinner {
+  display: inline-block;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: vw-spin 0.7s linear infinite;
+}
+.vw-spinner--sm { width: 14px; height: 14px; }
+.vw-spinner--md { width: 16px; height: 16px; }
+
+/* ─── NOTIFICATION BADGE ──────────────────────────────────────────────────── */
+.vw-notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vw-danger);
+  border: 2px solid #fff;
+  animation: vw-pulse 2s ease-in-out infinite;
+}
+
+/* ─── MINI BAR CHART (for dashboard summary) ──────────────────────────────── */
+.vw-mini-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 44px;
+}
+.vw-mini-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 0.7;
+}
+.vw-mini-bar--accent {
+  background: var(--vw-lemon);
+  opacity: 1;
+}
+
+/* ─── EXHAUSTION BARS ─────────────────────────────────────────────────────── */
+.vw-exhaust-bar__track {
+  height: 6px;
+  background: var(--vw-bg);
+  border-radius: 3px;
+}
+.vw-exhaust-bar__fill {
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* ─── WALLET-LEVEL DETAIL LIST ────────────────────────────────────────────── */
+.vw-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--vw-border);
+  font-size: 13px;
+  font-family: var(--vw-font);
+}
+.vw-detail-row__key {
+  color: var(--vw-muted);
+}
+.vw-detail-row__val {
+  font-weight: 700;
+  color: var(--vw-text);
+}
+
+/* ─── ACTIVATION BANNER ───────────────────────────────────────────────────── */
+.vendor-wallet-activation-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--vw-success-bg);
+  border: 1px solid #b7dfc8;
+  border-radius: var(--vw-radius-xl);
+  padding: 20px 24px;
+  font-family: var(--vw-font);
+}
+.vwab-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--vw-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.vwab-content { flex: 1; }
+.vwab-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--vw-success-text);
+  margin: 0 0 4px;
+}
+.vwab-body {
+  font-size: 13px;
+  color: var(--vw-success-text);
+  margin: 0;
+  opacity: 0.8;
+}
+.vwab-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.vwab-chip {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(0, 128, 0, 0.1);
+  color: var(--vw-success-text);
+  font-weight: 600;
+}
+.vwab-chip--balance {
+  background: var(--vw-primary);
+  color: #fff;
+}
+.vwab-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── LEGACY COMPAT ───────────────────────────────────────────────────────── */
+/* Preserve some class names used by existing components */
+
+.vendor-wallet-stack {
+  display: grid;
+  gap: 1.25rem;
+  font-family: var(--vw-font);
+}
+
+.vendor-wallet-hero,
+.vendor-wallet-panel,
+.vendor-wallet-receipt-card {
+  border: 1px solid var(--vw-border);
+  border-radius: var(--vw-radius-xl);
+  background: var(--vw-surface);
+  box-shadow: 0 4px 16px rgba(1, 21, 8, 0.06);
+  padding: 1.5rem;
+  font-family: var(--vw-font);
+}
+
+.vendor-wallet-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.vendor-wallet-hero--balance h1 {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.04em;
+  color: var(--vw-text);
+}
+
+.vendor-wallet-hero-inline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.vendor-wallet-eyebrow {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.76rem;
+  color: var(--vw-primary);
+  font-weight: 600;
+}
+
+.vendor-wallet-hero h1,
+.vendor-wallet-panel h1,
+.vendor-wallet-panel h2 {
+  margin: 0;
+  color: var(--vw-text);
+  font-family: var(--vw-font);
+}
+
+.vendor-wallet-hero-copy,
+.vendor-wallet-panel p {
+  color: var(--vw-muted);
+  max-width: 60ch;
+}
+
+.vendor-wallet-hero-meta,
+.vendor-wallet-actions,
+.vendor-wallet-status-strip {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.vendor-wallet-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--vw-primary-light); color: var(--vw-success-text); }
+.vendor-wallet-badge--muted { background: var(--vw-bg); color: var(--vw-muted); }
+.vendor-wallet-badge--dark { background: linear-gradient(135deg, var(--vw-sidebar), #013b18); color: #fff; }
+.vendor-wallet-status-pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--vw-bg); color: var(--vw-muted); }
+.vendor-wallet-status-pill.active { background: var(--vw-primary-light); color: var(--vw-primary); }
+
+.vendor-wallet-banner { border-radius: 10px; padding: 10px 14px; font-size: 12px; line-height: 1.65; font-family: var(--vw-font); }
+.vendor-wallet-banner:not([class*="--"]) { background: var(--vw-warning-bg); border: 1px solid #fcd34d; color: var(--vw-warning-text); }
+.vendor-wallet-banner--info   { background: var(--vw-lemon-light); border: 1px solid #d6ee66; color: var(--vw-lemon-text); }
+.vendor-wallet-banner--danger { background: var(--vw-danger-bg); border: 1px solid #fecaca; color: var(--vw-danger-text); }
+.vendor-wallet-banner--success { background: var(--vw-success-bg); border: 1px solid #b7dfc8; color: var(--vw-success-text); }
+
+.vendor-wallet-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.vendor-wallet-grid    { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.vendor-wallet-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.vendor-wallet-detail-grid { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+.vendor-wallet-card {
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: var(--vw-surface);
+  border: 1px solid var(--vw-border);
+  display: grid;
+  gap: 0.35rem;
+  transition: all 0.2s;
+  font-family: var(--vw-font);
+}
+.vendor-wallet-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(2, 85, 34, 0.1); }
+.vendor-wallet-card--light { background: var(--vw-surface); }
+
+.vendor-wallet-card-label { color: var(--vw-muted); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700; }
+.vendor-wallet-card-label--dark { color: var(--vw-muted); }
+.vendor-wallet-card strong { font-size: 23px; font-weight: 700; color: var(--vw-text); letter-spacing: -0.5px; }
+.vendor-wallet-card small  { color: var(--vw-faint); font-size: 11px; }
+.vendor-wallet-card p { font-size: 11px; margin: 0; }
+
+.vendor-wallet-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+
+.vendor-wallet-action-link,
+.vendor-wallet-actions button,
+.vendor-wallet-inline-form button {
+  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 18px;
+  text-decoration: none;
+  background: var(--vw-primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--vw-font);
+  font-size: 13px;
+  box-shadow: 0 1px 6px rgba(0, 128, 0, 0.3);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vendor-wallet-action-link:active,
+.vendor-wallet-actions button:active { transform: scale(0.97); }
+.vendor-wallet-action-link--secondary {
+  background: transparent;
+  color: var(--vw-muted);
+  border: 1px solid var(--vw-border);
+  box-shadow: none;
+}
+
+.vendor-wallet-table-shell { overflow-x: auto; }
+.vendor-wallet-table-shell table { width: 100%; border-collapse: collapse; font-family: var(--vw-font); }
+.vendor-wallet-table-shell th {
+  text-align: left; padding: 10px 16px; font-size: 10px; font-weight: 700; color: var(--vw-muted);
+  border-bottom: 1px solid var(--vw-border); white-space: nowrap; background: var(--vw-surface2);
+  text-transform: uppercase; letter-spacing: 0.07em;
+}
+.vendor-wallet-table-shell td {
+  text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--vw-border); font-size: 13px; color: var(--vw-text); vertical-align: top;
+}
+.vendor-wallet-table-shell tbody tr:hover { background: #f6faf6; }
+
+.vendor-wallet-field { display: grid; gap: 0.45rem; }
+.vendor-wallet-field--wide { grid-column: 1 / -1; }
+.vendor-wallet-field input,
+.vendor-wallet-field select,
+.vendor-wallet-field textarea {
+  width: 100%; border-radius: 8px; border: 1px solid var(--vw-border2);
+  padding: 9px 13px; background: var(--vw-surface); font: inherit; resize: vertical;
+  font-family: var(--vw-font);
+}
+.vendor-wallet-field input:focus, .vendor-wallet-field select:focus, .vendor-wallet-field textarea:focus {
+  outline: none; border-color: var(--vw-primary); box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
+}
+.vendor-wallet-field small { color: var(--vw-faint); font-size: 11px; }
+
+.vendor-wallet-inline-form { display: flex; gap: 0.75rem; }
+.vendor-wallet-inline-form input { flex: 1; }
+
+.vendor-wallet-search-results { display: grid; gap: 0.75rem; }
+.vendor-wallet-search-card,
+.vendor-wallet-radio-card {
+  display: grid; gap: 0.3rem; border: 1px solid var(--vw-border); border-radius: 14px;
+  background: var(--vw-surface); padding: 1rem; text-align: left; cursor: pointer; transition: all 0.15s;
+}
+.vendor-wallet-search-card.selected,
+.vendor-wallet-radio-card.selected {
+  border-color: var(--vw-primary); background: var(--vw-primary-light);
+}
+
+.vendor-wallet-review-card dl,
+.vendor-wallet-detail-grid,
+.vendor-wallet-receipt-card dl {
+  display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.vendor-wallet-review-card--accent {
+  padding: 16px 18px; border-radius: 14px;
+  background: var(--vw-primary-light); border: 1px solid #b7dfc8;
+}
+.vendor-wallet-review-card dt, .vendor-wallet-detail-grid dt, .vendor-wallet-receipt-card dt {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--vw-muted); font-weight: 700;
+}
+.vendor-wallet-review-card dd, .vendor-wallet-detail-grid dd, .vendor-wallet-receipt-card dd {
+  margin: 0.2rem 0 0; color: var(--vw-text); font-weight: 600;
+}
+
+.vendor-wallet-token-block {
+  margin-top: 1.25rem; border-radius: 14px; border: 2px solid var(--vw-primary);
+  background: var(--vw-primary-light); padding: 18px 22px; font-size: 28px; letter-spacing: 4px;
+  text-align: center; color: var(--vw-sidebar); font-family: var(--vw-mono); font-weight: 900;
+}
+.vendor-wallet-token-panel { margin-top: 1.25rem; }
+.vendor-wallet-token-panel__eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vw-success-text);
+  font-weight: 800; margin-bottom: 10px;
+}
+.vendor-wallet-receipt-code { margin: 1rem 0 0.25rem; color: var(--vw-primary); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; font-family: var(--vw-mono); }
+.vendor-wallet-receipt-subtitle { margin-top: 0.25rem; color: var(--vw-muted); }
+.vendor-wallet-receipt-brand { display: grid; gap: 0.25rem; }
+.vendor-wallet-receipt-brand p { margin: 0; color: var(--vw-primary); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.vendor-wallet-receipt-brand span, .vendor-wallet-receipt-brand small { color: var(--vw-faint); }
+
+.vendor-wallet-radio-group { border: 0; padding: 0; margin: 0; }
+.vendor-wallet-radio-card input { margin: 0 0 0.3rem; }
+
+.vendor-wallet-empty-state {
+  border: 1px dashed var(--vw-border2); border-radius: 14px; padding: 1rem; color: var(--vw-muted); background: var(--vw-bg);
+}
+
+.wallet-admin-review-card__header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.wallet-admin-status-badge {
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 20px;
+  padding: 2px 9px; font-size: 11px; font-weight: 600; text-transform: capitalize;
+}
+.wallet-admin-status-badge--good    { background: var(--vw-success-bg); color: var(--vw-success-text); }
+.wallet-admin-status-badge--warn    { background: var(--vw-warning-bg); color: var(--vw-warning-text); }
+.wallet-admin-status-badge--bad     { background: var(--vw-danger-bg);  color: var(--vw-danger-text); }
+.wallet-admin-status-badge--neutral { background: var(--vw-bg); color: var(--vw-muted); }
+
+.wallet-admin-review-notes   { border: 1px solid var(--vw-border); border-radius: 14px; background: var(--vw-surface2); padding: 1rem; }
+.wallet-admin-review-notes h3 { margin: 0 0 0.65rem; color: var(--vw-text); }
+.wallet-admin-inline-note    { margin: 0; color: var(--vw-text-mid); line-height: 1.6; }
+.wallet-admin-review-list    { margin: 0; padding-left: 1.1rem; color: var(--vw-muted); }
+.wallet-admin-modal-banner   { border-radius: 10px; padding: 10px 14px; background: var(--vw-lemon-light); border: 1px solid #d6ee66; color: var(--vw-lemon-text); line-height: 1.55; font-size: 12px; }
+
+.wallet-admin-review-matrix          { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+.wallet-admin-review-matrix__item    { display: grid; gap: 3px; padding: 12px 14px; border-radius: 10px; background: var(--vw-bg); border: 1px solid var(--vw-border); }
+.wallet-admin-review-matrix__item span   { color: var(--vw-muted); font-size: 11px; }
+.wallet-admin-review-matrix__item strong { color: var(--vw-text); }
+
+.wallet-admin-modal-checklist    { border-radius: 10px; background: var(--vw-surface); border: 1px solid var(--vw-border); padding: 1rem; }
+.wallet-admin-modal-checklist h3 { margin: 0 0 0.55rem; color: var(--vw-text); font-size: 0.95rem; }
+.wallet-admin-modal-checklist ul { margin: 0; padding-left: 1.1rem; color: var(--vw-muted); display: grid; gap: 0.45rem; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .vendor-wallet-hero { flex-direction: column; }
+  .vw-hero__top { flex-direction: column; }
+  .vw-hero__grid { grid-template-columns: repeat(2, 1fr); }
+  .vw-quick-grid { grid-template-columns: repeat(2, 1fr); }
+  .vw-grid-2, .vw-grid-2-1, .vw-grid-4 { grid-template-columns: 1fr; }
+  .vw-delivery-grid { grid-template-columns: 1fr; }
+  .vw-vendor-card__metrics { grid-template-columns: repeat(2, 1fr); }
+  .vendor-wallet-inline-form { flex-direction: column; }
+}
+
+/* ─── PRINT ───────────────────────────────────────────────────────────────── */
+@media print {
+  @page { size: A4 portrait; margin: 8mm; }
+  .page-stack > :not(.vendor-receipt-sheet),
+  .vendor-panel-actions, .vendor-wallet-actions,
+  .vendor-wallet-panel-header > button,
+  .status-message, .vendor-flow-steps,
+  .page-header, nav, aside { display: none !important; }
+  .vendor-portal-page, .page-stack { gap: 0 !important; padding: 0 !important; }
+  .vendor-receipt-sheet, .vendor-wallet-receipt-card,
+  .vendor-wallet-panel, .vendor-wallet-receipt {
+    margin: 0 !important; padding: 0.8rem !important;
+    border: 0 !important; border-radius: 0 !important;
+    box-shadow: none !important; background: #fff !important;
+    break-inside: avoid;
+  }
+  .vendor-wallet-token-block { margin-top: 0.7rem; padding: 0.7rem; font-size: 1rem; letter-spacing: 0.12em; }
+}

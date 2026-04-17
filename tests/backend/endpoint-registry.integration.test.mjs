@@ -24,6 +24,7 @@ test("endpoint registry classifies representative upstream paths", () => {
   const expectations = new Map([
     ["/api/account/create", "crud-create"],
     ["/api/DailyDataMeter/readMonthly", "drilldown"],
+    ["/API/GPRSMeterTask/GPRSCreateTokenTask", "task-create"],
     ["/API/RemoteMeterTask/CreateSettingTask", "task-create"],
     ["/API/RemoteMeterTask/CreateTransparentForwardingTask", "task-create"],
     ["/API/RemoteMeterTask/GetSettingTask", "task-read"],
@@ -42,7 +43,6 @@ test("endpoint registry classifies representative upstream paths", () => {
 test("removed modules no longer resolve through the endpoint registry", () => {
   const removedPaths = [
     "/api/DailyData/read",
-    "/API/GPRSMeterTask/GPRSCreateReadingTask",
     "/API/GPRSOnlineStatus/Read",
     "/API/UpdateFirmwareTask/GetUpdateFirmwareTask",
     "/api/station/read",

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { pagesByPath } from "../../config/pageCatalog";
+import { AnalyticsMixPanel } from "../analytics/AnalyticsMixPanel";
 import { DualConsumptionChart } from "../charts/DualConsumptionChart";
 import {
   loadManagementConsumption,
@@ -369,6 +370,12 @@ export function ManagementAnalyticsExperience({ variant }: { variant: AnalyticsV
     [config.tabs],
   );
   const summary = consumption?.summary ?? null;
+  const mixQuery = useMemo(
+    () => ({
+      ...(selectedSite ? { siteId: selectedSite } : {}),
+    }),
+    [selectedSite],
+  );
 
   return (
     <section className="management-analytics-page crm2-management-page ds-page">
@@ -473,6 +480,15 @@ export function ManagementAnalyticsExperience({ variant }: { variant: AnalyticsV
             {formatCurrency(summary?.totalRevenue ?? null)}
           </strong>
         </article>
+      </div>
+
+      <div className="analytics-mix-grid">
+        <AnalyticsMixPanel endpoint="/api/management/analytics/site-benchmark" query={mixQuery} />
+        <AnalyticsMixPanel endpoint="/api/management/analytics/top-consumer-watchlist" query={{ limit: "10", ...mixQuery }} />
+        <AnalyticsMixPanel endpoint="/api/management/analytics/customer-segments" query={{ limit: "10", ...mixQuery }} />
+        <AnalyticsMixPanel endpoint="/api/management/analytics/customer-forecasts" query={{ limit: "10", ...mixQuery }} />
+        <AnalyticsMixPanel endpoint="/api/management/analytics/revenue-leakage" query={{ limit: "10", ...mixQuery }} />
+        <AnalyticsMixPanel endpoint="/api/management/analytics/operational-priority" query={{ limit: "10", ...mixQuery }} />
       </div>
 
       {loading && !consumption ? (

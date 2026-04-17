@@ -612,6 +612,7 @@ function mapActionByKind(
   if (operationKind === "token-generate" || operationKind === "token-generate-credit") {
     const amount = toNumber(values.amount);
     const unit = toNumber(values.unit);
+    const authorizationPassword = sanitizeOptionalString(values.authorizationPassword);
 
     if (amount === null || amount <= 0) {
       return { ok: false, message: "Amount must be greater than zero" };
@@ -621,20 +622,33 @@ function mapActionByKind(
       return { ok: false, message: "Unit must be greater than zero" };
     }
 
+    if (!authorizationPassword) {
+      return { ok: false, message: "Authorization Password is required" };
+    }
+
     return {
       ok: true,
       payload: {
         row,
         amount,
         unit,
+        authorizationPassword,
+        AuthorizationPassword: authorizationPassword,
+        authPassword: authorizationPassword,
+        password2: authorizationPassword,
       },
     };
   }
 
   if (operationKind === "token-generate-limit") {
     const limitValue = toNumber(values.limitValue);
+    const authorizationPassword = sanitizeOptionalString(values.authorizationPassword);
     if (limitValue === null || limitValue <= 0) {
       return { ok: false, message: "Limit Value must be greater than zero" };
+    }
+
+    if (!authorizationPassword) {
+      return { ok: false, message: "Authorization Password is required" };
     }
 
     return {
@@ -642,15 +656,28 @@ function mapActionByKind(
       payload: {
         row,
         limitValue,
+        authorizationPassword,
+        AuthorizationPassword: authorizationPassword,
+        authPassword: authorizationPassword,
+        password2: authorizationPassword,
       },
     };
   }
 
   if (operationKind === "token-generate-basic") {
+    const authorizationPassword = sanitizeOptionalString(values.authorizationPassword);
+    if (!authorizationPassword) {
+      return { ok: false, message: "Authorization Password is required" };
+    }
+
     return {
       ok: true,
       payload: {
         row,
+        authorizationPassword,
+        AuthorizationPassword: authorizationPassword,
+        authPassword: authorizationPassword,
+        password2: authorizationPassword,
       },
     };
   }

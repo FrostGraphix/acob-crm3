@@ -69,11 +69,21 @@ function applyUpstreamDefaults(pathname: string, body: Record<string, unknown>) 
     pathname.startsWith("/api/DailyDataMeter/") ||
     pathname.startsWith("/API/LoadProfile/");
   const requiresTaskLang = pathname.startsWith("/API/RemoteMeterTask/Get");
+  const requiresGprsTaskLang =
+    pathname.startsWith("/API/GPRSMeterTask/GPRSGet") ||
+    pathname.startsWith("/api/GPRSMeterTask/GPRSGet");
 
   if (requiresLang || requiresTaskLang) {
     const currentLang = typeof nextBody.Lang === "string" ? nextBody.Lang.trim() : "";
     if (currentLang.length === 0) {
       nextBody.Lang = "en";
+    }
+  }
+
+  if (requiresGprsTaskLang) {
+    const currentLang = typeof nextBody.lang === "string" ? nextBody.lang.trim() : "";
+    if (currentLang.length === 0) {
+      nextBody.lang = "en";
     }
   }
 
@@ -262,6 +272,122 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
   }
 
   return [body];
+}
+
+function resolveGprsProtocolId(body: Record<string, unknown>, target: Record<string, unknown>) {
+  const directProtocolId =
+    typeof body.protocolId === "number" && Number.isFinite(body.protocolId)
+      ? body.protocolId
+      : typeof body.protocolId === "string" && body.protocolId.trim().length > 0
+        ? Number(body.protocolId)
+        : null;
+
+  if (directProtocolId !== null && Number.isFinite(directProtocolId)) {
+    return directProtocolId;
+  }
+
+  const protocolVersion =
+    typeof target.protocolVersion === "string" ? target.protocolVersion.trim() : "";
+
+  if (protocolVersion === "2.2") {
+    return 22;
+  }
+
+  if (protocolVersion === "2.0") {
+    return 20;
+  }
+
+  return 0;
+}
+
+function buildGprsTaskCreateBodies(pathname: string, body: Record<string, unknown>) {
+  const target = toRecord(body.target);
+  const protocolId = resolveGprsProtocolId(body, target);
+  const customerId =
+    typeof target.customerId === "string" && target.customerId.trim().length > 0
+      ? target.customerId.trim()
+      : typeof body.customerId === "string" && body.customerId.trim().length > 0
+        ? body.customerId.trim()
+        : undefined;
+  const meterId =
+    typeof target.meterId === "string" && target.meterId.trim().length > 0
+      ? target.meterId.trim()
+      : typeof body.meterId === "string" && body.meterId.trim().length > 0
+        ? body.meterId.trim()
+        : undefined;
+  const stationId =
+    typeof target.stationId === "string" && target.stationId.trim().length > 0
+      ? target.stationId.trim()
+      : typeof body.stationId === "string" && body.stationId.trim().length > 0
+        ? body.stationId.trim()
+        : undefined;
+
+  if (pathname.endsWith("GPRSCreateTokenTask")) {
+    const data =
+      typeof body.tokenValue === "string" && body.tokenValue.trim().length > 0
+        ? body.tokenValue.trim()
+        : typeof body.data === "string" && body.data.trim().length > 0
+          ? body.data.trim()
+          : "";
+
+    return dedupeBodies([
+      {
+        customerId,
+        meterId,
+        protocolId,
+        data,
+        stationId,
+      },
+    ]);
+  }
+
+  return [body];
+}
+
+function buildGprsTaskReadBodies(body: Record<string, unknown>) {
+  const pageNumber = typeof body.pageNumber === "number" ? body.pageNumber : 1;
+  const pageSize = typeof body.pageSize === "number" ? body.pageSize : 20;
+
+  return dedupeBodies([
+    body,
+    {
+      ...body,
+      pageNumber,
+      pageSize,
+      lang: typeof body.lang === "string" && body.lang.trim().length > 0 ? body.lang : "en",
+    },
+  ]);
+}
+
+function buildGprsTaskUpdateBodies(body: Record<string, unknown>) {
+  const row = toRecord(body.row);
+  const parsedRowId =
+    typeof row.id === "number" && Number.isFinite(row.id)
+      ? row.id
+      : typeof row.id === "string" && row.id.trim().length > 0
+        ? Number(row.id)
+        : null;
+  const parsedBodyId =
+    typeof body.id === "number" && Number.isFinite(body.id)
+      ? body.id
+      : typeof body.id === "string" && body.id.trim().length > 0
+        ? Number(body.id)
+        : null;
+  const id = parsedRowId ?? parsedBodyId ?? undefined;
+  const stationId =
+    typeof row.stationId === "string" && row.stationId.trim().length > 0
+      ? row.stationId.trim()
+      : typeof body.stationId === "string" && body.stationId.trim().length > 0
+        ? body.stationId.trim()
+        : undefined;
+
+  return dedupeBodies([
+    body,
+    {
+      id,
+      stationId,
+    },
+  ]);
 }
 
 function buildConsumptionStatisticsBodies(body: Record<string, unknown>) {
@@ -603,6 +729,84 @@ function buildItemListBodies(body: Record<string, unknown>) {
   ]);
 }
 
+function readTokenRowString(
+  row: Record<string, unknown>,
+  keys: string[],
+) {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function buildTokenGenerateBodies(pathname: string, body: Record<string, unknown>) {
+  const row = toRecord(body.row);
+  const meterId =
+    readTokenRowString(row, ["meterId", "MeterId", "meterNo", "MeterNo"]) ??
+    (typeof body.meterId === "string" && body.meterId.trim().length > 0
+      ? body.meterId.trim()
+      : undefined);
+  const customerId = readTokenRowString(row, ["customerId", "CustomerId"]);
+  const customerName = readTokenRowString(row, ["customerName", "CustomerName"]);
+  const meterType = readTokenRowString(row, ["meterType", "MeterType"]);
+  const tariffId = readTokenRowString(row, ["tariffId", "TariffId"]);
+  const stationId = readTokenRowString(row, ["stationId", "StationId", "siteId", "SiteId"]);
+  const protocolVersion = readTokenRowString(row, ["protocolVersion", "ProtocolVersion"]);
+  const authorizationPassword =
+    typeof body.authorizationPassword === "string" && body.authorizationPassword.trim().length > 0
+      ? body.authorizationPassword.trim()
+      : typeof body.AuthorizationPassword === "string" &&
+          body.AuthorizationPassword.trim().length > 0
+        ? body.AuthorizationPassword.trim()
+        : typeof body.authPassword === "string" && body.authPassword.trim().length > 0
+          ? body.authPassword.trim()
+          : typeof body.password2 === "string" && body.password2.trim().length > 0
+            ? body.password2.trim()
+            : undefined;
+
+  const aliasedBody: Record<string, unknown> = {
+    ...body,
+    MeterId: meterId,
+    meterId: meterId ?? body.meterId,
+    meterNo: meterId,
+    CustomerId: customerId,
+    customerId: customerId ?? body.customerId,
+    CustomerName: customerName,
+    customerName: customerName ?? body.customerName,
+    MeterType: meterType,
+    meterType: meterType ?? body.meterType,
+    TariffId: tariffId,
+    tariffId: tariffId ?? body.tariffId,
+    StationId: stationId,
+    stationId: stationId ?? body.stationId,
+    ProtocolVersion: protocolVersion,
+    protocolVersion: protocolVersion ?? body.protocolVersion,
+    AuthorizationPassword: authorizationPassword,
+    authorizationPassword: authorizationPassword ?? body.authorizationPassword,
+    authPassword: authorizationPassword,
+    password2: authorizationPassword,
+  };
+
+  if (pathname === "/api/token/creditToken/generate") {
+    aliasedBody.Amount = body.amount;
+    aliasedBody.Unit = body.unit;
+  }
+
+  if (
+    pathname === "/api/token/setMaximumPowerLimitToken/generate" ||
+    pathname === "/api/token/setMaximumPhasePowerUnbalanceLimitToken/generate" ||
+    pathname === "/api/token/setMaximumOverdraftLimitToken/generate"
+  ) {
+    aliasedBody.LimitValue = body.limitValue;
+  }
+
+  return dedupeBodies([aliasedBody, body]);
+}
+
 export function buildUpstreamRequestPlan(
   pathname: string,
   body: Record<string, unknown>,
@@ -611,6 +815,39 @@ export function buildUpstreamRequestPlan(
 
   if (pathname.startsWith("/API/RemoteMeterTask/Create")) {
     const candidateBodies = buildRemoteTaskCreateBodies(pathname, normalizedBody).map((candidate) =>
+      applyUpstreamDefaults(pathname, candidate),
+    );
+
+    return {
+      body: candidateBodies[0] ?? normalizedBody,
+      candidateBodies,
+    };
+  }
+
+  if (pathname.startsWith("/API/GPRSMeterTask/GPRSCreate") || pathname.startsWith("/api/GPRSMeterTask/GPRSCreate")) {
+    const candidateBodies = buildGprsTaskCreateBodies(pathname, normalizedBody).map((candidate) =>
+      applyUpstreamDefaults(pathname, candidate),
+    );
+
+    return {
+      body: candidateBodies[0] ?? normalizedBody,
+      candidateBodies,
+    };
+  }
+
+  if (pathname.startsWith("/API/GPRSMeterTask/GPRSGet") || pathname.startsWith("/api/GPRSMeterTask/GPRSGet")) {
+    const candidateBodies = buildGprsTaskReadBodies(normalizedBody).map((candidate) =>
+      applyUpstreamDefaults(pathname, candidate),
+    );
+
+    return {
+      body: candidateBodies[0] ?? normalizedBody,
+      candidateBodies,
+    };
+  }
+
+  if (pathname.startsWith("/API/GPRSMeterTask/GPRSUpdate") || pathname.startsWith("/api/GPRSMeterTask/GPRSUpdate")) {
+    const candidateBodies = buildGprsTaskUpdateBodies(normalizedBody).map((candidate) =>
       applyUpstreamDefaults(pathname, candidate),
     );
 
@@ -656,6 +893,14 @@ export function buildUpstreamRequestPlan(
     };
   }
 
+  if (pathname.startsWith("/api/token/") && pathname.endsWith("/generate")) {
+    const candidateBodies = buildTokenGenerateBodies(pathname, normalizedBody);
+    return {
+      body: candidateBodies[0] ?? normalizedBody,
+      candidateBodies,
+    };
+  }
+
   if (pathname === "/API/LoadProfile/DailyData" || pathname === "/API/LoadProfile/MonthlyData") {
     return {
       body: normalizedBody,
@@ -669,3 +914,7 @@ export function buildUpstreamRequestPlan(
     candidateBodies: [normalizedBody],
   };
 }
+
+
+
+

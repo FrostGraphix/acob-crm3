@@ -9,6 +9,36 @@ function normalizePermission(value: string | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+export function isVendorWorkspaceUser(user: AuthUser | null) {
+  if (!user) {
+    return false;
+  }
+
+  const roleValues = [user.appRole, user.role]
+    .map((value) => normalizeRole(value))
+    .filter((value) => value.length > 0);
+
+  return roleValues.some((value) => value.includes("vendor"));
+}
+
+export function pagePathMatchesPathname(pagePath: string, pathname: string) {
+  const normalizedPagePath = pagePath.replace(/\/+$/, "") || "/";
+  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
+
+  if (normalizedPagePath === normalizedPathname) {
+    return true;
+  }
+
+  const pageSegments = normalizedPagePath.split("/").filter(Boolean);
+  const pathSegments = normalizedPathname.split("/").filter(Boolean);
+
+  if (pageSegments.length !== pathSegments.length) {
+    return false;
+  }
+
+  return pageSegments.every((segment, index) => segment.startsWith(":") || segment === pathSegments[index]);
+}
+
 function userHasRequiredPermissions(user: AuthUser | null, requiredPermissions?: string[]) {
   if (!requiredPermissions || requiredPermissions.length === 0) {
     return true;
@@ -34,12 +64,36 @@ function userHasRequiredPermissions(user: AuthUser | null, requiredPermissions?:
 }
 
 export function userCanAccessPage(user: AuthUser | null, page: AppPageConfig) {
+  const pageWorkspace = page.workspace ?? "operations";
+  const vendorUser = isVendorWorkspaceUser(user);
+
+  if (user && vendorUser && pageWorkspace !== "vendor") {
+    return false;
+  }
+
+  if (user && !vendorUser && pageWorkspace === "vendor") {
+    return false;
+  }
+
   if (page.requiredRole) {
     if (!user) {
       return false;
     }
 
-    if (!normalizeRole(user.role).includes(normalizeRole(page.requiredRole))) {
+    const requiredRoles = page.requiredRole
+      .split(",")
+      .map((value) => normalizeRole(value))
+      .filter((value) => value.length > 0);
+    const roleValues = [user.role, user.appRole]
+      .map((value) => normalizeRole(value))
+      .filter((value) => value.length > 0);
+
+    if (
+      requiredRoles.length > 0 &&
+      !requiredRoles.some((requiredRole) =>
+        roleValues.some((value) => value.includes(requiredRole)),
+      )
+    ) {
       return false;
     }
   }
@@ -68,8 +122,11 @@ export function resolveAccessiblePage(
   pagesByPath: Record<string, AppPageConfig>,
   fallbackPage: AppPageConfig,
   user: AuthUser | null,
+  allPages: AppPageConfig[] = Object.values(pagesByPath),
 ) {
-  const currentPage = pagesByPath[pathname];
+  const currentPage =
+    pagesByPath[pathname] ??
+    allPages.find((page) => pagePathMatchesPathname(page.path, pathname));
   if (currentPage && userCanAccessPage(user, currentPage)) {
     return currentPage;
   }

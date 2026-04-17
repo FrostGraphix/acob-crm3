@@ -25,6 +25,8 @@ export interface AuthenticatedRequest extends Request {
   upstreamCookie?: string;
   upstreamSessionId?: string;
   csrfToken?: string;
+  supabaseAccessToken?: string;
+  supabaseRefreshToken?: string;
 }
 
 function isPublicPath(pathname: string) {
@@ -131,11 +133,17 @@ export async function requireAuth(
   const refreshToken = request.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
 
   let user = await getSupabaseUserFromAccessToken(token);
+  let activeSupabaseAccessToken = token;
   if (!user && refreshToken) {
     const refreshedSession = await refreshSupabaseAccessToken(refreshToken);
     if (refreshedSession) {
       setRefreshedSupabaseCookies(response, refreshedSession);
+      request.cookies[SESSION_COOKIE_NAME] = refreshedSession.accessToken;
+      if (refreshedSession.refreshToken) {
+        request.cookies[REFRESH_COOKIE_NAME] = refreshedSession.refreshToken;
+      }
       user = refreshedSession.user;
+      activeSupabaseAccessToken = refreshedSession.accessToken;
     }
   }
 
@@ -172,6 +180,8 @@ export async function requireAuth(
     issuedAt: Date.now(),
   };
   request.authProvider = "supabase";
+  request.supabaseAccessToken = activeSupabaseAccessToken;
+  request.supabaseRefreshToken = request.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
 
   try {
     await ensureUpstreamSession(request, response, {

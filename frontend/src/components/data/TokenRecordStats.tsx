@@ -47,35 +47,42 @@ function formatCompactNumber(value: number, fractionDigits = 2) {
   return formatNumber(value, { maximumFractionDigits: fractionDigits });
 }
 
+function extractValue(row: DataRow, keys: string[]): number {
+  for (const key of keys) {
+    const val = row[key];
+    if (val !== undefined && val !== null && val !== "") {
+      const num = readNumber(val);
+      if (num > 0) return num;
+    }
+  }
+  return 0;
+}
+
 export function TokenRecordStats({ page, appliedFilters, rows, total }: TokenRecordStatsProps) {
   const loadedRevenue = useMemo(
-    () => rows.reduce((sum, row) => sum + readNumber(row.totalPrice), 0),
+    () => rows.reduce((sum, row) => sum + extractValue(row, ["totalPrice", "totalPaid", "price", "amountNaira"]), 0),
     [rows],
   );
   const [aggregateRevenue, setAggregateRevenue] = useState(loadedRevenue);
-  const [revenueNote, setRevenueNote] = useState("Loaded rows");
+  const [aggregateRevenueError, setAggregateRevenueError] = useState(false);
+  const needsAggregateFetch = total > rows.length;
+  const revenueNote = total <= 0
+    ? "Records in result set"
+    : total <= rows.length
+      ? `Across ${formatCompactNumber(total, 0)} records`
+      : aggregateRevenueError
+        ? "Loaded rows"
+        : "Calculating full result set";
+  const displayedRevenue = total <= 0 ? 0 : needsAggregateFetch ? aggregateRevenue : loadedRevenue;
 
   useEffect(() => {
     let cancelled = false;
 
-    if (total <= 0) {
-      setAggregateRevenue(0);
-      setRevenueNote("Records in result set");
+    if (!needsAggregateFetch) {
       return () => {
         cancelled = true;
       };
     }
-
-    if (total <= rows.length) {
-      setAggregateRevenue(loadedRevenue);
-      setRevenueNote(`Across ${formatCompactNumber(total, 0)} records`);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setAggregateRevenue(loadedRevenue);
-    setRevenueNote("Calculating full result set");
 
     void (async () => {
       const chunkSize = 500;
@@ -89,34 +96,26 @@ export function TokenRecordStats({ page, appliedFilters, rows, total }: TokenRec
         }
 
         const response = await loadTableData(page.readEndpoint, payload.payload);
-        revenueSum += response.rows.reduce((sum, row) => sum + readNumber(row.totalPrice), 0);
+        revenueSum += response.rows.reduce((sum, row) => sum + extractValue(row, ["totalPrice", "totalPaid", "price", "amountNaira"]), 0);
       }
 
       if (!cancelled) {
         setAggregateRevenue(revenueSum);
-        setRevenueNote(`Across ${formatCompactNumber(total, 0)} records`);
+        setAggregateRevenueError(false);
       }
     })().catch(() => {
       if (!cancelled) {
-        setAggregateRevenue(loadedRevenue);
-        setRevenueNote("Loaded rows");
+        setAggregateRevenueError(true);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [appliedFilters, loadedRevenue, page, rows.length, total]);
+  }, [appliedFilters, needsAggregateFetch, page, total]);
 
   const stats = useMemo<TokenRecordStatItem[]>(() => {
-    const visibleUnits = rows.reduce((sum, row) => sum + readNumber(row.totalUnit), 0);
-    const uniqueMeters = new Set(
-      rows
-        .map((row) => row.meterId)
-        .filter((value): value is string | number => value !== null && value !== undefined && String(value).trim().length > 0)
-        .map((value) => String(value).trim()),
-    ).size;
-
+    const visibleUnits = rows.reduce((sum, row) => sum + extractValue(row, ["totalUnit", "unit", "amount"]), 0);
     return [
       {
         label: "Total Records",
@@ -132,7 +131,7 @@ export function TokenRecordStats({ page, appliedFilters, rows, total }: TokenRec
       },
       {
         label: "Total Revenue",
-        value: formatNaira(aggregateRevenue),
+        value: formatNaira(displayedRevenue),
         note: revenueNote,
         accentClassName: "token-record-stats-card--cyan",
         icon: (
@@ -152,19 +151,8 @@ export function TokenRecordStats({ page, appliedFilters, rows, total }: TokenRec
           </svg>
         ),
       },
-      {
-        label: "Unique Meters",
-        value: formatCompactNumber(uniqueMeters, 0),
-        note: "Receiving tokens",
-        accentClassName: "token-record-stats-card--amber",
-        icon: (
-          <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-            <path d="M7 18a5 5 0 1 1 10 0M12 13a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm-7 6h14" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-          </svg>
-        ),
-      },
     ];
-  }, [aggregateRevenue, revenueNote, rows, total]);
+  }, [displayedRevenue, revenueNote, rows, total]);
 
   return (
     <section className="token-record-stats">

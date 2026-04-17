@@ -54,6 +54,8 @@ test("critical pages exist in catalog", () => {
   assert.equal(paths.has("/data-report/theft-signals"), true);
   assert.equal(paths.has("/data-report/theft-cases"), true);
   assert.equal(paths.has("/system/runtime"), true);
+  assert.equal(paths.has("/wallet-admin/overview"), true);
+  assert.equal(paths.has("/wallet-admin/vendor-onboarding"), true);
 });
 
 test("token generate pages match PDF action labels and quota visibility", () => {
@@ -68,13 +70,20 @@ test("token generate pages match PDF action labels and quota visibility", () => 
   assert.equal(clearTamperPage.rowActions?.[0]?.label, "Generate Token");
   assert.equal(clearCreditPage.rowActions?.[0]?.label, "Generate Token");
   assert.equal(maximumPowerPage.rowActions?.[0]?.label, "Generate Token");
+  assert.equal(
+    creditTokenPage.rowActions?.[0]?.fields?.some((field) => field.key === "authorizationPassword"),
+    true,
+  );
+  assert.equal(
+    clearTamperPage.rowActions?.[0]?.fields?.some((field) => field.key === "authorizationPassword"),
+    true,
+  );
 });
 
 test("management pages expose import/export and mapped customer/tariff/gateway columns", () => {
   const customerPage = getDataPage("/management/customer");
   const tariffPage = getDataPage("/management/tariff");
   const gatewayPage = getDataPage("/management/gateway");
-  const itemPage = getDataPage("/management/item");
 
   assert.deepEqual(
     customerPage.columns.map((column) => column.key),
@@ -105,19 +114,22 @@ test("management pages expose import/export and mapped customer/tariff/gateway c
   assert.equal(tariffPage.toolbarActions?.some((action) => action.label === "Export"), true);
   assert.equal(gatewayPage.toolbarActions?.some((action) => action.label === "Import"), true);
   assert.equal(gatewayPage.toolbarActions?.some((action) => action.label === "Export"), true);
-  assert.equal(itemPage.readEndpoint, "/api/item/readItemList");
-  assert.deepEqual(
-    itemPage.toolbarActions?.map((action) => action.endpoint),
-    ["/api/item/create", "/api/item/import", "/api/item/readItemList"],
-  );
-  assert.deepEqual(
-    itemPage.rowActions?.map((action) => action.endpoint),
-    ["/api/item/update", "/api/item/delete"],
-  );
-  assert.deepEqual(
-    itemPage.bulkActions?.map((action) => action.endpoint),
-    ["/api/item/delete"],
-  );
+});
+
+test("wallet admin pages are isolated into dedicated navigation sections", () => {
+  const overviewPage = allPages.find((page) => page.path === "/wallet-admin/overview");
+  const fundingQueuePage = getDataPage("/wallet-admin/funding-pending");
+  const vendorQueuePage = getDataPage("/wallet-admin/vendor-onboarding");
+
+  assert.ok(overviewPage);
+  assert.equal(overviewPage.workspace, "wallet-admin");
+  assert.equal(fundingQueuePage.workspace, "wallet-admin");
+  assert.equal(vendorQueuePage.workspace, "wallet-admin");
+  assert.equal(overviewPage.sectionKey, "wallet-admin-home");
+  assert.equal(vendorQueuePage.sectionKey, "wallet-admin-vendors");
+  assert.equal(fundingQueuePage.sectionKey, "wallet-admin-funding");
+  assert.equal(navigationSections.some((section) => section.key === "wallet-admin-home"), true);
+  assert.equal(navigationSections.some((section) => section.key === "wallet-admin-funding"), true);
 });
 
 test("token record, interval, and task pages expose mapped columns and client actions", () => {

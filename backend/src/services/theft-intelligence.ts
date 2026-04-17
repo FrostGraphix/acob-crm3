@@ -6,6 +6,12 @@ import type {
   TheftSignalSeverity,
 } from "../../../common/types/index.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state-store.js";
+import {
+  isSupabaseDbEnabled,
+  loadTheftRuntimeSnapshot,
+  upsertTheftCaseRecord,
+  upsertTheftSignalRecord,
+} from "./supabase-db.js";
 
 interface TheftRuntimeSnapshot {
   signals: TheftSignalRecord[];
@@ -17,12 +23,57 @@ interface TheftRuntimeSnapshot {
 interface TheftSignalInput {
   meterId: string;
   customerName?: string;
+  siteId?: string;
   signalType: string;
   scoreDelta: number;
   detail: string;
 }
 
-const persistedState = await loadRuntimeState<TheftRuntimeSnapshot>("theft-intelligence");
+function normalizeSiteLabel(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.includes("musha")) {
+    return "Musha";
+  }
+  if (normalized.includes("ogufa")) {
+    return "Ogufa";
+  }
+  if (normalized.includes("umaisha")) {
+    return "Umaisha";
+  }
+  if (normalized.includes("tunga")) {
+    return "Tunga";
+  }
+  if (normalized.includes("kyakale")) {
+    return "Kyakale";
+  }
+
+  return undefined;
+}
+
+function readSiteFromRow(row: Record<string, unknown>) {
+  return normalizeSiteLabel(
+    row.stationId ??
+      row.stationCode ??
+      row.site ??
+      row.siteId ??
+      row.station ??
+      row.sectionId ??
+      row.stationName ??
+      row.siteName,
+  );
+}
+
+const persistedState =
+  (isSupabaseDbEnabled() ? await loadTheftRuntimeSnapshot() : null) ??
+  (await loadRuntimeState<TheftRuntimeSnapshot>("theft-intelligence"));
 
 class TheftIntelligenceService {
   private signals = persistedState?.signals ?? [];
@@ -30,6 +81,10 @@ class TheftIntelligenceService {
   private signalKeySet = new Set<string>(persistedState?.signalKeys ?? []);
 
   private async persist() {
+    if (isSupabaseDbEnabled()) {
+      return;
+    }
+
     await saveRuntimeState("theft-intelligence", {
       signals: this.signals,
       cases: this.cases,
@@ -61,7 +116,7 @@ class TheftIntelligenceService {
     }
   }
 
-  private upsertCaseFromSignal(signal: TheftSignalRecord) {
+  private async upsertCaseFromSignal(signal: TheftSignalRecord) {
     if (signal.severity === "watch") {
       return;
     }
@@ -80,23 +135,33 @@ class TheftIntelligenceService {
           : "suspect";
       existingCase.signalIds = Array.from(new Set([...existingCase.signalIds, signal.id]));
       existingCase.updatedAt = new Date().toISOString();
+      if (isSupabaseDbEnabled()) {
+        await upsertTheftCaseRecord(existingCase);
+      }
       return;
     }
 
-    this.cases.unshift({
+    const newCase: TheftCaseRecord = {
       id: randomUUID(),
       meterId: signal.meterId,
       customerName: signal.customerName,
+      siteId: signal.siteId,
       severity: signal.severity,
       score: signal.score,
       status: this.getCaseStatusBySeverity(signal.severity),
       signalIds: [signal.id],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    this.cases.unshift(newCase);
 
     if (this.cases.length > 2000) {
       this.cases.length = 2000;
+    }
+
+    if (isSupabaseDbEnabled()) {
+      await upsertTheftCaseRecord(newCase);
     }
   }
 
@@ -142,6 +207,7 @@ class TheftIntelligenceService {
         pushSignal({
           meterId,
           customerName,
+          siteId: readSiteFromRow(row),
           signalType: "low-balance-critical",
           scoreDelta: 35,
           detail: `Remaining balance is critically low (${remainingBalance}).`,
@@ -150,6 +216,7 @@ class TheftIntelligenceService {
         pushSignal({
           meterId,
           customerName,
+          siteId: readSiteFromRow(row),
           signalType: "low-balance-warning",
           scoreDelta: 20,
           detail: `Remaining balance is below warning threshold (${remainingBalance}).`,
@@ -187,6 +254,7 @@ class TheftIntelligenceService {
         pushSignal({
           meterId,
           customerName,
+          siteId: readSiteFromRow(row),
           signalType: "long-nonpurchase-critical",
           scoreDelta: 45,
           detail: `No purchase activity for ${days} days.`,
@@ -195,6 +263,7 @@ class TheftIntelligenceService {
         pushSignal({
           meterId,
           customerName,
+          siteId: readSiteFromRow(row),
           signalType: "long-nonpurchase-warning",
           scoreDelta: 30,
           detail: `No purchase activity for ${days} days.`,
@@ -204,6 +273,7 @@ class TheftIntelligenceService {
 
     const now = new Date().toISOString();
     let changed = false;
+    const newSignals: TheftSignalRecord[] = [];
 
     for (const [meterId, signalInputs] of grouped.entries()) {
       const key = `${meterId}:${input.dateBucket}`;
@@ -222,6 +292,7 @@ class TheftIntelligenceService {
         id: randomUUID(),
         meterId,
         customerName: signalInputs[0]?.customerName,
+        siteId: signalInputs.find((item) => item.siteId)?.siteId,
         severity,
         score,
         signalTypes: combinedTypes,
@@ -233,8 +304,12 @@ class TheftIntelligenceService {
       };
 
       this.addSignal(signal);
-      this.upsertCaseFromSignal(signal);
+      if (isSupabaseDbEnabled()) {
+        await upsertTheftSignalRecord(signal);
+      }
+      await this.upsertCaseFromSignal(signal);
       this.signalKeySet.add(key);
+      newSignals.push(signal);
       changed = true;
     }
 
@@ -270,6 +345,10 @@ class TheftIntelligenceService {
       id: randomUUID(),
       meterId: input.meterId,
       customerName: input.customerName,
+      siteId:
+        input.signalIds?.length
+          ? this.signals.find((signal) => input.signalIds?.includes(signal.id))?.siteId
+          : this.signals.find((signal) => signal.meterId === input.meterId)?.siteId,
       severity: input.severity ?? "watch",
       score: input.score ?? 0,
       status: "new",
@@ -281,6 +360,9 @@ class TheftIntelligenceService {
     };
 
     this.cases.unshift(newCase);
+    if (isSupabaseDbEnabled()) {
+      await upsertTheftCaseRecord(newCase);
+    }
     await this.persist();
     return newCase;
   }
@@ -312,6 +394,9 @@ class TheftIntelligenceService {
     }
 
     current.updatedAt = new Date().toISOString();
+    if (isSupabaseDbEnabled()) {
+      await upsertTheftCaseRecord(current);
+    }
     await this.persist();
     return current;
   }
@@ -332,6 +417,9 @@ class TheftIntelligenceService {
     }`;
     current.notes = current.notes ? `${current.notes}\n${actionText}` : actionText;
     current.updatedAt = new Date().toISOString();
+    if (isSupabaseDbEnabled()) {
+      await upsertTheftCaseRecord(current);
+    }
     await this.persist();
     return current;
   }

@@ -5,6 +5,7 @@ import {
   listNotifications,
   type NotificationItem,
 } from "../../services/api";
+import { getSupabaseClient, isRealtimeEnabled } from "../../services/supabase";
 
 function renderNotificationGlyph(type: NotificationItem["type"]) {
   if (type === "critical") {
@@ -34,16 +35,56 @@ export function NotificationBell() {
     }
   });
 
+  // Realtime subscription for instant notification delivery
   useEffect(() => {
-    const pollNotifications = () => {
-      void fetchNotifications();
-    };
+    void fetchNotifications();
 
-    const initialTimeout = window.setTimeout(pollNotifications, 0);
-    const interval = window.setInterval(pollNotifications, 60_000);
+    const interval = window.setInterval(() => {
+      void fetchNotifications();
+    }, 60_000);
+
+    // Realtime is best-effort here. The app still keeps polling because
+    // auth currently flows through backend cookies rather than a frontend
+    // Supabase session, so subscriptions may not always be authorized.
+    if (isRealtimeEnabled()) {
+      const client = getSupabaseClient();
+      if (client) {
+        const channel = client
+          .channel("notification-bell")
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "notifications",
+            },
+            () => {
+              // Re-fetch all unread on any INSERT
+              void fetchNotifications();
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "notifications",
+            },
+            () => {
+              // Re-fetch when notifications are marked read (from another tab/device)
+              void fetchNotifications();
+            },
+          )
+          .subscribe();
+
+        return () => {
+          window.clearInterval(interval);
+          void client.removeChannel(channel);
+        };
+      }
+    }
 
     return () => {
-      window.clearTimeout(initialTimeout);
       window.clearInterval(interval);
     };
   }, []);

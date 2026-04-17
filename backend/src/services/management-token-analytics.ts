@@ -10,6 +10,16 @@ import {
 import { SITE_CONSUMPTION_SITES } from "./site-consumption-store.js";
 import { ensureUpstreamSession } from "./upstream-session.js";
 import { forwardToUpstream, forwardToUpstreamGet } from "./upstream.js";
+import {
+  isSupabaseDbEnabled,
+  upsertTokenTransactions,
+  upsertWarehouseAccounts,
+  upsertWarehouseCustomers,
+  upsertWarehouseMeters,
+  type DbWarehouseAccount,
+  type DbWarehouseCustomer,
+  type DbWarehouseMeter,
+} from "./supabase-db.js";
 
 export interface ManagementTokenTransaction {
   meterSN: string;
@@ -55,6 +65,7 @@ export interface ManagementTokenAnalyticsSnapshot {
 }
 
 interface CustomerRegistryEntry {
+  customerId: string;
   address: string;
   certifiNo: string;
   name: string;
@@ -211,6 +222,7 @@ function buildCustomerRegistry(rows: ReportRow[]) {
 
     const normalizedId = customerId.replace(/^47000/, "4700");
     const entry = {
+      customerId,
       name:
         readString(row, ["customerName", "name"]) ??
         `Customer ${customerId.slice(-4)}`,
@@ -226,6 +238,71 @@ function buildCustomerRegistry(rows: ReportRow[]) {
   }
 
   return registry;
+}
+
+function buildWarehouseSeedRows(transactions: ManagementTokenTransaction[]) {
+  const customers = new Map<string, DbWarehouseCustomer>();
+  const accounts = new Map<string, DbWarehouseAccount>();
+  const meters = new Map<string, DbWarehouseMeter>();
+
+  for (const transaction of transactions) {
+    const meterSn = transaction.meterSN.trim();
+    const siteCode = transaction.siteId.trim();
+    const accountNo = transaction.accountNo.trim();
+    const customerName = transaction.customerName.trim();
+    const timestamp = transaction.timestamp.trim();
+
+    if (!meterSn || !siteCode) {
+      continue;
+    }
+
+    const upstreamCustomerId = `token:${siteCode}:${accountNo || meterSn}`;
+    if (customerName) {
+      customers.set(upstreamCustomerId, {
+        upstream_customer_id: upstreamCustomerId,
+        customer_name: customerName,
+        account_no: accountNo || null,
+        site_code: siteCode,
+        source: "management-token-analytics",
+        raw_payload: {
+          meterSN: meterSn,
+          siteId: siteCode,
+          timestamp,
+        },
+      });
+    }
+
+    if (accountNo) {
+      accounts.set(accountNo, {
+        upstream_account_id: accountNo,
+        account_no: accountNo,
+        site_code: siteCode,
+        raw_payload: {
+          meterSN: meterSn,
+          customerName: customerName || null,
+          timestamp,
+        },
+      });
+    }
+
+    meters.set(meterSn, {
+      upstream_meter_id: meterSn,
+      meter_sn: meterSn,
+      site_code: siteCode,
+      tariff_id: transaction.tariffRate || null,
+      last_seen_at: timestamp || null,
+      raw_payload: {
+        customerName: customerName || null,
+        accountNo: accountNo || null,
+      },
+    });
+  }
+
+  return {
+    customers: Array.from(customers.values()),
+    accounts: Array.from(accounts.values()),
+    meters: Array.from(meters.values()),
+  };
 }
 
 async function fetchCustomerRegistry(
@@ -372,6 +449,36 @@ async function buildSnapshot(
     },
     transactions,
   } satisfies ManagementTokenAnalyticsSnapshot;
+
+  if (isSupabaseDbEnabled() && transactions.length > 0) {
+    void (async () => {
+      try {
+        const warehouseSeeds = buildWarehouseSeedRows(transactions);
+        await Promise.all([
+          upsertWarehouseCustomers(warehouseSeeds.customers),
+          upsertWarehouseAccounts(warehouseSeeds.accounts),
+          upsertWarehouseMeters(warehouseSeeds.meters),
+        ]);
+
+        const chunkSize = 1000;
+        for (let i = 0; i < transactions.length; i += chunkSize) {
+          const chunk = transactions.slice(i, i + chunkSize).map(t => ({
+            meter_sn: t.meterSN,
+            site_id: t.siteId,
+            customer_name: t.customerName || null,
+            account_no: t.accountNo || null,
+            amount: t.amount,
+            kwh: t.kwh,
+            tariff_rate: t.tariffRate,
+            transaction_ts: t.timestamp
+          }));
+          await upsertTokenTransactions(chunk);
+        }
+      } catch (error) {
+         console.error("[TokenAnalytics] failed to upsert mapped token transactions", error);
+      }
+    })();
+  }
 
   cachedSnapshot = snapshot;
   cacheExpiresAt = Date.now() + CACHE_TTL_MS;

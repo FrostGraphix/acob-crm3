@@ -158,16 +158,25 @@ test("action payload mapper validates token generation numbers", () => {
 
   const invalid = buildActionPayload(action, {
     row: { meterId: "M-1" },
-    values: { amount: "0", unit: "12" },
+    values: { amount: "0", unit: "12", authorizationPassword: "secret" },
   });
   assert.equal(invalid.ok, false);
 
-  const valid = buildActionPayload(action, {
+  const missingAuthorizationPassword = buildActionPayload(action, {
     row: { meterId: "M-1" },
     values: { amount: "2500", unit: "120" },
   });
+  assert.equal(missingAuthorizationPassword.ok, false);
+  assert.equal(missingAuthorizationPassword.message, "Authorization Password is required");
+
+  const valid = buildActionPayload(action, {
+    row: { meterId: "M-1" },
+    values: { amount: "2500", unit: "120", authorizationPassword: "secret" },
+  });
   assert.equal(valid.ok, true);
   assert.equal(valid.payload?.amount, 2500);
+  assert.equal(valid.payload?.AuthorizationPassword, "secret");
+  assert.equal(valid.payload?.password2, "secret");
 });
 
 test("bulk delete requires selected keys", () => {

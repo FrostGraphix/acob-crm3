@@ -118,6 +118,13 @@ function renderSectionIcon(iconKey: SidebarIconKey) {
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
+    case "wallet":
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M4 7.5A2.5 2.5 0 016.5 5h10A2.5 2.5 0 0119 7.5V9H7a3 3 0 000 6h12v1.5a2.5 2.5 0 01-2.5 2.5h-10A2.5 2.5 0 014 16.5v-9z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M17 12h.01" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
   }
 }
 
@@ -145,6 +152,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { user } = useAuth();
   const isDashboardView = currentPath === "/dashboard";
+  const isWalletAdminView = currentPath.startsWith("/wallet-admin/");
   const [openSectionKey, setOpenSectionKey] = useState<string>("");
   const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
   const [flyoutOffset, setFlyoutOffset] = useState<React.CSSProperties>({});
@@ -216,7 +224,11 @@ export function Sidebar({
             </div>
             <div className="sidebar-brand-text">
               <span className="brand-title">
-                {isDashboardView ? (
+                {isWalletAdminView ? (
+                  <>
+                    ACOB <strong>Wallet</strong>
+                  </>
+                ) : isDashboardView ? (
                   <>
                     ACOB <strong>Odyssey</strong>
                   </>
@@ -227,7 +239,11 @@ export function Sidebar({
                 )}
               </span>
               <span className="brand-subtitle">
-                {isDashboardView ? "Metering Platform" : "Operations workspace"}
+                {isWalletAdminView
+                  ? "Admin workspace"
+                  : isDashboardView
+                    ? "Metering Platform"
+                    : "Operations workspace"}
               </span>
             </div>
           </div>
@@ -337,29 +353,27 @@ export function Sidebar({
           })}
         </nav>
 
-        {isDashboardView ? (
-          <div className="sidebar-dashboard-footer">
-            <div className="sidebar-dashboard-user">
-              <div className="sidebar-dashboard-user__badge">{operatorInitials}</div>
-              <div className="sidebar-dashboard-user__copy">
-                <strong>{operatorName}</strong>
-                <span>{operatorRole}</span>
-              </div>
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="sidebar-user__badge">{operatorInitials}</div>
+            <div className="sidebar-user__copy">
+              <strong>{operatorName}</strong>
+              <span>{operatorRole}</span>
             </div>
-            <button
-              className="sidebar-dashboard-signout"
-              onClick={() => void onLogout()}
-              type="button"
-            >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M10 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M15 12H3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>Sign Out</span>
-            </button>
           </div>
-        ) : null}
+          <button
+            className="sidebar-signout"
+            onClick={() => void onLogout()}
+            type="button"
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M15 12H3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

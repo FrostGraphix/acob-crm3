@@ -1,13 +1,31 @@
 import { useEffect, useState } from "react";
 import {
+  loadCustomerForecasts,
+  loadCustomerSegments,
+  loadOperationalPriority,
+  loadRevenueLeakage,
+  loadRuntimeEngineCatalog,
   loadRuntimeEngines,
   runRuntimeEngine,
   startRuntimeEngine,
   stopRuntimeEngine,
 } from "../services/api";
-import type { RuntimeEngineCollection, RuntimeEngineStatus } from "../types";
+import type {
+  CustomerForecastsResponse,
+  CustomerSegmentsResponse,
+  DataEngineCatalogEntry,
+  OperationalPriorityResponse,
+  RevenueLeakageResponse,
+  RuntimeEngineCollection,
+  RuntimeEngineStatus,
+} from "../types";
 
-type EngineKey = "analysis" | "site-consumption";
+type EngineKey =
+  | "analysis"
+  | "site-consumption"
+  | "customer-facts"
+  | "revenue-leakage"
+  | "operational-priority";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -86,6 +104,29 @@ function RuntimeEngineCard({
           </div>
         </div>
       ) : null}
+      {status.rowMetrics ? (
+        <div className="runtime-engine-grid">
+          <div>
+            <span className="runtime-engine-label">Recharge Facts</span>
+            <strong>{status.rowMetrics.rechargeFacts}</strong>
+          </div>
+          <div>
+            <span className="runtime-engine-label">Consumption Facts</span>
+            <strong>{status.rowMetrics.consumptionFacts}</strong>
+          </div>
+          <div>
+            <span className="runtime-engine-label">Segments</span>
+            <strong>{status.rowMetrics.segments}</strong>
+          </div>
+          <div>
+            <span className="runtime-engine-label">Forecasts</span>
+            <strong>{status.rowMetrics.forecasts}</strong>
+          </div>
+        </div>
+      ) : null}
+      {typeof status.rowCount === "number" ? (
+        <p className="runtime-engine-note">Latest output rows: {status.rowCount}</p>
+      ) : null}
       {status.lastError ? <p className="status-banner status-banner-error">{status.lastError}</p> : null}
       {status.leader.lastLeadershipError ? (
         <p className="status-banner status-banner-error">{status.leader.lastLeadershipError}</p>
@@ -121,8 +162,60 @@ function RuntimeEngineCard({
   );
 }
 
+function RuntimePreviewTable({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<Record<string, string | number | null>>;
+}) {
+  const columns = rows[0] ? Object.keys(rows[0]) : [];
+
+  return (
+    <article className="runtime-preview-card premium-card">
+      <div className="runtime-engine-card__header">
+        <div>
+          <p className="runtime-engine-card__eyebrow">Preview</p>
+          <h3 className="runtime-engine-card__title">{title}</h3>
+        </div>
+        <span className="runtime-engine-note">{rows.length} rows</span>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="runtime-engine-note">No rows available yet.</p>
+      ) : (
+        <div className="runtime-preview-table-wrapper">
+          <table className="runtime-preview-table">
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`${title}-${index}`}>
+                  {columns.map((column) => (
+                    <td key={column}>{String(row[column] ?? "")}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </article>
+  );
+}
+
 export function RuntimeAdminPage() {
   const [engines, setEngines] = useState<RuntimeEngineCollection | null>(null);
+  const [engineCatalog, setEngineCatalog] = useState<DataEngineCatalogEntry[]>([]);
+  const [segments, setSegments] = useState<CustomerSegmentsResponse["rows"]>([]);
+  const [forecasts, setForecasts] = useState<CustomerForecastsResponse["rows"]>([]);
+  const [revenueLeakage, setRevenueLeakage] = useState<RevenueLeakageResponse["rows"]>([]);
+  const [operationalPriority, setOperationalPriority] = useState<OperationalPriorityResponse["rows"]>([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -130,8 +223,22 @@ export function RuntimeAdminPage() {
 
   const hydrate = async () => {
     try {
-      const result = await loadRuntimeEngines();
-      setEngines(result.engines);
+      const [runtimeResult, catalogResult] = await Promise.all([
+        loadRuntimeEngines(),
+        loadRuntimeEngineCatalog(),
+      ]);
+      const [segmentResult, forecastResult, leakageResult, priorityResult] = await Promise.all([
+        loadCustomerSegments({ limit: 5 }),
+        loadCustomerForecasts({ limit: 5 }),
+        loadRevenueLeakage(),
+        loadOperationalPriority(),
+      ]);
+      setEngines(runtimeResult.engines);
+      setEngineCatalog(catalogResult.entries);
+      setSegments(segmentResult.rows);
+      setForecasts(forecastResult.rows);
+      setRevenueLeakage(leakageResult.rows.slice(0, 5));
+      setOperationalPriority(priorityResult.rows.slice(0, 5));
       setError(null);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load runtime engines");
@@ -199,20 +306,130 @@ export function RuntimeAdminPage() {
       ) : null}
 
       {engines ? (
-        <div className="runtime-admin-grid">
-          <RuntimeEngineCard
-            busyAction={busyAction}
-            engineKey="analysis"
-            onAction={handleAction}
-            status={engines.analysis}
-          />
-          <RuntimeEngineCard
-            busyAction={busyAction}
-            engineKey="site-consumption"
-            onAction={handleAction}
-            status={engines.siteConsumption}
-          />
-        </div>
+        <>
+          <div className="runtime-admin-grid">
+            <RuntimeEngineCard
+              busyAction={busyAction}
+              engineKey="analysis"
+              onAction={handleAction}
+              status={engines.analysis}
+            />
+            <RuntimeEngineCard
+              busyAction={busyAction}
+              engineKey="site-consumption"
+              onAction={handleAction}
+              status={engines.siteConsumption}
+            />
+            <RuntimeEngineCard
+              busyAction={busyAction}
+              engineKey="customer-facts"
+              onAction={handleAction}
+              status={engines.customerFacts}
+            />
+            <RuntimeEngineCard
+              busyAction={busyAction}
+              engineKey="revenue-leakage"
+              onAction={handleAction}
+              status={engines.revenueLeakage}
+            />
+            <RuntimeEngineCard
+              busyAction={busyAction}
+              engineKey="operational-priority"
+              onAction={handleAction}
+              status={engines.operationalPriority}
+            />
+          </div>
+
+          <div className="runtime-admin-grid">
+            <RuntimePreviewTable
+              title="Customer Segments"
+              rows={segments.map((row) => ({
+                meterId: row.meterId,
+                segment: row.segment,
+                recharge30d: row.totalRechargeAmount30d,
+                avgUse7d: row.avgDailyConsumption7d,
+              }))}
+            />
+            <RuntimePreviewTable
+              title="Customer Forecasts"
+              rows={forecasts.map((row) => ({
+                meterId: row.meterId,
+                avgUse7d: row.avgDailyConsumption7d,
+                daysCovered: row.estimatedDaysCovered,
+                nextRecharge: row.predictedNextRechargeDate,
+              }))}
+            />
+            <RuntimePreviewTable
+              title="Revenue Leakage"
+              rows={revenueLeakage.map((row) => ({
+                meterId: row.meterId,
+                score: row.leakageScore,
+                lossKwh: row.estimatedLossKwh,
+                reason: row.reasons[0] ?? "",
+              }))}
+            />
+            <RuntimePreviewTable
+              title="Operational Priority"
+              rows={operationalPriority.map((row) => ({
+                meterId: row.meterId,
+                score: row.priorityScore,
+                action: row.recommendedAction,
+                reason: row.reasons[0] ?? "",
+              }))}
+            />
+          </div>
+
+          <section className="toolbar-panel">
+            <div className="runtime-engine-catalog__header">
+              <div>
+                <p className="eyebrow">Delivery Table</p>
+                <h2 className="runtime-admin-title">Data Engine Roadmap</h2>
+              </div>
+              <span className="runtime-engine-note">{engineCatalog.length} engines</span>
+            </div>
+
+            <div className="runtime-engine-catalog">
+              {engineCatalog.map((entry) => (
+                <article key={entry.key} className="runtime-engine-catalog__card premium-card">
+                  <div className="runtime-engine-card__header">
+                    <div>
+                      <p className="runtime-engine-card__eyebrow">{entry.category}</p>
+                      <h3 className="runtime-engine-card__title">{entry.name}</h3>
+                    </div>
+                    <span className={`runtime-engine-badge ${entry.status === "implemented" ? "is-leader" : ""}`}>
+                      {entry.status}
+                    </span>
+                  </div>
+
+                  <div className="runtime-engine-catalog__meta">
+                    <div>
+                      <span className="runtime-engine-label">Endpoints</span>
+                      <strong>{entry.endpointNames.join(", ")}</strong>
+                    </div>
+                    <div>
+                      <span className="runtime-engine-label">Schedule</span>
+                      <strong>{entry.workerSchedule}</strong>
+                    </div>
+                    <div>
+                      <span className="runtime-engine-label">Refresh</span>
+                      <strong>{entry.refreshInterval}</strong>
+                    </div>
+                    <div>
+                      <span className="runtime-engine-label">Tables</span>
+                      <strong>{entry.supabaseTables.join(", ")}</strong>
+                    </div>
+                  </div>
+
+                  <div className="runtime-engine-catalog__stack">
+                    <p className="runtime-engine-note">Formulas: {entry.formulas.join(" | ")}</p>
+                    <p className="runtime-engine-note">Backend: {entry.backendServices.join(", ")}</p>
+                    <p className="runtime-engine-note">Frontend: {entry.frontendPages.join(", ")}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
       ) : null}
     </section>
   );

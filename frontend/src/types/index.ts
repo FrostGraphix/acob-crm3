@@ -2,6 +2,10 @@ import type {
   ActionResponse as SharedActionResponse,
   AmrResponse,
   AuthUser,
+  CustomerForecastsResponse,
+  CustomerSegmentsResponse,
+  OperationalPriorityResponse,
+  RevenueLeakageResponse,
   RemoteTaskRiskLevel,
   RemoteTaskType,
 } from "../../../common/types";
@@ -95,12 +99,56 @@ export interface RuntimeEngineStatus {
     openCases: number;
     criticalSignals: number;
   };
+  rowMetrics?: {
+    rechargeFacts: number;
+    consumptionFacts: number;
+    segments: number;
+    forecasts: number;
+  };
+  rowCount?: number;
 }
 
 export interface RuntimeEngineCollection {
   analysis: RuntimeEngineStatus;
   siteConsumption: RuntimeEngineStatus;
+  customerFacts: RuntimeEngineStatus;
+  revenueLeakage: RuntimeEngineStatus;
+  operationalPriority: RuntimeEngineStatus;
 }
+
+export interface DataEngineCatalogEntry {
+  key: string;
+  name: string;
+  category:
+    | "revenue"
+    | "consumption"
+    | "risk"
+    | "monitoring"
+    | "operations"
+    | "warehouse"
+    | "forecasting";
+  status: "implemented" | "partial" | "planned";
+  endpointNames: string[];
+  inputApis: string[];
+  formulas: string[];
+  supabaseTables: string[];
+  refreshInterval: string;
+  workerSchedule: string;
+  backendServices: string[];
+  frontendPages: string[];
+}
+
+export interface DataEngineCatalogResponse {
+  generatedAt: string;
+  entries: DataEngineCatalogEntry[];
+}
+
+export type {
+  CustomerForecastsResponse,
+  CustomerSegmentsResponse,
+  OperationalPriorityResponse,
+  RevenueLeakageResponse,
+};
 
 export interface ApiDataResponse {
   rows: DataRow[];
@@ -123,13 +171,19 @@ export interface FilterField {
   type?: "text" | "date" | "number";
 }
 
+export interface AnalyticsMixPanelConfig {
+  key: string;
+  endpoint: string;
+  queryDefaults?: Record<string, string>;
+}
+
 export type ReportDisplayMode = "table" | "analytics";
 export type ReportAnalyticsKey = "site-consumption" | "consumption-statistics";
 
 export interface ActionField {
   key: string;
   label: string;
-  type?: "text" | "date" | "number" | "textarea" | "select";
+  type?: "text" | "date" | "number" | "textarea" | "select" | "password";
   placeholder: string;
   sourceKey?: string;
   required?: boolean;
@@ -181,9 +235,29 @@ export interface ActionConfig {
 }
 
 export type ReadOperationKind = "table-read" | "report-read" | "task-read";
+export type AppWorkspace = "operations" | "vendor" | "wallet-admin";
+export type VendorPageView =
+  | "dashboard"
+  | "buy"
+  | "buy-confirm"
+  | "buy-receipt"
+  | "commission"
+  | "transactions"
+  | "receipts"
+  | "topup"
+  | "topup-status"
+  | "statement"
+  | "profile";
 
 export interface BasePageConfig {
-  kind: "dashboard" | "data" | "profile" | "runtime-admin";
+  kind:
+    | "dashboard"
+    | "data"
+    | "profile"
+    | "runtime-admin"
+    | "documents"
+    | "vendor"
+    | "wallet-admin-home";
   path: string;
   title: string;
   menuLabel: string;
@@ -192,6 +266,9 @@ export interface BasePageConfig {
   includeInNavigation?: boolean;
   requiredRole?: string;
   requiredPermissions?: string[];
+  workspace?: AppWorkspace;
+  navigationPath?: string;
+  tabPath?: string;
 }
 
 export interface DashboardPageConfig extends BasePageConfig {
@@ -229,6 +306,7 @@ export interface DataPageConfig extends BasePageConfig {
     canOpenCase?: boolean;
     riskSignals?: string[];
   };
+  insightPanels?: AnalyticsMixPanelConfig[];
   actionPolicy?: {
     guardedConfirm?: boolean;
     requireReasonForHighRisk?: boolean;
@@ -243,11 +321,27 @@ export interface RuntimeAdminPageConfig extends BasePageConfig {
   kind: "runtime-admin";
 }
 
+export interface DocumentsPageConfig extends BasePageConfig {
+  kind: "documents";
+}
+
+export interface VendorPageConfig extends BasePageConfig {
+  kind: "vendor";
+  vendorView: VendorPageView;
+}
+
+export interface WalletAdminHomePageConfig extends BasePageConfig {
+  kind: "wallet-admin-home";
+}
+
 export type AppPageConfig =
   | DashboardPageConfig
   | DataPageConfig
   | ProfilePageConfig
-  | RuntimeAdminPageConfig;
+  | RuntimeAdminPageConfig
+  | DocumentsPageConfig
+  | VendorPageConfig
+  | WalletAdminHomePageConfig;
 
 export type SidebarIconKey =
   | "dashboard"
@@ -264,7 +358,8 @@ export type SidebarIconKey =
   | "load-profile"
   | "log"
   | "event"
-  | "file-upload";
+  | "file-upload"
+  | "wallet";
 
 export interface NavigationSection {
   key: string;

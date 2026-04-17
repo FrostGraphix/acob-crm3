@@ -5,6 +5,11 @@ import {
   getManagementTokenAnalyticsSnapshot,
   type ManagementTokenTransaction,
 } from "./management-token-analytics.js";
+import {
+  isSupabaseDbEnabled,
+  listRevenueUsageSeries,
+  listSiteConsumptionSeries,
+} from "./supabase-db.js";
 import { buildUpstreamRequestPlan } from "./upstream-request-adapters.js";
 import { forwardWithUpstreamSessionRecovery } from "./upstream-session.js";
 import {
@@ -824,6 +829,59 @@ async function loadDashboardPaymentRows(
   return extractRows(result.payload.result);
 }
 
+async function loadSupabaseDashboardPaymentRows(scope: DashboardScope) {
+  if (!isSupabaseDbEnabled()) {
+    return [] as ReportRow[];
+  }
+
+  const rows = await listRevenueUsageSeries({
+    siteId: scope.siteId,
+    fromDate: scope.sourceWindow.from.slice(0, 10),
+    toDate: scope.sourceWindow.to.slice(0, 10),
+    limit: 400,
+  });
+
+  return rows.map<ReportRow>((row) => ({
+    siteId: row.siteCode,
+    site: row.siteCode,
+    createTime: row.date,
+    purchaseTime: row.date,
+    totalPrice: row.totalRevenue,
+    purchaseMoney: row.totalRevenue,
+    amount: row.totalRevenue,
+    totalUnit: row.totalKwh,
+    TransactionKwh: row.totalKwh,
+    transactionKwh: row.totalKwh,
+    kwh: row.totalKwh,
+    transactionCount: row.transactionCount,
+  }));
+}
+
+async function loadSupabaseConsumptionRows(scope: DashboardScope) {
+  if (!isSupabaseDbEnabled()) {
+    return [] as ReportRow[];
+  }
+
+  const rows = await listSiteConsumptionSeries({
+    siteId: scope.siteId,
+    fromDate: scope.sourceWindow.from.slice(0, 10),
+    toDate: scope.sourceWindow.to.slice(0, 10),
+    granularity: "daily",
+    limit: 400,
+  });
+
+  return rows.map<ReportRow>((row) => ({
+    siteId: row.siteCode,
+    site: row.siteCode,
+    readDate: row.date,
+    date: row.date,
+    consumption: row.totalKwh,
+    totalEnergy: row.totalKwh,
+    usage: row.totalKwh,
+    value: row.totalKwh,
+  }));
+}
+
 function getRowsAndTotal(result: UpstreamResult | null) {
   if (!result || result.statusCode >= 400 || result.payload.code !== 0) {
     return { rows: [] as ReportRow[], total: 0 };
@@ -1046,7 +1104,11 @@ export async function loadDashboardLineChart(
   let primaryChart: DashboardLineChartPayload = { xData: [], yData: [] };
 
   if (chartType === 1) {
-    const purchaseRows = await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
+    const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
+    const purchaseRows =
+      supabaseRows.length > 0
+        ? supabaseRows
+        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
     return buildDailySeries(purchaseRows, {
       valueKeys: ["totalPrice", "purchaseMoney", "amount", "totalPaid"],
       limit: 30,
@@ -1054,7 +1116,11 @@ export async function loadDashboardLineChart(
   }
 
   if (chartType === 2) {
-    const purchaseRows = await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
+    const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
+    const purchaseRows =
+      supabaseRows.length > 0
+        ? supabaseRows
+        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
     return buildTransactionPresenceChart(purchaseRows);
   }
 
@@ -1090,9 +1156,13 @@ export async function loadDashboardLineChart(
   }
 
   if (chartType === 4) {
-    const purchaseRows = await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
-    return buildDailySeries(purchaseRows, {
-      valueKeys: ["TransactionKwh", "transactionKwh", "totalUnit", "kwh", "usage"],
+    const supabaseConsumptionRows = await loadSupabaseConsumptionRows(scope);
+    const consumptionRows =
+      supabaseConsumptionRows.length > 0
+        ? supabaseConsumptionRows
+        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
+    return buildDailySeries(consumptionRows, {
+      valueKeys: ["consumption", "totalEnergy", "usage", "TransactionKwh", "transactionKwh", "totalUnit", "kwh"],
       limit: 30,
     });
   }
