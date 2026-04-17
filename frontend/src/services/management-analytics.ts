@@ -181,13 +181,19 @@ export async function loadManagementConsumption(site: string | null) {
   return normalizeConsumptionResponse(payload);
 }
 
-export async function loadManagementMeterConsumption(site: string | null, limit = 10) {
+export async function loadManagementMeterConsumption(
+  site: string | null,
+  options: { pageNumber?: number; pageSize?: number } = {},
+) {
   const payload = await request<unknown>("/api/management/analytics/meter-consumption", {
     method: "GET",
     query: {
       siteId: site || undefined,
       site: site || undefined,
-      limit,
+      pageNumber: options.pageNumber,
+      pageSize: options.pageSize,
+      limit: options.pageSize, // Fallback for various backend patterns
+      offset: options.pageNumber && options.pageSize ? (options.pageNumber - 1) * options.pageSize : undefined,
     },
   });
 

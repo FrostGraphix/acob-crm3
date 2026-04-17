@@ -38,20 +38,6 @@ export const reportPages: AppPageConfig[] = [
       { key: "tariff", label: "Tariff" },
     ],
     live: { enabled: true, intervalMs: 25_000, pauseOnHidden: true },
-    insightPanels: [
-      {
-        key: "collections-priority",
-        endpoint: "/api/reports/collections-priority",
-      },
-      {
-        key: "revenue-leakage",
-        endpoint: "/api/management/analytics/revenue-leakage",
-      },
-      {
-        key: "operational-priority",
-        endpoint: "/api/management/analytics/operational-priority",
-      },
-    ],
     riskIntegration: {
       canOpenCase: true,
       riskSignals: ["long-nonpurchase", "bypass-risk"],
@@ -87,20 +73,6 @@ export const reportPages: AppPageConfig[] = [
       { key: "customerAddress", label: "Customer Address", searchable: true },
     ],
     live: { enabled: true, intervalMs: 20_000, pauseOnHidden: true },
-    insightPanels: [
-      {
-        key: "collections-priority",
-        endpoint: "/api/reports/collections-priority",
-      },
-      {
-        key: "revenue-leakage",
-        endpoint: "/api/management/analytics/revenue-leakage",
-      },
-      {
-        key: "operational-priority",
-        endpoint: "/api/management/analytics/operational-priority",
-      },
-    ],
     riskIntegration: {
       canOpenCase: true,
       riskSignals: ["low-purchase", "consumption-drift"],
@@ -133,12 +105,6 @@ export const reportPages: AppPageConfig[] = [
     ],
     toolbarActions: [createClientExportAction("/api/site-consumption/report")],
     live: { enabled: true, intervalMs: 30_000, pauseOnHidden: true },
-    insightPanels: [
-      {
-        key: "site-loss-exposure",
-        endpoint: "/api/site-consumption/loss-exposure",
-      },
-    ],
     riskIntegration: {
       canOpenCase: true,
       riskSignals: ["site-anomaly", "consumption-drift"],
@@ -156,12 +122,6 @@ export const reportPages: AppPageConfig[] = [
     filters: [searchFilter],
     columns: theftSignalColumns,
     toolbarActions: [createClientExportAction("/api/theft/signals/read")],
-    insightPanels: [
-      {
-        key: "theft-prioritization",
-        endpoint: "/api/theft/prioritization",
-      },
-    ],
     rowActions: [
       {
         key: "open-case",
@@ -198,12 +158,6 @@ export const reportPages: AppPageConfig[] = [
     filters: [searchFilter],
     columns: theftCaseColumns,
     toolbarActions: [createClientExportAction("/api/theft/cases/read")],
-    insightPanels: [
-      {
-        key: "theft-prioritization",
-        endpoint: "/api/theft/prioritization",
-      },
-    ],
     rowActions: [
       {
         key: "update-case",
@@ -277,6 +231,24 @@ export const reportPages: AppPageConfig[] = [
       { key: "totalEnergy", label: "Total Energy", align: "end" },
     ],
     live: { enabled: true, intervalMs: 25_000, pauseOnHidden: true },
+    insightPanels: [
+      {
+        key: "collections-priority",
+        endpoint: "/api/reports/collections-priority",
+      },
+      {
+        key: "revenue-leakage",
+        endpoint: "/api/management/analytics/revenue-leakage",
+      },
+      {
+        key: "operational-priority",
+        endpoint: "/api/management/analytics/operational-priority",
+      },
+      {
+        key: "theft-prioritization",
+        endpoint: "/api/theft/prioritization",
+      },
+    ],
     riskIntegration: {
       canOpenCase: true,
       riskSignals: ["consumption-anomaly", "meter-risk"],

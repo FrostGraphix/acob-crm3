@@ -11,6 +11,53 @@ interface SidebarProps {
   isCollapsed?: boolean;
 }
 
+interface WalletNavItem {
+  badge?: number;
+  danger?: boolean;
+  label: string;
+  path: string;
+  section?: string;
+}
+
+const walletVendorNav: WalletNavItem[] = [
+  { section: "Overview", label: "Dashboard", path: "/vendor/dashboard" },
+  { section: "Transactions", label: "Buy Units", path: "/vendor/buy" },
+  { label: "Fund Wallet", path: "/vendor/topup" },
+  { label: "Transactions", path: "/vendor/transactions" },
+  { label: "Receipts", path: "/vendor/receipts" },
+  { label: "Statement", path: "/vendor/statement" },
+  { section: "Account", label: "My Profile", path: "/vendor/profile" },
+  { label: "Commission", path: "/vendor/commission" },
+];
+
+const walletAdminNav: WalletNavItem[] = [
+  { section: "Overview", label: "Dashboard", path: "/wallet-admin/overview" },
+  { section: "Vendors", label: "Vendors", path: "/wallet-admin/vendor-onboarding" },
+  { label: "All Wallets", path: "/wallet-admin/wallet-kpis" },
+  { section: "Finance", label: "Funding & Credits", path: "/wallet-admin/funding-pending", badge: 3 },
+  { label: "Commission Rules", path: "/wallet-admin/commission-rules" },
+  { section: "Operations", label: "Exceptions", path: "/wallet-admin/exceptions", badge: 2, danger: true },
+  { label: "Settlement", path: "/wallet-admin/settlement-batches" },
+  { label: "Reconciliation", path: "/wallet-admin/reconciliation" },
+  { section: "Reports", label: "Settlement Report", path: "/wallet-admin/settlement-report" },
+];
+
+function isWalletPath(path: string) {
+  return path.startsWith("/vendor/") || path.startsWith("/wallet-admin/");
+}
+
+function isWalletPathActive(itemPath: string, currentPath: string) {
+  if (currentPath === itemPath) {
+    return true;
+  }
+
+  if (itemPath === "/vendor/topup" && currentPath.startsWith("/vendor/topup/")) {
+    return true;
+  }
+
+  return false;
+}
+
 
 
 function renderSectionIcon(iconKey: SidebarIconKey) {
@@ -206,6 +253,81 @@ export function Sidebar({
     .slice(0, 2)
     .map((segment) => segment[0]?.toUpperCase() ?? "")
     .join("") || "AC";
+  const isVendorWalletView = currentPath.startsWith("/vendor/");
+  const isWalletWorkspace = isWalletPath(currentPath);
+
+  if (isWalletWorkspace) {
+    const walletNav = isVendorWalletView ? walletVendorNav : walletAdminNav;
+    const workspaceTitle = isVendorWalletView ? "Vendor Wallet" : "Wallet Admin";
+    const workspaceSubtitle = isVendorWalletView ? "Premium vending workspace" : "Finance operations workspace";
+
+    return (
+      <aside className={`sidebar wallet-shell-sidebar ${isOpen ? "open" : ""}`} ref={sidebarRef}>
+        <div className="wallet-shell-sidebar__scroll">
+          <div className="wallet-shell-sidebar__brand">
+            <div className="wallet-shell-sidebar__logo">A</div>
+            <div>
+              <div className="wallet-shell-sidebar__brand-title">ACOB Wallet</div>
+              <div className="wallet-shell-sidebar__brand-subtitle">{workspaceSubtitle}</div>
+            </div>
+          </div>
+
+          <div className="wallet-shell-sidebar__workspace">
+            <div className="wallet-shell-sidebar__workspace-label">{workspaceTitle}</div>
+            <div className="wallet-shell-sidebar__workspace-copy">
+              {isVendorWalletView ? "Balance, receipts, and funding" : "Vendors, approvals, and reconciliation"}
+            </div>
+          </div>
+
+          <nav className="wallet-shell-sidebar__nav">
+            {walletNav.map((item) => {
+              const active = isWalletPathActive(item.path, currentPath);
+              return item.section ? (
+                <React.Fragment key={`${item.section}-${item.path}`}>
+                  <div className="wallet-shell-sidebar__section">{item.section}</div>
+                  <button
+                    className={`wallet-shell-sidebar__item ${active ? "is-active" : ""}`}
+                    onClick={() => onNavigate(item.path)}
+                    type="button"
+                  >
+                    <span className="wallet-shell-sidebar__item-label">{item.label}</span>
+                    {item.badge ? (
+                      <span className={`wallet-shell-sidebar__badge ${item.danger ? "is-danger" : ""}`}>{item.badge}</span>
+                    ) : null}
+                  </button>
+                </React.Fragment>
+              ) : (
+                <button
+                  key={item.path}
+                  className={`wallet-shell-sidebar__item ${active ? "is-active" : ""}`}
+                  onClick={() => onNavigate(item.path)}
+                  type="button"
+                >
+                  <span className="wallet-shell-sidebar__item-label">{item.label}</span>
+                  {item.badge ? (
+                    <span className={`wallet-shell-sidebar__badge ${item.danger ? "is-danger" : ""}`}>{item.badge}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="wallet-shell-sidebar__footer">
+            <div className="wallet-shell-sidebar__user">
+              <div className="wallet-shell-sidebar__avatar">{operatorInitials}</div>
+              <div>
+                <div className="wallet-shell-sidebar__user-name">{operatorName}</div>
+                <div className="wallet-shell-sidebar__user-role">{operatorRole}</div>
+              </div>
+            </div>
+            <button className="wallet-shell-sidebar__signout" onClick={() => void onLogout()} type="button">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside 

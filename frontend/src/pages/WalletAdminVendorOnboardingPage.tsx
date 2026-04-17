@@ -213,7 +213,7 @@ export function WalletAdminVendorOnboardingPage({ page }: { page: DataPageConfig
   };
 
   return (
-    <section className="page-stack ds-page">
+    <section className="vendor-portal-page" style={{ background: "var(--vw-bg)", minHeight: "100vh" }}>
       <div className="vendor-wallet-stack" style={{ padding: "24px", fontFamily: "var(--vw-font)" }}>
         <div className="vw-hero">
           <div className="vw-hero__top">

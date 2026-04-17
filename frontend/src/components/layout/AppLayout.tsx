@@ -49,7 +49,9 @@ export function AppLayout({
     <div
       className={`crm-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""} ${
         isDashboardView ? "crm-shell--dashboard" : ""
-      }`}
+      } ${currentPage.workspace === "vendor" || currentPage.workspace === "wallet-admin" ? "crm-shell--wallet" : ""} ${
+        currentPage.workspace === "vendor" ? "crm-shell--wallet-vendor" : ""
+      } ${currentPage.workspace === "wallet-admin" ? "crm-shell--wallet-admin" : ""}`}
     >
       {isMobileMenuOpen && (
         <div 

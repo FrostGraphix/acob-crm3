@@ -7,6 +7,7 @@ import { MeterDrilldownModal } from "../components/common/MeterDrilldownModal";
 import { AnalyticsMixPanel } from "../components/analytics/AnalyticsMixPanel";
 import { CreditTokenRecordWorkspace } from "../components/data/CreditTokenRecordWorkspace";
 import { DataPageToolbar } from "../components/data/DataPageToolbar";
+import { WalletAdminWorkspace } from "../components/data/WalletAdminWorkspace";
 import { useDataTable } from "../hooks/useDataTable";
 import { runPageAction } from "../services/api";
 import { downloadRowsAsCsv, printRowDetails } from "../services/client-table-actions";
@@ -35,6 +36,7 @@ interface DataPageProps {
 export function DataPage({ page, onTableStateChange }: DataPageProps) {
   const navigate = useNavigate();
   const showCreditTokenWorkspace = page.path === "/token-record/credit-token-record";
+  const isWalletAdminPage = page.workspace === "wallet-admin";
   const {
     draftFilters,
     setDraftFilters,
@@ -217,8 +219,44 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
     setDrilldownMeterId(meterId);
   };
 
+  if (isWalletAdminPage) {
+    return (
+      <WalletAdminWorkspace
+        page={page}
+        rows={rows}
+        loading={loading}
+        feedback={feedback}
+        error={error}
+        onRefresh={() => {
+          void refresh()
+            .then(() => setFeedback("Data refreshed"))
+            .catch((caughtError) =>
+              setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
+            );
+        }}
+        onToolbarAction={(action) => void handleAction(action)}
+        onRowAction={(action, row) => void handleAction(action, row)}
+      />
+    );
+  }
+
   return (
-    <section className="page-stack ds-page">
+    <section className={`page-stack ds-page${isWalletAdminPage ? " wallet-admin-data-page vendor-wallet-stack" : ""}`}>
+      {isWalletAdminPage ? (
+        <div className="vw-surface vw-surface--padded vw-fadeUp">
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <div className="vw-page-title">{page.title}</div>
+              <div className="vw-page-sub">{page.description}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span className="vw-badge vw-badge--gray">Admin Workspace</span>
+              <span className="vw-badge vw-badge--lemon">{page.menuLabel}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {showCreditTokenWorkspace ? (
         <CreditTokenRecordWorkspace
           page={page}

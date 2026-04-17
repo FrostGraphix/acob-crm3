@@ -1181,65 +1181,101 @@ export interface DbMeterConsumptionRankRow {
 export async function listMeterConsumptionRanking(options?: {
   siteId?: string | null;
   limit?: number;
-}): Promise<DbMeterConsumptionRankRow[]> {
+  offset?: number;
+}): Promise<{ rows: DbMeterConsumptionRankRow[]; total: number }> {
   const client = await getDbClient();
   let query = client
     .from("meter_consumption_rank_v")
-    .select("site_code, meter_sn, customer_id, day_kwh, night_kwh, total_kwh, total_revenue, last_transaction_at")
-    .order("total_kwh", { ascending: false })
-    .limit(options?.limit ?? 50);
+    .select("site_code, meter_sn, customer_id, day_kwh, night_kwh, total_kwh, total_revenue, last_transaction_at", { count: "exact" })
+    .order("total_kwh", { ascending: false });
+
+  if (options?.limit) {
+    query = query.limit(options.limit);
+  } else {
+    query = query.limit(50);
+  }
+
+  if (options?.offset) {
+    query = query.range(options.offset, options.offset + (options.limit ?? 50) - 1);
+  }
 
   const normalizedSite = normalizeSiteCode(options?.siteId);
   if (normalizedSite) {
     query = query.eq("site_code", normalizedSite);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     console.error("[SupabaseDB] Failed to load meter consumption ranking:", error.message);
-    return [];
+    return { rows: [], total: 0 };
   }
 
+  const total = count ?? 0;
+
   const rows = (data ?? []) as Array<Record<string, unknown>>;
-  const customerIds = rows
-    .map((row) => readString(row.customer_id))
-    .filter((value): value is string => value !== null);
-  const customerNameMap = new Map<string, string>();
+  const customerNameMap = new Map<string, string>(); // customerId -> name
+  const meterToNameMap = new Map<string, string>(); // meterSn -> name
 
-  if (customerIds.length > 0) {
-    const { data: customerRows, error: customerError } = await client
-      .from("customers")
-      .select("id, customer_name")
-      .in("id", customerIds);
+  // Collect identifiers for batch lookup
+  const customerIds = rows.map(r => readString(r.customer_id)).filter((id): id is string => !!id);
+  const meterSns = rows.map(r => readString(r.meter_sn)).filter((sn): sn is string => !!sn);
 
-    if (customerError) {
-      console.error("[SupabaseDB] Failed to hydrate customer names:", customerError.message);
-    } else {
-      for (const customerRow of customerRows ?? []) {
-        const customerId = readString((customerRow as Record<string, unknown>).id);
-        const customerName = readString((customerRow as Record<string, unknown>).customer_name);
-        if (customerId && customerName) {
-          customerNameMap.set(customerId, customerName);
-        }
+  if (customerIds.length > 0 || meterSns.length > 0) {
+    // 1. Hydrate via Customer IDs
+    if (customerIds.length > 0) {
+      const { data: customerRows } = await client
+        .from("customers")
+        .select("id, customer_name")
+        .in("id", customerIds);
+      
+      for (const c of customerRows ?? []) {
+        if (c.id && c.customer_name) customerNameMap.set(c.id, c.customer_name);
+      }
+    }
+
+    // 2. Hydrate via Meters (if names still missing or for direct SN linkage)
+    if (meterSns.length > 0) {
+      // Joining meters to customers to get names for these SNs
+      const { data: meterRows } = await client
+        .from("meters")
+        .select(`
+          meter_sn,
+          customers (
+            customer_name
+          )
+        `)
+        .in("meter_sn", meterSns);
+      
+      for (const m of (meterRows as any) ?? []) {
+        const name = m.customers?.customer_name;
+        if (m.meter_sn && name) meterToNameMap.set(m.meter_sn, name);
       }
     }
   }
 
-  return rows.map((row) => {
-    const customerId = readString(row.customer_id);
-    return {
-      meterId: readString(row.meter_sn) ?? "",
-      customerId,
-      customerName: customerId ? customerNameMap.get(customerId) ?? "" : "",
-      siteCode: normalizeSiteCode(readString(row.site_code)),
-      dayKwh: readNumber(row.day_kwh) ?? 0,
-      nightKwh: readNumber(row.night_kwh) ?? 0,
-      totalKwh: readNumber(row.total_kwh) ?? 0,
-      totalRevenue: readNumber(row.total_revenue) ?? 0,
-      lastTransactionAt: readString(row.last_transaction_at),
-    };
-  });
+  return {
+    rows: rows.map((row) => {
+      const customerId = readString(row.customer_id);
+      const meterSn = readString(row.meter_sn) ?? "";
+      const name = (customerId ? customerNameMap.get(customerId) : null) ?? 
+                   meterToNameMap.get(meterSn) ?? 
+                   "--";
+
+      return {
+        meterId: meterSn,
+        customerId,
+        customerName: name,
+        siteCode: normalizeSiteCode(readString(row.site_code)),
+        dayKwh: readNumber(row.day_kwh) ?? 0,
+        nightKwh: readNumber(row.night_kwh) ?? 0,
+        totalKwh: readNumber(row.total_kwh) ?? 0,
+        totalRevenue: readNumber(row.total_revenue) ?? 0,
+        lastTransactionAt: readString(row.last_transaction_at),
+      };
+    }),
+    total,
+  };
 }
 
 export interface DbSiteConsumptionPoint {

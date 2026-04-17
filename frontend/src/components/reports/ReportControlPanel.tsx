@@ -35,7 +35,6 @@ function mapAccentClass(accent: "teal" | "blue" | "green" | "orange") {
 
 export function ReportControlPanel({
   activeConfig,
-  total,
   viewMode,
   trendMode,
   onViewModeChange,
@@ -46,6 +45,11 @@ export function ReportControlPanel({
 }: ReportControlPanelProps) {
   const analyticsMode = activeConfig?.reportDisplayMode === "analytics";
   const isSiteConsumption = activeConfig?.path === "/data-report/site-consumption";
+
+  // If we're in site consumption mode with no stats and no export, hide the entire panel
+  if (isSiteConsumption && stats.length === 0 && !onExport) {
+    return null;
+  }
 
   return (
     <Surface className="premium-card reports-control-panel" tone="raised">
@@ -104,9 +108,8 @@ export function ReportControlPanel({
           </div>
         )}
 
-        <div className="reports-control-summary">
-          <span className="reports-record-count">{total} records loaded</span>
-          {onExport && (
+        {onExport ? (
+          <div className="reports-control-summary">
             <Button
               disabled={exportDisabled}
               onClick={onExport}
@@ -118,8 +121,8 @@ export function ReportControlPanel({
               </svg>
               Export Result
             </Button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {stats.length > 0 ? (

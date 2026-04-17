@@ -54,10 +54,10 @@ export function SearchBar({
         </div>
       ))}
       <div className="action-pill-group">
-        <Button className="search-pill-button" onClick={onSearch} pill tone="primary">
+        <Button className="search-pill-button" onClick={onSearch} pill size="sm" tone="primary">
           Search
         </Button>
-        <Button className="search-pill-button" onClick={onReset} pill tone="ghost">
+        <Button className="search-pill-button" onClick={onReset} pill size="sm" tone="ghost">
           Reset
         </Button>
       </div>

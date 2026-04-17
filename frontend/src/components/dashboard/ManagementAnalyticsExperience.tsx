@@ -309,7 +309,7 @@ export function ManagementAnalyticsExperience({ variant }: { variant: AnalyticsV
       try {
         const [consumptionResult, meterResult] = await Promise.allSettled([
           loadManagementConsumption(selectedSite || null),
-          loadManagementMeterConsumption(selectedSite || null, 10),
+          loadManagementMeterConsumption(selectedSite || null, { pageSize: 10 }),
         ]);
 
         if (!cancelled) {

@@ -1,487 +1,317 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { EChartsOption } from "echarts";
-import { ReactEChartsCore, echarts } from "../../services/echarts";
-import { MetricCard } from "../../design-system";
-import { AnalyticsMixPanel } from "../analytics/AnalyticsMixPanel";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { DataTable } from "../common/DataTable";
+import { Badge } from "../../design-system";
 import { Modal } from "../ui/Modal";
+import { AnalyticsMixPanel } from "../analytics/AnalyticsMixPanel";
+import { MetricCard } from "../../design-system";
 import {
+  loadManagementConsumption,
   loadManagementMeterConsumption,
+  type ManagementConsumptionResponse,
   type ManagementMeterConsumptionRow,
 } from "../../services/management-analytics";
-import {
-  SITE_CONSUMPTION_SITES,
-  createDefaultSiteConsumptionQuery,
-  loadSiteConsumptionReport,
-  type SiteConsumptionCompareMode,
-  type SiteConsumptionGranularity,
-  type SiteConsumptionReportQuery,
-  type SiteConsumptionReportResponse,
-} from "../../services/site-consumption-report";
-import type { DataRow } from "../../types";
-import type { DataPageSnapshot } from "../../pages/DataPage";
+import { request } from "../../services/api";
+import { SITE_CONSUMPTION_SITES } from "../../services/site-consumption-report";
+import type { DataRow, TableColumn } from "../../types";
 
 interface SiteConsumptionReportViewProps {
-  onSnapshotChange: (snapshot: DataPageSnapshot) => void;
+  onSnapshotChange: (snapshot: any) => void;
 }
 
-const siteColors = ["#16a34a", "#3b82f6", "#f59e0b", "#8b5cf6", "#14b8a6"];
-
-function formatDateLabel(value: string | null) {
-  if (!value) {
-    return "Awaiting successful sync";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
-function formatValue(value: number | null, unitLabel: string) {
-  if (value == null) {
-    return "--";
-  }
-
-  return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${unitLabel}`;
-}
-
-function buildTrendOption(
-  report: SiteConsumptionReportResponse,
-  query: SiteConsumptionReportQuery,
-): EChartsOption {
-  const selectedSeries = report.series.series.filter((entry) => query.sites.includes(entry.site));
-  const unitLabel = report.units.label;
-
-  if (query.compareMode === "combined") {
-    const combinedValues = report.series.labels.map((_, index) =>
-      selectedSeries.reduce((total, entry) => total + (entry.values[index] ?? 0), 0),
-    );
-
-    return {
-      animationDuration: 500,
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: "#111b31",
-        borderColor: "rgba(148, 163, 184, 0.18)",
-        borderWidth: 1,
-        extraCssText: "border-radius: 14px; box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);",
-        textStyle: {
-          color: "#e5eefc",
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-        },
-        valueFormatter: (value) =>
-          typeof value === "number" ? `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${unitLabel}` : "",
-      },
-      grid: { top: 12, right: 14, bottom: 24, left: 52, containLabel: true },
-      xAxis: {
-        type: "category",
-        data: report.series.labels,
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.18)" } },
-        axisLabel: { color: "#94a3b8" },
-      },
-      yAxis: {
-        type: "value",
-        name: unitLabel,
-        nameTextStyle: { color: "#94a3b8" },
-        splitLine: { lineStyle: { color: "rgba(71, 85, 105, 0.42)", type: "dashed" } },
-        axisLabel: { color: "#94a3b8" },
-      },
-      series: [
-        {
-          name: "Combined Consumption",
-          type: "line",
-          smooth: true,
-          showSymbol: false,
-          data: combinedValues,
-          lineStyle: { width: 3, color: "#fbbf24" },
-          itemStyle: { color: "#fbbf24" },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: "rgba(251, 191, 36, 0.22)" },
-              { offset: 1, color: "transparent" },
-            ]),
-          },
-        },
-      ],
-    };
-  }
-
-  return {
-    animationDuration: 500,
-    legend: {
-      bottom: 0,
-      data: selectedSeries.map((entry) => entry.site),
-      textStyle: { color: "#94a3b8" },
-      icon: "circle",
-    },
-    tooltip: {
-      trigger: "axis",
-      backgroundColor: "#111b31",
-      borderColor: "rgba(148, 163, 184, 0.18)",
-      borderWidth: 1,
-      extraCssText: "border-radius: 14px; box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);",
-      textStyle: {
-        color: "#e5eefc",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-      },
-      valueFormatter: (value) =>
-        typeof value === "number" ? `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${unitLabel}` : "",
-    },
-    grid: { top: 12, right: 14, bottom: 42, left: 52, containLabel: true },
-    xAxis: {
-      type: "category",
-      data: report.series.labels,
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.18)" } },
-      axisLabel: {
-        color: "#94a3b8",
-        rotate: report.series.labels.length > 10 ? 28 : 0,
-      },
-    },
-    yAxis: {
-      type: "value",
-      name: unitLabel,
-      nameTextStyle: { color: "#94a3b8" },
-      splitLine: { lineStyle: { color: "rgba(71, 85, 105, 0.42)", type: "dashed" } },
-      axisLabel: { color: "#94a3b8" },
-    },
-    series: selectedSeries.map((entry, index) => ({
-      name: entry.site,
-      type: "line",
-      smooth: true,
-      showSymbol: false,
-      data: entry.values.map((value) => value ?? null),
-      lineStyle: { width: 3, color: siteColors[index % siteColors.length] },
-      itemStyle: { color: siteColors[index % siteColors.length] },
-    })),
-  };
-}
-
-function createEmptySnapshot(): DataPageSnapshot {
-  return {
-    rows: [],
-    total: 0,
-    loading: true,
-    error: null,
-    appliedFilters: {},
-  };
-}
-
-function toCustomerSnapshotRows(rows: ManagementMeterConsumptionRow[]): DataRow[] {
-  return rows.map((row) => ({
-    customerName: row.customerName,
-    meterId: row.meterId,
-    site: row.site,
-    totalKwh: row.totalKwh,
-    dayKwh: row.dayKwh,
-    nightKwh: row.nightKwh,
-    percentDay: row.percentDay,
-    snapshotDate: row.snapshotDate,
-    updatedAt: row.updatedAt,
-  }));
+function SmartSearchAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <div className="smart-search-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span className="smart-search-label">{label}</span>
+      <button 
+        className="smart-search-trigger"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        title={`Search for ${label}`}
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: '4px',
+          cursor: 'pointer',
+          color: 'var(--ds-color-text-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '4px',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" x2="16.65" y1="21" y2="16.65" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionReportViewProps) {
-  const customerTableLimit = 500;
-  const [query, setQuery] = useState<SiteConsumptionReportQuery>(createDefaultSiteConsumptionQuery);
-  const [draftQuery, setDraftQuery] = useState<SiteConsumptionReportQuery>(createDefaultSiteConsumptionQuery);
-  const [report, setReport] = useState<SiteConsumptionReportResponse | null>(null);
+  // State
+  const [selectedSite, setSelectedSite] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [customerSite, setCustomerSite] = useState<string>("ALL");
-  const [customerRows, setCustomerRows] = useState<ManagementMeterConsumptionRow[]>([]);
-  const [customerLoading, setCustomerLoading] = useState(true);
-  const [customerError, setCustomerError] = useState<string | null>(null);
-  const [customerSites, setCustomerSites] = useState<string[]>(SITE_CONSUMPTION_SITES.slice());
+
+  // Stats State
+  const [customerCount, setCustomerCount] = useState<number>(0);
+  const [consumptionSummary, setConsumptionSummary] = useState<ManagementConsumptionResponse["summary"] | null>(null);
+
+  // Table State
+  const [rows, setRows] = useState<ManagementMeterConsumptionRow[]>([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<ManagementMeterConsumptionRow | null>(null);
-  const lastSuccessfulReport = useRef<SiteConsumptionReportResponse | null>(null);
-  const lastSuccessfulCustomerRows = useRef<ManagementMeterConsumptionRow[]>([]);
-  const draftAppliedFilters = useMemo(
-    () => ({
-      fromDate: draftQuery.fromDate ?? "",
-      toDate: draftQuery.toDate ?? "",
-      granularity: draftQuery.granularity,
-      sites: draftQuery.sites.join(","),
-      compareMode: draftQuery.compareMode,
-    }),
-    [draftQuery.compareMode, draftQuery.fromDate, draftQuery.granularity, draftQuery.sites, draftQuery.toDate],
-  );
 
-  useEffect(() => {
-    onSnapshotChange(createEmptySnapshot());
-  }, [onSnapshotChange]);
+  // Column Definitions
+  const navigate = useNavigate();
+  const columns = useMemo<TableColumn[]>(() => [
+    { 
+      key: "customerName", 
+      label: "Customer Name", 
+      align: "start",
+      render: (val) => (
+        <SmartSearchAction 
+          label={String(val)} 
+          onClick={() => navigate(`/management/customer?search=${encodeURIComponent(String(val))}`)} 
+        />
+      )
+    },
+    { 
+      key: "meterId", 
+      label: "Meter ID", 
+      align: "start",
+      render: (val) => (
+        <SmartSearchAction 
+          label={String(val)} 
+          onClick={() => navigate(`/management/meter?search=${encodeURIComponent(String(val))}`)} 
+        />
+      )
+    },
+    { key: "site", label: "Site", align: "start" },
+    { key: "totalKwh", label: "Total kWh", align: "end" },
+    { key: "dayKwh", label: "Day kWh", align: "end" },
+    { key: "nightKwh", label: "Night kWh", align: "end" },
+    { key: "percentDay", label: "Day %", align: "end" },
+  ], [navigate]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(lastSuccessfulReport.current == null);
-      setRefreshing(lastSuccessfulReport.current != null);
-      setError(null);
-
-      try {
-        const next = await loadSiteConsumptionReport(query);
-        if (!cancelled) {
-          setReport(next);
-          lastSuccessfulReport.current = next;
-        }
-      } catch (caughtError) {
-        if (!cancelled) {
-          const message =
-            caughtError instanceof Error ? caughtError.message : "Failed to load site consumption report.";
-          setError(message);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      }
+  // API Call: Total Customers (Real total from Customer API)
+  const fetchCustomerCount = useCallback(async (site: string) => {
+    try {
+      // Station filter names as used in customer API
+      const stationId = site === "ALL" ? undefined : site;
+      const resp = await request<{ total: number }>("/api/customer/read", {
+        method: "POST",
+        body: {
+          pageSize: 1, // We only need the total
+          stationId,
+        },
+      });
+      setCustomerCount(resp.total);
+    } catch (e) {
+      console.error("Failed to fetch customer count", e);
     }
+  }, []);
 
-    void load();
+  // API Call: Consumption Summary (Analytics summary)
+  const fetchConsumptionSummary = useCallback(async (site: string) => {
+    try {
+      const resp = await loadManagementConsumption(site === "ALL" ? null : site);
+      setConsumptionSummary(resp.summary);
+      setLastSync(resp.lastUpdatedAt);
+    } catch (e) {
+      console.error("Failed to fetch consumption summary", e);
+    }
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [draftAppliedFilters, onSnapshotChange, query]);
+  // API Call: Meter Consumption Table (Paginated)
+  const fetchTableData = useCallback(async (site: string, page: number, size: number) => {
+    setLoading(true);
+    try {
+      const resp = await loadManagementMeterConsumption(site === "ALL" ? null : site, {
+        pageNumber: page,
+        pageSize: size,
+      });
+      setRows(resp.rows);
+      setTotal(resp.total);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load consumption records");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
+  // Initial Load & Refresh Logic
   useEffect(() => {
-    let cancelled = false;
+    setRefreshing(true);
+    setError(null);
+    const site = selectedSite;
+    
+    void Promise.all([
+      fetchCustomerCount(site),
+      fetchConsumptionSummary(site),
+      fetchTableData(site, pageNumber, pageSize),
+    ]);
+  }, [selectedSite, pageNumber, pageSize, fetchCustomerCount, fetchConsumptionSummary, fetchTableData]);
 
-    async function loadCustomerConsumption() {
-      setCustomerLoading(true);
-      setCustomerError(null);
-
-      try {
-        const next = await loadManagementMeterConsumption(
-          customerSite === "ALL" ? null : customerSite,
-          customerTableLimit,
-        );
-        if (!cancelled) {
-          const availableSites =
-            next.availableSites.length > 0 ? next.availableSites : SITE_CONSUMPTION_SITES.slice();
-          setCustomerSites(availableSites);
-          setCustomerRows(next.rows);
-          lastSuccessfulCustomerRows.current = next.rows;
-          onSnapshotChange({
-            rows: toCustomerSnapshotRows(next.rows),
-            total: next.rows.length,
-            loading: false,
-            error: null,
-            appliedFilters: {
-              site: customerSite,
-              fromDate: query.fromDate ?? "",
-              toDate: query.toDate ?? "",
-              granularity: query.granularity,
-              compareMode: query.compareMode,
-              exportSource: "customer-consumption-by-site",
-            },
-          });
-        }
-      } catch (caughtError) {
-        if (!cancelled) {
-          const message =
-            caughtError instanceof Error ? caughtError.message : "Failed to load customer consumption table.";
-          const preservedRows = lastSuccessfulCustomerRows.current;
-          setCustomerError(message);
-          setCustomerRows(preservedRows);
-          onSnapshotChange({
-            rows: toCustomerSnapshotRows(preservedRows),
-            total: preservedRows.length,
-            loading: false,
-            error: message,
-            appliedFilters: {
-              site: customerSite,
-              fromDate: query.fromDate ?? "",
-              toDate: query.toDate ?? "",
-              granularity: query.granularity,
-              compareMode: query.compareMode,
-              exportSource: "customer-consumption-by-site",
-            },
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setCustomerLoading(false);
-        }
-      }
-    }
-
-    void loadCustomerConsumption();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [customerSite, onSnapshotChange, query.compareMode, query.fromDate, query.granularity, query.toDate]);
-
+  // Handle Export/Snapshot (External integration)
   useEffect(() => {
-    if (!selectedCustomer) {
-      return;
-    }
-
-    const stillVisible = customerRows.some(
-      (row) => row.meterId === selectedCustomer.meterId && row.site === selectedCustomer.site,
-    );
-
-    if (!stillVisible) {
-      setSelectedCustomer(null);
-    }
-  }, [customerRows, selectedCustomer]);
-
-  const totalConsumption = useMemo(
-    () => report?.summary.reduce((total, entry) => total + (entry.totalConsumption ?? 0), 0) ?? 0,
-    [report],
-  );
-
-  const visibleIssues = report?.issues ?? [];
-  const trendOption = report ? buildTrendOption(report, query) : null;
-  const selectedSiteCount = report?.selectedSites.length ?? draftQuery.sites.length;
-  const compareModeLabel = draftQuery.compareMode === "combined" ? "Combined total" : "Compare sites";
-
-  const applyDraftQuery = () => {
-    setQuery({
-      ...draftQuery,
-      sites: draftQuery.sites.length > 0 ? draftQuery.sites : SITE_CONSUMPTION_SITES.slice(),
+    onSnapshotChange({
+      rows: rows as unknown as DataRow[],
+      total,
+      loading,
+      error,
+      appliedFilters: { site: selectedSite },
     });
+  }, [rows, total, loading, error, selectedSite, onSnapshotChange]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    void Promise.all([
+      fetchCustomerCount(selectedSite),
+      fetchConsumptionSummary(selectedSite),
+      fetchTableData(selectedSite, pageNumber, pageSize),
+    ]);
   };
 
-  const resetToDefault = () => {
-    const defaults = createDefaultSiteConsumptionQuery();
-    setDraftQuery(defaults);
-    setQuery(defaults);
-  };
+  const getRowKey = (row: DataRow) => `${row.meterId}-${row.site}`;
 
   return (
-    <section className="site-consumption-report" aria-live="polite">
-      {error ? <p className="status-banner status-banner-error">{error}</p> : null}
-      {customerError ? <p className="status-banner status-banner-error">{customerError}</p> : null}
-      {visibleIssues.length > 0 ? <p className="status-banner">{visibleIssues.join(" ")}</p> : null}
-
-      <section className="premium-card site-report-table-card">
-        <div className="chart-header">
-          <div>
-            <h3 className="chart-title">Customer Consumption by Site</h3>
-            <span className="site-consumption-note">
-              The shared report export button now downloads this customer table as CSV.
-            </span>
+    <section className="site-consumption-report token-record-page" aria-live="polite">
+      {/* 2-Line Hero Section */}
+      <div className="token-record-hero">
+        <div className="token-record-hero__copy">
+          <div className="token-record-hero__title-row">
+            <h2 className="token-record-hero__title">Site Consumption Report</h2>
+            <Badge tone={refreshing ? "neutral" : "success"} className="token-record-live-pill">
+              {refreshing ? "Refreshing..." : "Active view"}
+            </Badge>
           </div>
-          <div className="site-report-table-meta">
-            <span>{customerSite === "ALL" ? "All sites" : customerSite}</span>
-            <span>{customerRows.length.toLocaleString("en-US")} customers</span>
+          <div className="token-record-hero__meta">
+            <span>Records: {total.toLocaleString()} rows</span>
+            <span>Range: 01-01-2025 to Present</span>
+            <span>Last Sync: {lastSync ? new Date(lastSync).toLocaleTimeString() : "Pending"}</span>
           </div>
         </div>
-        <div className="site-report-table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Meter Id</th>
-                <th>Site</th>
-                <th className="cell-align-end">Total kWh</th>
-                <th className="cell-align-end">Day kWh</th>
-                <th className="cell-align-end">Night kWh</th>
-                <th className="cell-align-end">Day %</th>
-                <th>Snapshot</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customerLoading ? (
-                <tr>
-                  <td className="table-empty" colSpan={8}>
-                    Loading customer consumption table...
-                  </td>
-                </tr>
-              ) : customerRows.length ? (
-                customerRows.map((row) => (
-                  <tr
-                    key={`${row.meterId}-${row.site}`}
-                    className="table-row-clickable site-customer-row"
-                    onClick={() => setSelectedCustomer(row)}
-                  >
-                    <td data-label="Customer">
-                      <button className="site-customer-link" type="button" onClick={() => setSelectedCustomer(row)}>
-                        {row.customerName || "Unnamed customer"}
-                      </button>
-                    </td>
-                    <td data-label="Meter Id">{row.meterId || "--"}</td>
-                    <td data-label="Site">{row.site || "--"}</td>
-                    <td className="cell-align-end" data-label="Total kWh">
-                      {row.totalKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="cell-align-end" data-label="Day kWh">
-                      {row.dayKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="cell-align-end" data-label="Night kWh">
-                      {row.nightKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="cell-align-end" data-label="Day %">
-                      {row.percentDay.toLocaleString("en-US", { maximumFractionDigits: 0 })}%
-                    </td>
-                    <td data-label="Snapshot">{row.snapshotDate ?? "--"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="table-empty" colSpan={8}>
-                    No customer consumption rows are available for the selected site.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+        <div className="token-record-hero__actions">
+          <div className="hero-action-group">
+            <select 
+              className="hero-action-select" 
+              value={selectedSite} 
+              onChange={(e) => {
+                setSelectedSite(e.target.value);
+                setPageNumber(1);
+              }}
+            >
+              <option value="ALL">All Sites</option>
+              {SITE_CONSUMPTION_SITES.map(site => (
+                <option key={site} value={site}>{site}</option>
+              ))}
+            </select>
+            <button 
+              className="button button-primary token-record-hero__button" 
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+            >
+              Refresh Result
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Compact Stat Cards */}
+      <section className="token-record-stats">
+        <div className="token-record-stats__grid">
+          <article className="token-record-stats-card token-record-stats-card--cyan">
+            <div className="token-record-stats-card__icon">
+              <svg fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <div className="token-record-stats-card__body">
+              <span className="token-record-stats-card__label">Total Customers</span>
+              <strong className="token-record-stats-card__value">{customerCount.toLocaleString()}</strong>
+              <span className="token-record-stats-card__note">Across {selectedSite === "ALL" ? "all sites" : selectedSite}</span>
+            </div>
+          </article>
+          
+          <article className="token-record-stats-card token-record-stats-card--emerald">
+            <div className="token-record-stats-card__icon">
+              <svg fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z" /></svg>
+            </div>
+            <div className="token-record-stats-card__body">
+              <span className="token-record-stats-card__label">Total Energy Consumption</span>
+              <strong className="token-record-stats-card__value">
+                {consumptionSummary?.totalConsumptionKwh.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "0"} kWh
+              </strong>
+              <span className="token-record-stats-card__note">Total for 2025 selected period</span>
+            </div>
+          </article>
         </div>
       </section>
 
+      {/* Paginated Table */}
+      <div className="site-report-table-section">
+        <DataTable
+          columns={columns}
+          rows={rows as unknown as DataRow[]}
+          selectedKeys={[]}
+          pageNumber={pageNumber}
+          pageSize={pageSize}
+          total={total}
+          loading={loading}
+          selectionMode="none"
+          getRowKey={getRowKey}
+          onPageChange={setPageNumber}
+          onPageSizeChange={setPageSize}
+          onToggleAll={() => {}}
+          onToggleRow={() => {}}
+          onRowAction={() => {}}
+          onRowClick={(row) => setSelectedCustomer(row as unknown as ManagementMeterConsumptionRow)}
+        />
+      </div>
+
+      {/* Customer Detail Modal */}
       <Modal
         open={selectedCustomer != null}
         onClose={() => setSelectedCustomer(null)}
         size="xl"
-        subtitle={
-          selectedCustomer
-            ? `${selectedCustomer.site || "Unknown site"} • Meter ${selectedCustomer.meterId || "--"}`
-            : undefined
-        }
-        title={selectedCustomer?.customerName || "Customer analytics"}
+        title={selectedCustomer?.customerName || "Customer Analytics"}
+        subtitle={`${selectedCustomer?.site} • Meter ${selectedCustomer?.meterId}`}
       >
-        {selectedCustomer ? (
+        {selectedCustomer && (
           <div className="site-customer-modal">
             <div className="site-customer-modal__summary">
               <MetricCard
-                className="site-report-kpi"
-                icon={<EnergyIcon />}
-                label="Total consumption"
-                meta="Current selected site snapshot"
+                label="Total Consumption"
+                value={`${selectedCustomer.totalKwh.toLocaleString()} kWh`}
                 tone="success"
-                value={selectedCustomer.totalKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                icon={<EnergyIcon />}
               />
               <MetricCard
-                className="site-report-kpi"
-                icon={<DayIcon />}
-                label="Day consumption"
-                meta={`${selectedCustomer.percentDay}% of total`}
+                label="Day Participation"
+                value={`${selectedCustomer.percentDay}%`}
                 tone="info"
-                value={selectedCustomer.dayKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                icon={<DayIcon />}
               />
               <MetricCard
-                className="site-report-kpi"
-                icon={<NightIcon />}
-                label="Night consumption"
-                meta={selectedCustomer.snapshotDate ?? "No snapshot date"}
+                label="Last Snapshot"
+                value={selectedCustomer.snapshotDate ?? "--"}
                 tone="neutral"
-                value={selectedCustomer.nightKwh.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                icon={<SnapshotIcon />}
               />
             </div>
             <AnalyticsMixPanel endpoint="/api/customer/360-lite" query={{ meterId: selectedCustomer.meterId }} />
           </div>
-        ) : null}
+        )}
       </Modal>
     </section>
   );
@@ -491,18 +321,10 @@ function EnergyIcon() {
   return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function SiteIcon() {
-  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h.01M15 10h.01M9 14h.01M15 14h.01" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
-function CompareIcon() {
-  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
 function DayIcon() {
   return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function NightIcon() {
-  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+function SnapshotIcon() {
+  return <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }

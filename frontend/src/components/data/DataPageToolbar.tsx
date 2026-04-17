@@ -53,6 +53,7 @@ export function DataPageToolbar({
             <Button
               key={action.key}
               onClick={() => onToolbarAction(action)}
+              size="sm"
               tone={action.tone === "primary" ? "primary" : "ghost"}
             >
               {action.label}
@@ -62,18 +63,20 @@ export function DataPageToolbar({
             <Button
               key={action.key}
               onClick={() => onBulkAction(action)}
+              size="sm"
               tone={action.tone === "danger" ? "danger" : "ghost"}
             >
               {action.label}
             </Button>
           ))}
-          <Button onClick={onRefresh} tone="ghost">
+          <Button onClick={onRefresh} size="sm" tone="ghost">
             Refresh
           </Button>
           {live?.enabled ? (
             <Button
               active={!live.paused}
               onClick={() => live.setPaused(!live.paused)}
+              size="sm"
               tone="ghost"
             >
               {live.paused ? "Resume Live" : "Pause Live"}

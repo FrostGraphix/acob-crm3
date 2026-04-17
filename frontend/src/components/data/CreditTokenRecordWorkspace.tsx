@@ -29,35 +29,16 @@ export function CreditTokenRecordWorkspace({
   total,
   feedback,
   error,
-  live,
   onGenerate,
   onExport,
-  onRefresh,
   insights,
   table,
 }: CreditTokenRecordWorkspaceProps) {
-  const lastUpdatedLabel =
-    live?.lastUpdatedAt != null ? new Date(live.lastUpdatedAt).toLocaleString() : "Waiting for first sync";
-
   return (
     <section className="token-record-page">
       <div className="token-record-hero">
         <div className="token-record-hero__copy">
-          <p className="token-record-hero__eyebrow">Tokens</p>
-          <div className="token-record-hero__title-row">
-            <h2 className="token-record-hero__title">Token Management</h2>
-            <span className={`token-record-live-pill${live?.enabled && !live.paused ? " is-live" : ""}`}>
-              {live?.enabled ? (live.paused ? "Live paused" : "Live syncing") : "Static view"}
-            </span>
-          </div>
-          <p className="token-record-hero__description">
-            Clean credit token records with quick totals, visible search fields, and fast operator actions.
-          </p>
-          <div className="token-record-hero__meta">
-            <span>{total.toLocaleString()} total records</span>
-            <span>{rows.length.toLocaleString()} loaded on this page</span>
-            <span>Last updated: {lastUpdatedLabel}</span>
-          </div>
+          <h2 className="token-record-hero__title">Token Management</h2>
         </div>
 
         <div className="token-record-hero__actions">
@@ -67,18 +48,6 @@ export function CreditTokenRecordWorkspace({
           {onExport ? (
             <button className="button button-ghost token-record-hero__button" onClick={onExport} type="button">
               Export
-            </button>
-          ) : null}
-          <button className="button button-ghost token-record-hero__button" onClick={onRefresh} type="button">
-            Refresh
-          </button>
-          {live?.enabled ? (
-            <button
-              className="button button-ghost token-record-hero__button"
-              onClick={() => live.setPaused(!live.paused)}
-              type="button"
-            >
-              {live.paused ? "Resume Live" : "Pause Live"}
             </button>
           ) : null}
         </div>

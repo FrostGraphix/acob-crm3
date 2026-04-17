@@ -270,7 +270,9 @@ export function DataTable({
                         key={`${rowKey}-${column.key}`}
                       >
                         <span className={getCellToneClass(column.key)}>
-                          {renderValue(row[column.key], column.key)}
+                          {column.render
+                            ? column.render(row[column.key], row)
+                            : renderValue(row[column.key], column.key)}
                         </span>
                       </td>
                     ))}

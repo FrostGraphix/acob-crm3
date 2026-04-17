@@ -249,10 +249,9 @@ function normalizeResponse(payload: unknown): SiteConsumptionReportResponse {
 
 export function createDefaultSiteConsumptionQuery(): SiteConsumptionReportQuery {
   const today = new Date();
-  const fromDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
 
   return {
-    fromDate: fromDate.toISOString().slice(0, 10),
+    fromDate: "2025-01-01",
     toDate: today.toISOString().slice(0, 10),
     granularity: "daily",
     sites: SITE_CONSUMPTION_SITES.slice(),

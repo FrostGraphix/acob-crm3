@@ -327,61 +327,64 @@ export function TokenGeneratePage({ page }: { page: DataPageConfig }) {
         <div className="modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeFlow()}>
           <Surface as="div" className="token-flow-modal" tone="raised">
             <div className="token-flow-modal__header">
-              <div>
-                <p className="token-flow-modal__eyebrow">Recharge Customer</p>
-                <h2>{typeof selectedRow.customerName === "string" ? selectedRow.customerName : "Selected meter"}</h2>
-                <p className="token-flow-modal__sub">
-                  {typeof selectedRow.meterId === "string" ? selectedRow.meterId : "--"} • {typeof selectedRow.customerId === "string" ? selectedRow.customerId : "No customer id"}
+              <div className="token-flow-modal__header-titles">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="token-flow-modal__eyebrow !mb-0 text-[10px]">Recharge Customer</p>
+                  <Badge tone="success" className="h-4 text-[9px] px-1.5">ACTIVE</Badge>
+                </div>
+                <h2 className="text-xl leading-tight">{typeof selectedRow.customerName === "string" ? selectedRow.customerName : "Selected meter"}</h2>
+                <p className="token-flow-modal__sub text-xs">
+                   {typeof selectedRow.meterId === "string" ? selectedRow.meterId : "--"} <span className="mx-1 opacity-30">•</span> {typeof selectedRow.customerId === "string" ? selectedRow.customerId : "No customer id"}
                 </p>
               </div>
-              <Button onClick={closeFlow} size="icon" tone="ghost">×</Button>
+              <Button onClick={closeFlow} size="icon" tone="ghost" className="rounded-full w-8 h-8">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </Button>
             </div>
 
             {!confirmOpen ? (
               <div className="token-flow-modal__body">
-                <div className="token-flow-modal__summary">
+                <div className="token-flow-modal__summary !gap-2">
                   <div>
-                    <span>Tariff</span>
-                    <strong>{tariffResolution?.tariffName ?? tariffResolution?.tariffId ?? (typeof selectedRow.tariffId === "string" ? selectedRow.tariffId : "--")}</strong>
+                    <span className="text-[10px]">Tariff</span>
+                    <strong className="text-sm truncate block">{tariffResolution?.tariffName ?? tariffResolution?.tariffId ?? (typeof selectedRow.tariffId === "string" ? selectedRow.tariffId : "--")}</strong>
                   </div>
                   <div>
-                    <span>Rate</span>
-                    <strong>
+                    <span className="text-[10px]">Base Rate</span>
+                    <strong className="text-sm">
                       {tariffResolution?.pricePerUnit !== null && tariffResolution?.pricePerUnit !== undefined
-                        ? `${formatNaira(tariffResolution.pricePerUnit)}/unit`
-                        : "Unavailable"}
+                        ? `${formatNaira(tariffResolution.pricePerUnit)}/u`
+                        : "N/A"}
                     </strong>
                   </div>
                   <div>
-                    <span>Station</span>
-                    <strong>{typeof selectedRow.stationId === "string" ? selectedRow.stationId : "--"}</strong>
+                    <span className="text-[10px]">Station</span>
+                    <strong className="text-sm">{typeof selectedRow.stationId === "string" ? selectedRow.stationId : "--"}</strong>
                   </div>
                 </div>
 
                 {isCreditFlow ? (
                   <div className="token-flow-form-grid">
-                    <Field label="Recharge by" required>
+                    <Field label="Recharge by" required className="!gap-1">
                       <select
-                        className="ds-select"
+                        className="ds-select !h-10 text-sm"
                         onChange={(event) => setEntryMode(event.target.value as RechargeEntryMode)}
                         value={entryMode}
                       >
-                        <option value="naira">Naira amount</option>
-                        <option value="unit">Unit quantity</option>
+                        <option value="naira">Naira (NGN)</option>
+                        <option value="unit">Units (kWh)</option>
                       </select>
                     </Field>
 
                     <Field
-                      label={entryMode === "naira" ? "Amount in Naira" : "Amount in Unit"}
+                      label={entryMode === "naira" ? "Amount (₦)" : "Units (kWh)"}
                       required
-                      helpText={
-                        entryMode === "naira"
-                          ? "Enter the money to collect. Units are calculated automatically."
-                          : "Enter the units to vend. Naira is calculated automatically."
-                      }
+                      className="!gap-1"
                     >
                       <input
-                        className="ds-input"
+                        className="ds-input !h-10 text-sm"
                         min="0"
                         onChange={(event) => setEntryValue(event.target.value)}
                         placeholder={entryMode === "naira" ? "3500" : "10"}
@@ -394,41 +397,46 @@ export function TokenGeneratePage({ page }: { page: DataPageConfig }) {
                     <Field
                       label="Authorization Password"
                       required
-                      helpText="Required by the meter system before it issues the token."
+                      className="!gap-1"
                       full
                     >
                       <input
                         autoComplete="current-password"
-                        className="ds-input"
+                        className="ds-input !h-10 text-sm"
                         onChange={(event) => setAuthorizationPassword(event.target.value)}
-                        placeholder="Enter authorization password"
+                        placeholder="••••••••"
                         type="password"
                         value={authorizationPassword}
                       />
                     </Field>
 
-                    <div className="token-flow-quote-card">
-                      <span>Units to vend</span>
-                      <strong>{rechargeQuote ? `${formatNumber(rechargeQuote.units)} units` : "--"}</strong>
+                    <div className="token-flow-quote-card !gap-0">
+                      <span className="text-[10px]">Units to vend</span>
+                      <div className="flex items-baseline gap-1">
+                        <strong className="text-base">
+                          {rechargeQuote ? formatNumber(rechargeQuote.units) : "--"}
+                        </strong>
+                        <span className="text-[9px] font-bold opacity-60">KWH</span>
+                      </div>
                     </div>
-                    <div className="token-flow-quote-card">
-                      <span>Naira to collect</span>
-                      <strong>
+                    <div className="token-flow-quote-card !gap-0">
+                      <span className="text-[10px]">Naira to collect</span>
+                      <strong className="text-base truncate">
                         {rechargeQuote?.amountNaira !== null && rechargeQuote?.amountNaira !== undefined
                           ? formatNaira(rechargeQuote.amountNaira)
-                          : "Needs tariff rate"}
+                          : "Rate required"}
                       </strong>
                     </div>
                   </div>
                 ) : (
                   <div className="token-flow-form-grid">
                     {isLimitFlow ? (
-                      <Field label="Limit Value" required>
+                      <Field label="Limit Value" required className="!gap-1">
                         <input
-                          className="ds-input"
+                          className="ds-input !h-10 text-sm"
                           min="0"
                           onChange={(event) => setEntryValue(event.target.value)}
-                          placeholder="Enter limit value"
+                          placeholder="Enter limit"
                           step="0.01"
                           type="number"
                           value={entryValue}
@@ -436,12 +444,12 @@ export function TokenGeneratePage({ page }: { page: DataPageConfig }) {
                       </Field>
                     ) : null}
 
-                    <Field label="Authorization Password" required full>
+                    <Field label="Password" required full className="!gap-1">
                       <input
                         autoComplete="current-password"
-                        className="ds-input"
+                        className="ds-input !h-10 text-sm"
                         onChange={(event) => setAuthorizationPassword(event.target.value)}
-                        placeholder="Enter authorization password"
+                        placeholder="••••••••"
                         type="password"
                         value={authorizationPassword}
                       />
@@ -449,64 +457,74 @@ export function TokenGeneratePage({ page }: { page: DataPageConfig }) {
                   </div>
                 )}
 
-                <div className="token-flow-modal__actions">
-                  <Button onClick={closeFlow} tone="ghost">Cancel</Button>
-                  <Button disabled={!canProceed} onClick={() => setConfirmOpen(true)} tone="primary">
-                    Continue to Confirm
+                <div className="token-flow-modal__actions pt-3 border-t border-dashed border-border-light">
+                  <Button onClick={closeFlow} tone="ghost" className="px-6 h-9 text-sm">Cancel</Button>
+                  <Button disabled={!canProceed} onClick={() => setConfirmOpen(true)} tone="primary" className="px-6 h-9 text-sm">
+                    Continue
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="token-flow-modal__body">
-                <div className="token-flow-confirm-card">
-                  <p className="token-flow-confirm-card__eyebrow">Confirm Vend</p>
-                  <h3>Review before generating token</h3>
-                  <div className="token-flow-confirm-grid">
-                    <div>
-                      <span>Customer</span>
-                      <strong>{typeof selectedRow.customerName === "string" ? selectedRow.customerName : "--"}</strong>
+                <div className="token-flow-confirm-card !p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning flex-shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
                     </div>
                     <div>
-                      <span>Meter</span>
-                      <strong>{typeof selectedRow.meterId === "string" ? selectedRow.meterId : "--"}</strong>
+                      <p className="token-flow-confirm-card__eyebrow !mb-0 text-[10px]">Review Summary</p>
+                      <h3 className="text-sm font-bold">Confirm Vend Request</h3>
+                    </div>
+                  </div>
+
+                  <div className="token-flow-confirm-grid !grid-cols-2 !gap-2">
+                    <div>
+                      <span className="text-[10px]">Customer</span>
+                      <strong className="text-xs truncate block">{typeof selectedRow.customerName === "string" ? selectedRow.customerName : "--"}</strong>
                     </div>
                     <div>
-                      <span>Units</span>
-                      <strong>
-                        {isCreditFlow && rechargeQuote ? `${formatNumber(rechargeQuote.units)} units` : formatNumber(Number(entryValue) || 0)}
+                      <span className="text-[10px]">Meter Num</span>
+                      <strong className="text-xs">{typeof selectedRow.meterId === "string" ? selectedRow.meterId : "--"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px]">Units</span>
+                      <strong className="text-sm text-acob-green">
+                        {isCreditFlow && rechargeQuote ? `${formatNumber(rechargeQuote.units)} kWh` : formatNumber(Number(entryValue) || 0)}
                       </strong>
                     </div>
                     <div>
-                      <span>Amount</span>
-                      <strong>
+                      <span className="text-[10px]">Collect</span>
+                      <strong className="text-sm text-acob-green">
                         {isCreditFlow && rechargeQuote?.amountNaira !== null && rechargeQuote?.amountNaira !== undefined
                           ? formatNaira(rechargeQuote.amountNaira)
                           : isCreditFlow
-                            ? "Calculated upstream"
+                            ? "Calculated"
                             : "--"}
                       </strong>
                     </div>
                     <div>
-                      <span>Tariff Rate</span>
-                      <strong>
+                      <span className="text-[10px]">Rate</span>
+                      <strong className="text-xs">
                         {tariffResolution?.pricePerUnit !== null && tariffResolution?.pricePerUnit !== undefined
-                          ? `${formatNaira(tariffResolution.pricePerUnit)}/unit`
+                          ? `${formatNaira(tariffResolution.pricePerUnit)}/u`
                           : "--"}
                       </strong>
                     </div>
                     <div>
-                      <span>Password</span>
-                      <strong>{"•".repeat(Math.max(6, authorizationPassword.trim().length))}</strong>
+                      <span className="text-[10px]">Password</span>
+                      <strong className="text-xs tracking-widest leading-none">{"•".repeat(Math.max(6, authorizationPassword.trim().length))}</strong>
                     </div>
                   </div>
                 </div>
 
-                <div className="token-flow-modal__actions">
-                  <Button disabled={submitting} onClick={() => setConfirmOpen(false)} tone="ghost">
+                <div className="token-flow-modal__actions pt-2">
+                  <Button disabled={submitting} onClick={() => setConfirmOpen(false)} tone="ghost" className="h-9 px-4 text-xs">
                     Back
                   </Button>
-                  <Button disabled={submitting || !canProceed} onClick={() => void executeTokenGenerate()} tone="primary">
-                    {submitting ? "Generating..." : "Generate Token"}
+                  <Button disabled={submitting || !canProceed} onClick={() => void executeTokenGenerate()} tone="primary" className="h-9 px-6 text-xs shadow-lg">
+                    {submitting ? "Processing..." : "Generate Now"}
                   </Button>
                 </div>
               </div>

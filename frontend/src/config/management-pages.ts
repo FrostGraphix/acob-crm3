@@ -35,14 +35,6 @@ export const managementPages: AppPageConfig[] = [
     customerColumns,
     {
       formFields: customerManagementFields,
-      insightPanels: [
-        { key: "customer-segments", endpoint: "/api/management/analytics/customer-segments" },
-        { key: "customer-forecasts", endpoint: "/api/management/analytics/customer-forecasts" },
-        { key: "revenue-leakage", endpoint: "/api/management/analytics/revenue-leakage" },
-        { key: "operational-priority", endpoint: "/api/management/analytics/operational-priority" },
-        { key: "customer-360", endpoint: "/api/customer/360-lite" },
-        { key: "master-data-consistency", endpoint: "/api/master-data/consistency" },
-      ],
     },
   ),
   createManagementPage(
@@ -53,10 +45,6 @@ export const managementPages: AppPageConfig[] = [
     accountColumns,
     {
       formFields: accountManagementFields,
-      insightPanels: [
-        { key: "customer-360", endpoint: "/api/customer/360-lite" },
-        { key: "master-data-consistency", endpoint: "/api/master-data/consistency" },
-      ],
     },
   ),
   createManagementPage(
@@ -67,7 +55,6 @@ export const managementPages: AppPageConfig[] = [
     tariffColumns,
     {
       formFields: tariffManagementFields,
-      insightPanels: [{ key: "master-data-consistency", endpoint: "/api/master-data/consistency" }],
     },
   ),
   createManagementPage(
@@ -78,7 +65,6 @@ export const managementPages: AppPageConfig[] = [
     gatewayColumns,
     {
       formFields: gatewayManagementFields,
-      insightPanels: [{ key: "master-data-consistency", endpoint: "/api/master-data/consistency" }],
     },
   ),
   createManagementPage(
@@ -90,10 +76,6 @@ export const managementPages: AppPageConfig[] = [
     {
       formFields: meterManagementFields,
       sectionKey: "meter",
-      insightPanels: [
-        { key: "meter-performance", endpoint: "/api/meter/performance-sheet" },
-        { key: "master-data-consistency", endpoint: "/api/master-data/consistency" },
-      ],
     },
   ),
 

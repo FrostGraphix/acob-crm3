@@ -162,6 +162,7 @@ export interface TableColumn {
   label: string;
   align?: "start" | "center" | "end";
   searchable?: boolean;
+  render?: (value: any, row: DataRow) => React.ReactNode;
 }
 
 export interface FilterField {

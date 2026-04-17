@@ -103,12 +103,6 @@ export const tokenPages: AppPageConfig[] = [
     {
       columns: creditTokenRecordColumns,
       filters: [],
-      insightPanels: [
-        {
-          key: "token-reconciliation",
-          endpoint: "/api/token/reconciliation",
-        },
-      ],
       rowActions: [
         {
           key: "cancel",

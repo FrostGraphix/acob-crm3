@@ -172,15 +172,6 @@ function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
   );
 }
 
-/** Guard: vendor token users cannot access the internal CRM shell. */
-function VendorUserRedirect() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate("/vendor/dashboard", { replace: true });
-  }, [navigate]);
-  return null;
-}
-
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
@@ -255,9 +246,9 @@ function AppContent() {
     );
   }
 
-  // Vendor users never see the CRM AppLayout
+  // Vendor users never see the CRM AppLayout, but they still need their routed pages rendered.
   if (isVendor) {
-    return <VendorUserRedirect />;
+    return <AppRoutes pages={accessiblePages} />;
   }
 
   return (

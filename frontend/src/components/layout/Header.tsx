@@ -23,6 +23,8 @@ export function Header({
 }: HeaderProps) {
   const { user } = useAuth();
   const isWalletAdminView = (currentPage.workspace ?? "operations") === "wallet-admin";
+  const isVendorWalletView = (currentPage.workspace ?? "operations") === "vendor";
+  const isWalletWorkspace = isWalletAdminView || isVendorWalletView;
   const isAdmin = user?.role?.toLowerCase().includes("admin") ?? false;
   const operatorName = user?.displayName ?? user?.username ?? "Operator";
   const operatorInitials = operatorName
@@ -31,6 +33,38 @@ export function Header({
     .slice(0, 2)
     .map((segment) => segment[0]?.toUpperCase() ?? "")
     .join("") || "OP";
+
+  if (isWalletWorkspace) {
+    return (
+      <header className="crm-header wallet-shell-topbar">
+        <div className="wallet-shell-topbar__copy">
+          <div className="wallet-shell-topbar__title">{currentPage.title}</div>
+          <div className="wallet-shell-topbar__sub">{currentPage.description}</div>
+        </div>
+
+        <div className="wallet-shell-topbar__actions">
+          {isWalletAdminView ? (
+            <Button onClick={() => onNavigate("/dashboard")} tone="ghost" size="sm">
+              CRM Workspace
+            </Button>
+          ) : null}
+
+          <div className="wallet-shell-topbar__bell">
+            <NotificationBell />
+          </div>
+
+          <button
+            className="wallet-shell-topbar__avatar"
+            onClick={() => onNavigate(isVendorWalletView ? "/vendor/profile" : "/profile")}
+            title={`${operatorName} profile`}
+            type="button"
+          >
+            {operatorInitials}
+          </button>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="crm-header crm-header--dashboard">

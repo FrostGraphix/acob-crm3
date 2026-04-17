@@ -241,9 +241,7 @@ export async function signInWithSupabasePassword(credentials: {
 export async function getSupabaseUserFromAccessToken(accessToken: string) {
   let client: SupabaseClient | null = null;
 
-  if (hasSupabaseServiceRoleConfig) {
-    client = await getStorageClient();
-  } else if (hasSupabaseBaseConfig) {
+  if (hasSupabaseBaseConfig) {
     client = await getAuthClient();
   }
 

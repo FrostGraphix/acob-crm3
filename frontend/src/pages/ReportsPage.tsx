@@ -87,7 +87,7 @@ export function ReportsPage() {
         activeConfig={activeConfig}
         onTrendModeChange={setTrendMode}
         onViewModeChange={setViewMode}
-        onExport={handleExport}
+        onExport={isSiteConsumption ? undefined : handleExport}
         exportDisabled={exportDisabled}
         stats={stats}
         total={reportSnapshot.total}

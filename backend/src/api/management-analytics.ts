@@ -413,16 +413,20 @@ managementAnalyticsRouter.get("/consumption", async (request, response) => {
 managementAnalyticsRouter.get("/meter-consumption", async (request, response) => {
   const authRequest = request as AuthenticatedRequest;
   const selectedSite = readSelectedSite(request.query.siteId ?? request.query.site);
-  const limit = readLimit(request.query.limit, 200, 500);
+  const pageNumber = toFiniteNumber(request.query.pageNumber ?? request.query.page) ?? 1;
+  const pageSize = toFiniteNumber(request.query.pageSize ?? request.query.limit) ?? 20;
+  const limit = pageSize;
+  const offset = (Math.max(1, pageNumber) - 1) * limit;
 
   try {
     if (isSupabaseDbEnabled()) {
-      const rankedRows = await listMeterConsumptionRanking({
+      const { rows: rankedRows, total } = await listMeterConsumptionRanking({
         siteId: selectedSite,
         limit,
+        offset,
       });
 
-      if (rankedRows.length > 0) {
+      if (rankedRows.length > 0 || total > 0) {
         sendEnvelope(
           response,
           200,
@@ -431,7 +435,7 @@ managementAnalyticsRouter.get("/meter-consumption", async (request, response) =>
             selectedSite,
             snapshotDate: extractIsoDate(rankedRows[0]?.lastTransactionAt ?? null),
             lastUpdatedAt: rankedRows[0]?.lastTransactionAt ?? null,
-            total: rankedRows.length,
+            total,
             rows: rankedRows.map((entry) => ({
               meterId: entry.meterId,
               customerName: entry.customerName,
