@@ -415,6 +415,9 @@ managementAnalyticsRouter.get("/meter-consumption", async (request, response) =>
   const selectedSite = readSelectedSite(request.query.siteId ?? request.query.site);
   const pageNumber = toFiniteNumber(request.query.pageNumber ?? request.query.page) ?? 1;
   const pageSize = toFiniteNumber(request.query.pageSize ?? request.query.limit) ?? 20;
+  const customerName = typeof request.query.customerName === "string" ? request.query.customerName : undefined;
+  const meterId = typeof request.query.meterId === "string" ? request.query.meterId : undefined;
+  
   const limit = pageSize;
   const offset = (Math.max(1, pageNumber) - 1) * limit;
 
@@ -424,6 +427,7 @@ managementAnalyticsRouter.get("/meter-consumption", async (request, response) =>
         siteId: selectedSite,
         limit,
         offset,
+        searchTerms: { customerName, meterId },
       });
 
       if (rankedRows.length > 0 || total > 0) {

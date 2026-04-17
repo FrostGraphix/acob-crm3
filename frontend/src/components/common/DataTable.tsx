@@ -375,7 +375,13 @@ function ColumnFilter({
   onSearch: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync local state if external value changes (e.g. reset)
+  useEffect(() => {
+    setTempValue(value);
+  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -392,6 +398,15 @@ function ColumnFilter({
   }, [isOpen]);
 
   const active = value.trim().length > 0;
+
+  const handleApply = () => {
+    setIsOpen(false);
+    onChange(tempValue);
+    // Use a small timeout to ensure the state update is processed or just trust the next cycle
+    setTimeout(() => {
+      onSearch();
+    }, 0);
+  };
 
   return (
     <div className="table-filter-shell" ref={containerRef}>
@@ -413,22 +428,18 @@ function ColumnFilter({
           <input
             autoFocus
             className="table-filter-input"
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => setTempValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                setIsOpen(false);
-                onSearch();
+                handleApply();
               }
             }}
             placeholder="Search..."
             type="text"
-            value={value}
+            value={tempValue}
           />
           <Button
-            onClick={() => {
-              setIsOpen(false);
-              onSearch();
-            }}
+            onClick={handleApply}
             tone="primary"
           >
             Apply

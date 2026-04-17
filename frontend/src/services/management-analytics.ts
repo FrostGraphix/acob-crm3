@@ -183,7 +183,11 @@ export async function loadManagementConsumption(site: string | null) {
 
 export async function loadManagementMeterConsumption(
   site: string | null,
-  options: { pageNumber?: number; pageSize?: number } = {},
+  options: { 
+    pageNumber?: number; 
+    pageSize?: number;
+    search?: { customerName?: string; meterId?: string };
+  } = {},
 ) {
   const payload = await request<unknown>("/api/management/analytics/meter-consumption", {
     method: "GET",
@@ -192,6 +196,8 @@ export async function loadManagementMeterConsumption(
       site: site || undefined,
       pageNumber: options.pageNumber,
       pageSize: options.pageSize,
+      customerName: options.search?.customerName,
+      meterId: options.search?.meterId,
       limit: options.pageSize, // Fallback for various backend patterns
       offset: options.pageNumber && options.pageSize ? (options.pageNumber - 1) * options.pageSize : undefined,
     },

@@ -1352,7 +1352,7 @@ function AdminVendorQueueView() {
       {actionModal === "approve" && reviewVendor && (
         <ApproveVendorModal
           vendorId={reviewVendor.id}
-          businessName={reviewVendor.businessName}
+          businessName={reviewVendor.businessName || reviewVendor.vendorCode}
           onClose={() => {
             setActionModal(null);
             setReviewVendor(null);
@@ -1368,7 +1368,7 @@ function AdminVendorQueueView() {
       {actionModal === "reject" && reviewVendor && (
         <RejectVendorModal
           vendorId={reviewVendor.id}
-          businessName={reviewVendor.businessName}
+          businessName={reviewVendor.businessName || reviewVendor.vendorCode}
           onClose={() => {
             setActionModal(null);
             setReviewVendor(null);

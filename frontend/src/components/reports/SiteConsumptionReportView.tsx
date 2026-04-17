@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { DataTable } from "../common/DataTable";
 import { Badge } from "../../design-system";
 import { Modal } from "../ui/Modal";
@@ -21,38 +20,6 @@ interface SiteConsumptionReportViewProps {
   onSnapshotChange: (snapshot: DataPageSnapshot) => void;
 }
 
-function SmartSearchAction({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <div className="smart-search-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="smart-search-label">{label}</span>
-      <button 
-        className="smart-search-trigger"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        title={`Search for ${label}`}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: '4px',
-          cursor: 'pointer',
-          color: 'var(--ds-color-text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: '4px',
-          transition: 'all 0.2s ease'
-        }}
-      >
-        <svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" x2="16.65" y1="21" y2="16.65" />
-        </svg>
-      </button>
-    </div>
-  );
-}
 
 export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionReportViewProps) {
   // State
@@ -73,37 +40,29 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<ManagementMeterConsumptionRow | null>(null);
 
+  // Search State
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
   // Column Definitions
-  const navigate = useNavigate();
   const columns = useMemo<TableColumn[]>(() => [
-    { 
-      key: "customerName", 
-      label: "Customer Name", 
+    {
+      key: "customerName",
+      label: "Customer Name",
       align: "start",
-      render: (val) => (
-        <SmartSearchAction 
-          label={String(val)} 
-          onClick={() => navigate(`/management/customer?search=${encodeURIComponent(String(val))}`)} 
-        />
-      )
+      searchable: true,
     },
-    { 
-      key: "meterId", 
-      label: "Meter ID", 
+    {
+      key: "meterId",
+      label: "Meter ID",
       align: "start",
-      render: (val) => (
-        <SmartSearchAction 
-          label={String(val)} 
-          onClick={() => navigate(`/management/meter?search=${encodeURIComponent(String(val))}`)} 
-        />
-      )
+      searchable: true,
     },
     { key: "site", label: "Site", align: "start" },
     { key: "totalKwh", label: "Total kWh", align: "end" },
     { key: "dayKwh", label: "Day kWh", align: "end" },
     { key: "nightKwh", label: "Night kWh", align: "end" },
     { key: "percentDay", label: "Day %", align: "end" },
-  ], [navigate]);
+  ], []);
 
   // API Call: Total Customers (Real total from Customer API)
   const fetchCustomerCount = useCallback(async (site: string) => {
@@ -134,13 +93,17 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
     }
   }, []);
 
-  // API Call: Meter Consumption Table (Paginated)
-  const fetchTableData = useCallback(async (site: string, page: number, size: number) => {
+  // API Call: Meter Consumption Table (Paginated + Search)
+  const fetchTableData = useCallback(async (site: string, page: number, size: number, filters: Record<string, string>) => {
     setLoading(true);
     try {
       const resp = await loadManagementMeterConsumption(site === "ALL" ? null : site, {
         pageNumber: page,
         pageSize: size,
+        search: {
+          customerName: filters.customerName,
+          meterId: filters.meterId,
+        }
       });
       setRows(resp.rows);
       setTotal(resp.total);
@@ -157,13 +120,13 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
     setRefreshing(true);
     setError(null);
     const site = selectedSite;
-    
+
     void Promise.all([
       fetchCustomerCount(site),
       fetchConsumptionSummary(site),
-      fetchTableData(site, pageNumber, pageSize),
+      fetchTableData(site, pageNumber, pageSize, columnFilters),
     ]);
-  }, [selectedSite, pageNumber, pageSize, fetchCustomerCount, fetchConsumptionSummary, fetchTableData]);
+  }, [selectedSite, pageNumber, pageSize, fetchCustomerCount, fetchConsumptionSummary, fetchTableData, columnFilters]);
 
   // Handle Export/Snapshot (External integration)
   useEffect(() => {
@@ -181,7 +144,7 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
     void Promise.all([
       fetchCustomerCount(selectedSite),
       fetchConsumptionSummary(selectedSite),
-      fetchTableData(selectedSite, pageNumber, pageSize),
+      fetchTableData(selectedSite, pageNumber, pageSize, columnFilters),
     ]);
   };
 
@@ -207,9 +170,9 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
 
         <div className="token-record-hero__actions">
           <div className="hero-action-group">
-            <select 
-              className="hero-action-select" 
-              value={selectedSite} 
+            <select
+              className="hero-action-select"
+              value={selectedSite}
               onChange={(e) => {
                 setSelectedSite(e.target.value);
                 setPageNumber(1);
@@ -220,12 +183,12 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
                 <option key={site} value={site}>{site}</option>
               ))}
             </select>
-            <button 
-              className="button button-primary token-record-hero__button" 
+            <button
+              className="button button-primary token-record-hero__button"
               onClick={handleRefresh}
               disabled={loading || refreshing}
             >
-              Refresh Result
+              Refresh
             </button>
           </div>
         </div>
@@ -244,7 +207,7 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
               <span className="token-record-stats-card__note">Across {selectedSite === "ALL" ? "all sites" : selectedSite}</span>
             </div>
           </article>
-          
+
           <article className="token-record-stats-card token-record-stats-card--emerald">
             <div className="token-record-stats-card__icon">
               <svg fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z" /></svg>
@@ -274,9 +237,12 @@ export function SiteConsumptionReportView({ onSnapshotChange }: SiteConsumptionR
           getRowKey={getRowKey}
           onPageChange={setPageNumber}
           onPageSizeChange={setPageSize}
-          onToggleAll={() => {}}
-          onToggleRow={() => {}}
-          onRowAction={() => {}}
+          columnFilters={columnFilters}
+          onColumnFilterChange={(key, val) => setColumnFilters(prev => ({ ...prev, [key]: val }))}
+          onColumnSearch={() => setPageNumber(1)}
+          onToggleAll={() => { }}
+          onToggleRow={() => { }}
+          onRowAction={() => { }}
           onRowClick={(row) => setSelectedCustomer(row as unknown as ManagementMeterConsumptionRow)}
         />
       </div>

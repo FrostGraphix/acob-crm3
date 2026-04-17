@@ -160,7 +160,7 @@ export function WalletAdminVendorOnboardingPage({ page }: { page: DataPageConfig
     } finally {
       setLoading(false);
     }
-  }, [normalizeTableData, page.readEndpoint, page.readMethod, toVendorOnboardingRecord]);
+  }, [page.readEndpoint, page.readMethod]);
 
   useEffect(() => {
     void loadQueue();

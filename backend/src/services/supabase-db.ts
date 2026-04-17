@@ -1182,6 +1182,7 @@ export async function listMeterConsumptionRanking(options?: {
   siteId?: string | null;
   limit?: number;
   offset?: number;
+  searchTerms?: { customerName?: string; meterId?: string };
 }): Promise<{ rows: DbMeterConsumptionRankRow[]; total: number }> {
   const client = await getDbClient();
   let query = client
@@ -1202,6 +1203,28 @@ export async function listMeterConsumptionRanking(options?: {
   const normalizedSite = normalizeSiteCode(options?.siteId);
   if (normalizedSite) {
     query = query.eq("site_code", normalizedSite);
+  }
+
+  // Handle Search Filters
+  if (options?.searchTerms?.meterId) {
+    query = query.ilike("meter_sn", `%${options.searchTerms.meterId}%`);
+  }
+
+  if (options?.searchTerms?.customerName) {
+    // 1. Resolve customer IDs matching the name
+    const { data: customers } = await client
+      .from("customers")
+      .select("id")
+      .ilike("customer_name", `%${options.searchTerms.customerName}%`)
+      .limit(100);
+    
+    const customerIds = (customers ?? []).map(c => c.id);
+    if (customerIds.length > 0) {
+      query = query.in("customer_id", customerIds);
+    } else {
+      // If no customers match, ensure no results return
+      query = query.eq("customer_id", "00000000-0000-0000-0000-000000000000");
+    }
   }
 
   const { data, error, count } = await query;
