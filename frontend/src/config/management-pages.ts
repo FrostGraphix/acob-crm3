@@ -7,15 +7,23 @@ import {
   customerColumns,
   customerManagementFields,
   dateRangeFilters,
+  debtColumns,
+  debtManagementFields,
   eventNotificationColumns,
   gatewayColumns,
   gatewayManagementFields,
   logColumns,
   meterColumns,
   meterManagementFields,
+  roleColumns,
+  roleManagementFields,
   searchFilter,
+  stationColumns,
+  stationManagementFields,
   tariffColumns,
   tariffManagementFields,
+  userAdminColumns,
+  userAdminFields,
 } from "./page-catalog-shared.ts";
 
 export const managementPages: AppPageConfig[] = [
@@ -26,7 +34,18 @@ export const managementPages: AppPageConfig[] = [
     menuLabel: "Analytics",
     description: "Robust data trends and site-wide energy consumption analysis.",
     sectionKey: "management",
+    includeInNavigation: false,
   },
+  createManagementPage(
+    "/management/station",
+    "Station Management",
+    "Station",
+    "/api/station/read",
+    stationColumns,
+    {
+      formFields: stationManagementFields,
+    },
+  ),
   createManagementPage(
     "/management/customer",
     "Customer Management",
@@ -58,6 +77,26 @@ export const managementPages: AppPageConfig[] = [
     },
   ),
   createManagementPage(
+    "/management/debt",
+    "Debt Management",
+    "Debt",
+    "/api/debt/read",
+    debtColumns,
+    {
+      formFields: debtManagementFields,
+    },
+  ),
+  createManagementPage(
+    "/management/role",
+    "Role Management",
+    "Role",
+    "/api/role/read",
+    roleColumns,
+    {
+      formFields: roleManagementFields,
+    },
+  ),
+  createManagementPage(
     "/management/gateway",
     "Gateway Management",
     "Gateway",
@@ -75,10 +114,18 @@ export const managementPages: AppPageConfig[] = [
     meterColumns,
     {
       formFields: meterManagementFields,
-      sectionKey: "meter",
     },
   ),
-
+  createManagementPage(
+    "/management/user-admin",
+    "User Management",
+    "User",
+    "/api/user/read",
+    userAdminColumns,
+    {
+      formFields: userAdminFields,
+    },
+  ),
   {
     kind: "data",
     path: "/event-notification",

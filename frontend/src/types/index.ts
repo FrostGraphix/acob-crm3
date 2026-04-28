@@ -270,6 +270,7 @@ export interface BasePageConfig {
   workspace?: AppWorkspace;
   navigationPath?: string;
   tabPath?: string;
+  aliasPaths?: string[];
 }
 
 export interface DashboardPageConfig extends BasePageConfig {

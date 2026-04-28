@@ -189,12 +189,12 @@ managementAnalyticsRouter.get("/consumption", async (request, response) => {
       const [revenueRows, consumptionRows] = await Promise.all([
         listRevenueUsageSeries({
           siteId: selectedSite,
-          limit: 400,
+          limit: 5000,
         }),
         listSiteConsumptionSeries({
           siteId: selectedSite,
           granularity: "daily",
-          limit: 400,
+          limit: 5000,
         }),
       ]);
 
@@ -205,8 +205,23 @@ managementAnalyticsRouter.get("/consumption", async (request, response) => {
             ...consumptionRows.map((row) => row.date),
           ]),
         ).sort((left, right) => left.localeCompare(right));
-        const revenueByDate = new Map(revenueRows.map((row) => [row.date, row]));
-        const usageByDate = new Map(consumptionRows.map((row) => [row.date, row.totalKwh]));
+
+        // Aggregate multi-site data by date
+        const revenueByDate = new Map<string, { dayKwh: number; nightKwh: number; totalKwh: number; totalRevenue: number }>();
+        for (const row of revenueRows) {
+          const prev = revenueByDate.get(row.date) || { dayKwh: 0, nightKwh: 0, totalKwh: 0, totalRevenue: 0 };
+          revenueByDate.set(row.date, {
+            dayKwh: prev.dayKwh + row.dayKwh,
+            nightKwh: prev.nightKwh + row.nightKwh,
+            totalKwh: prev.totalKwh + row.totalKwh,
+            totalRevenue: prev.totalRevenue + row.totalRevenue,
+          });
+        }
+
+        const usageByDate = new Map<string, number>();
+        for (const row of consumptionRows) {
+          usageByDate.set(row.date, (usageByDate.get(row.date) ?? 0) + row.totalKwh);
+        }
         const rows = labels.map((date) => {
           const revenue = revenueByDate.get(date);
           const totalKwh = usageByDate.get(date) ?? revenue?.totalKwh ?? 0;

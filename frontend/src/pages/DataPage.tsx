@@ -5,7 +5,6 @@ import { DataTable } from "../components/common/DataTable";
 import { FormModal } from "../components/common/FormModal";
 import { MeterDrilldownModal } from "../components/common/MeterDrilldownModal";
 import { AnalyticsMixPanel } from "../components/analytics/AnalyticsMixPanel";
-import { CreditTokenRecordWorkspace } from "../components/data/CreditTokenRecordWorkspace";
 import { DataPageToolbar } from "../components/data/DataPageToolbar";
 import { WalletAdminWorkspace } from "../components/data/WalletAdminWorkspace";
 import { useDataTable } from "../hooks/useDataTable";
@@ -35,8 +34,13 @@ interface DataPageProps {
 
 export function DataPage({ page, onTableStateChange }: DataPageProps) {
   const navigate = useNavigate();
-  const showCreditTokenWorkspace = page.path === "/token-record/credit-token-record";
   const isWalletAdminPage = page.workspace === "wallet-admin";
+  const isExactAmrSection = [
+    "token-record",
+    "remote-operation-task",
+    "data-report",
+    "event",
+  ].includes(page.sectionKey);
   const {
     draftFilters,
     setDraftFilters,
@@ -65,7 +69,7 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
 
   const caseAction = useMemo<ActionConfig | null>(
     () =>
-      page.riskIntegration?.canOpenCase
+      !isExactAmrSection && page.riskIntegration?.canOpenCase
         ? {
             key: "open-theft-case",
             label: "Open Case",
@@ -82,15 +86,11 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
             ],
           }
         : null,
-    [page.riskIntegration?.canOpenCase],
+    [isExactAmrSection, page.riskIntegration?.canOpenCase],
   );
   const rowActions = useMemo(
     () => (caseAction ? [...(page.rowActions ?? []), caseAction] : page.rowActions),
     [caseAction, page.rowActions],
-  );
-  const exportAction = useMemo(
-    () => page.toolbarActions?.find((action) => action.operationKind === "client-export") ?? null,
-    [page.toolbarActions],
   );
   const insightQuery = useMemo(
     () => Object.entries(appliedFilters).reduce<Record<string, string>>((accumulator, [key, value]) => {
@@ -103,14 +103,16 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
   );
   const insightPanels = useMemo(
     () =>
-      page.insightPanels?.map((panel) => (
-        <AnalyticsMixPanel
-          key={panel.key}
-          endpoint={panel.endpoint}
-          query={{ ...panel.queryDefaults, ...insightQuery }}
-        />
-      )) ?? null,
-    [insightQuery, page.insightPanels],
+      !isExactAmrSection
+        ? (page.insightPanels?.map((panel) => (
+            <AnalyticsMixPanel
+              key={panel.key}
+              endpoint={panel.endpoint}
+              query={{ ...panel.queryDefaults, ...insightQuery }}
+            />
+          )) ?? null)
+        : null,
+    [insightQuery, isExactAmrSection, page.insightPanels],
   );
 
   useEffect(() => {
@@ -257,17 +259,31 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
         </div>
       ) : null}
 
-      {showCreditTokenWorkspace ? (
-        <CreditTokenRecordWorkspace
-          page={page}
-          appliedFilters={appliedFilters}
-          rows={rows}
-          total={total}
-          feedback={feedback}
+      <>
+        {insightPanels}
+
+        <DataPageToolbar
+          draftFilters={draftFilters}
           error={error}
-          live={live}
-          onGenerate={() => navigate("/token-generate/credit-token")}
-          onExport={exportAction ? () => void handleAction(exportAction) : undefined}
+          feedback={feedback}
+          hideLiveMeta={isExactAmrSection}
+          hideQuotaNote={isExactAmrSection}
+          onBulkAction={(action) => void handleAction(action, undefined, true)}
+          onFilterChange={(key, value) =>
+            setDraftFilters((current) => ({
+              ...current,
+              [key]: value,
+            }))
+          }
+          onReset={() => {
+            setFeedback(null);
+            reset();
+          }}
+          onSearch={() => {
+            setFeedback(null);
+            search();
+          }}
+          onToolbarAction={(action) => void handleAction(action)}
           onRefresh={() => {
             void refresh()
               .then(() => setFeedback("Data refreshed"))
@@ -275,104 +291,41 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
                 setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
               );
           }}
-          insights={insightPanels}
-          table={
-            <DataTable
-              columns={page.columns}
-              getRowKey={getRowKeyValue}
-              loading={loading}
-              onPageChange={setPageNumber}
-              onPageSizeChange={(nextSize) => {
-                setPageNumber(1);
-                setPageSize(nextSize);
-              }}
-              onRowClick={page.meterDrilldown ? handleRowClick : undefined}
-              onRowAction={(action, row) => void handleAction(action, row)}
-              onToggleAll={toggleAll}
-              onToggleRow={toggleRow}
-              pageNumber={pageNumber}
-              pageSize={pageSize}
-              rowActions={rowActions}
-              rows={rows}
-              selectedKeys={selectedKeys}
-              total={total}
-              columnFilters={draftFilters}
-              onColumnFilterChange={(key, value) => {
-                setDraftFilters((curr) => ({ ...curr, [key]: value }));
-              }}
-              onColumnSearch={() => {
-                setFeedback(null);
-                search();
-              }}
-              selectionMode="none"
-            />
-          }
+          live={live}
+          page={page}
         />
-      ) : (
-        <>
-          {insightPanels}
 
-          <DataPageToolbar
-            draftFilters={draftFilters}
-            error={error}
-            feedback={feedback}
-            onBulkAction={(action) => void handleAction(action, undefined, true)}
-            onFilterChange={(key, value) =>
-              setDraftFilters((current) => ({
-                ...current,
-                [key]: value,
-              }))
-            }
-            onReset={() => {
-              setFeedback(null);
-              reset();
-            }}
-            onSearch={() => {
-              setFeedback(null);
-              search();
-            }}
-            onToolbarAction={(action) => void handleAction(action)}
-            onRefresh={() => {
-              void refresh()
-                .then(() => setFeedback("Data refreshed"))
-                .catch((caughtError) =>
-                  setFeedback(caughtError instanceof Error ? caughtError.message : "Refresh failed"),
-                );
-            }}
-            live={live}
-            page={page}
-          />
-
-          <DataTable
-            columns={page.columns}
-            getRowKey={getRowKeyValue}
-            loading={loading}
-            onPageChange={setPageNumber}
-            onPageSizeChange={(nextSize) => {
-              setPageNumber(1);
-              setPageSize(nextSize);
-            }}
-            onRowClick={page.meterDrilldown ? handleRowClick : undefined}
-            onRowAction={(action, row) => void handleAction(action, row)}
-            onToggleAll={toggleAll}
-            onToggleRow={toggleRow}
-            pageNumber={pageNumber}
-            pageSize={pageSize}
-            rowActions={rowActions}
-            rows={rows}
-            selectedKeys={selectedKeys}
-            total={total}
-            columnFilters={draftFilters}
-            onColumnFilterChange={(key, value) => {
-              setDraftFilters((curr) => ({ ...curr, [key]: value }));
-            }}
-            onColumnSearch={() => {
-              setFeedback(null);
-              search();
-            }}
-          />
-        </>
-      )}
+        <DataTable
+          columns={page.columns}
+          getRowKey={getRowKeyValue}
+          loading={loading}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(nextSize) => {
+            setPageNumber(1);
+            setPageSize(nextSize);
+          }}
+          onRowClick={page.meterDrilldown ? handleRowClick : undefined}
+          onRowAction={(action, row) => void handleAction(action, row)}
+          onToggleAll={toggleAll}
+          onToggleRow={toggleRow}
+          pageNumber={pageNumber}
+          pageSize={pageSize}
+          rowActions={rowActions}
+          rowActionDisplay={isExactAmrSection ? "inline" : "menu"}
+          rows={rows}
+          selectedKeys={selectedKeys}
+          total={total}
+          columnFilters={draftFilters}
+          onColumnFilterChange={(key, value) => {
+            setDraftFilters((curr) => ({ ...curr, [key]: value }));
+          }}
+          onColumnSearch={() => {
+            setFeedback(null);
+            search();
+          }}
+          title={page.title}
+        />
+      </>
 
       {pendingAction?.action.fields?.length ? (
         <FormModal
@@ -413,7 +366,7 @@ export function DataPage({ page, onTableStateChange }: DataPageProps) {
         />
       ) : null}
 
-      {actionDetails && Object.keys(actionDetails).length > 0 ? (
+      {actionDetails && Object.keys(actionDetails).length > 0 && !isExactAmrSection ? (
         <div className="status-banner ds-status-message">
           <strong>Last Action Result</strong>
           <pre className="action-result-json">{JSON.stringify(actionDetails, null, 2)}</pre>

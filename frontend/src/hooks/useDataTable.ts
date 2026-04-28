@@ -27,6 +27,8 @@ export function useDataTable(page: DataPageConfig) {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortName, setSortName] = useState(page.columns[0]?.key ?? "createTime");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [livePaused, setLivePaused] = useState(false);
   const liveFailureCountRef = useRef(0);
@@ -38,7 +40,15 @@ export function useDataTable(page: DataPageConfig) {
       }
       setError(null);
 
-      const mapping = buildReadPayload(page, appliedFilters, pageNumber, pageSize);
+      const mapping = buildReadPayload(
+        page,
+        {
+          ...appliedFilters,
+          orderBy: sortName ? `${sortName} ${sortDirection}` : "",
+        },
+        pageNumber,
+        pageSize,
+      );
       if (!mapping.ok || !mapping.payload) {
         setError(mapping.message ?? "Invalid search filters");
         if (options.showLoading) {
@@ -66,7 +76,7 @@ export function useDataTable(page: DataPageConfig) {
         }
       }
     },
-    [appliedFilters, page, pageNumber, pageSize],
+    [appliedFilters, page, pageNumber, pageSize, sortDirection, sortName],
   );
 
   useEffect(() => {
@@ -74,8 +84,10 @@ export function useDataTable(page: DataPageConfig) {
     setAppliedFilters(initialFilters);
     setSelectedKeys([]);
     setPageNumber(1);
+    setSortName(page.columns[0]?.key ?? "createTime");
+    setSortDirection("desc");
     setLastUpdatedAt(null);
-  }, [initialFilters]);
+  }, [initialFilters, page.columns]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +199,10 @@ export function useDataTable(page: DataPageConfig) {
     selectedKeys,
     pageNumber,
     pageSize,
+    sortName,
+    sortDirection,
+    setSortName,
+    setSortDirection,
     setPageNumber,
     setPageSize,
     search,

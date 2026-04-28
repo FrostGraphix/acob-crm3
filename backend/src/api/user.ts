@@ -20,10 +20,19 @@ import {
   UpstreamSessionError,
 } from "../services/upstream-session.js";
 import { forwardToUpstream } from "../services/upstream.js";
+import { createBulkImportHandler } from "./bulk-import.js";
+import { proxyHandler } from "./proxy.js";
 
 export const userRouter = Router();
 
 const LEGACY_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
+userRouter.post("/read", proxyHandler);
+userRouter.post("/create", proxyHandler);
+userRouter.post("/update", proxyHandler);
+userRouter.post("/delete", proxyHandler);
+userRouter.post("/reset", proxyHandler);
+userRouter.post("/import", createBulkImportHandler("/api/user/import", "user"));
 
 function pickFirstString(
   source: Record<string, unknown>,

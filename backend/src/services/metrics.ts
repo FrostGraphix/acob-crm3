@@ -59,7 +59,7 @@ export function readMetricsSnapshot() {
     }));
 
   return {
-    service: "acob-crm3-backend",
+    service: "beverly-backend",
     startedAt: metricsState.startedAtIso,
     uptimeSeconds: Math.round(process.uptime()),
     requests: {

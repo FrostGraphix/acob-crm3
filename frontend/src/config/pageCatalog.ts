@@ -25,9 +25,20 @@ const designSystemPage: AppPageConfig = {
   includeInNavigation: false,
 };
 
+const runtimeAdminPage: AppPageConfig = {
+  kind: "runtime-admin",
+  path: "/system/runtime",
+  title: "Runtime Operations",
+  menuLabel: "Runtime Operations",
+  description: "Background engine control, runtime health, and data-engine operations.",
+  sectionKey: "runtime-ops",
+  requiredRole: "admin",
+};
+
 const pages: AppPageConfig[] = [
   dashboardPage,
   designSystemPage,
+  runtimeAdminPage,
   ...tokenPages,
   ...remotePages,
   ...reportPages,
@@ -45,13 +56,16 @@ const sectionDefinitions: Array<{
   { key: "token-generate", label: "Token Generate", iconKey: "token-generate" },
   { key: "token-record", label: "Token Record", iconKey: "token-record" },
   { key: "remote-operation", label: "Remote Operation", iconKey: "remote-operation" },
-  { key: "remote-operation-task", label: "Remote Operation Task", iconKey: "remote-operation-task" },
-  { key: "data-report", label: "Data Report", iconKey: "data-report" },
-  { key: "load-profile", label: "Load Profile", iconKey: "load-profile" },
+  { key: "remote-operation-gprs", label: "Remote Operation GPRS", iconKey: "remote-operation" },
+  { key: "remote-operation-task", label: "Remote Operation Record", iconKey: "remote-operation-task" },
+  { key: "remote-operation-task-gprs", label: "Remote Operation GPRS Task", iconKey: "remote-operation-task" },
+  { key: "prepay-report", label: "Prepay Report", iconKey: "data-report" },
+  { key: "remote-report", label: "Remote Report", iconKey: "load-profile" },
   { key: "management", label: "Management", iconKey: "management" },
   { key: "meter", label: "Meter", iconKey: "meter" },
   { key: "event", label: "Events", iconKey: "event" },
   { key: "log", label: "System Log", iconKey: "log" },
+  { key: "runtime-ops", label: "Runtime Ops", iconKey: "management" },
   { key: "wallet-admin-home", label: "Wallet Command", iconKey: "wallet" },
   { key: "wallet-admin-vendors", label: "Vendor Ops", iconKey: "management" },
   { key: "wallet-admin-funding", label: "Wallet Controls", iconKey: "wallet" },
@@ -66,7 +80,7 @@ const sectionDefinitions: Array<{
 export const defaultPath = "/dashboard";
 export const allPages = pages;
 export const pagesByPath = Object.fromEntries(
-  pages.map((page) => [page.path, page]),
+  pages.flatMap((page) => [page.path, ...(page.aliasPaths ?? [])].map((path) => [path, page] as const)),
 ) as Record<string, AppPageConfig>;
 
 export const navigationSections: NavigationSection[] = sectionDefinitions.map(
@@ -75,7 +89,9 @@ export const navigationSections: NavigationSection[] = sectionDefinitions.map(
     label: section.label,
     iconKey: section.iconKey,
     items: pages.filter(
-      (page) => page.sectionKey === section.key && page.includeInNavigation !== false,
+      (page) =>
+        page.sectionKey === section.key &&
+        page.includeInNavigation !== false,
     ),
   }),
-);
+).filter((section) => section.items.length > 0);

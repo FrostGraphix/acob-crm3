@@ -66,6 +66,7 @@ function applyUpstreamDefaults(pathname: string, body: Record<string, unknown>) 
   const nextBody = { ...body };
   const requiresLang =
     pathname.startsWith("/API/PrepayReport/") ||
+    pathname.startsWith("/api/DailyData/") ||
     pathname.startsWith("/api/DailyDataMeter/") ||
     pathname.startsWith("/API/LoadProfile/");
   const requiresTaskLang = pathname.startsWith("/API/RemoteMeterTask/Get");
@@ -164,6 +165,7 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
   const target = toRecord(body.target);
   const base = {
     taskName: body.taskName,
+    name: body.name ?? body.taskName,
     scheduleDate: body.scheduleDate,
     taskType: body.taskType,
     meterId: target.meterId,
@@ -173,6 +175,8 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
     stationId: target.stationId,
     gatewayId: target.gatewayId,
     protocolVersion: target.protocolVersion,
+    dataPrefix: body.dataPrefix,
+    remark: body.remark,
   };
 
   if (pathname === "/API/RemoteMeterTask/CreateReadingTask") {
@@ -180,6 +184,7 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
       {
         ...base,
         dataItem: body.dataItem,
+        data: body.data,
         readMode: body.readMode,
       },
       {
@@ -189,6 +194,11 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         site: target.stationId,
         itemCode: body.dataItem,
         itemId: body.dataItem,
+        flag: body.flag ?? body.dataPrefix ?? body.dataItem,
+        dataPrefix: body.dataPrefix,
+        remark: body.remark,
+        name: body.name ?? body.taskName,
+        data: body.data,
         readType: body.readMode,
       },
     ]);
@@ -200,6 +210,7 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         ...base,
         settingKey: body.settingKey,
         settingValue: body.settingValue,
+        data: body.data,
         valueType: body.valueType,
       },
       {
@@ -207,8 +218,12 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         meterNo: target.meterId,
         customerNo: target.customerId,
         site: target.stationId,
+        name: body.name ?? body.taskName,
+        dataPrefix: body.dataPrefix,
+        remark: body.remark,
         paramKey: body.settingKey,
         paramValue: body.settingValue,
+        data: body.data ?? body.settingValue,
         settingType: body.valueType,
       },
     ]);
@@ -220,15 +235,19 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         ...base,
         controlCommand: body.controlCommand,
         reason: body.reason,
+        data: body.data,
       },
       {
         ...base,
         meterNo: target.meterId,
         customerNo: target.customerId,
         site: target.stationId,
+        name: body.name ?? body.taskName,
+        dataPrefix: body.dataPrefix,
         commandType: body.controlCommand,
         command: body.controlCommand,
-        remark: body.reason,
+        remark: body.remark ?? body.reason,
+        data: body.data ?? body.controlCommand,
       },
     ]);
   }
@@ -239,14 +258,18 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         ...base,
         tokenType: body.tokenType,
         tokenValue: body.tokenValue,
+        data: body.data,
       },
       {
         ...base,
         meterNo: target.meterId,
         customerNo: target.customerId,
         site: target.stationId,
+        name: body.name ?? body.taskName,
+        dataPrefix: body.dataPrefix,
         commandType: body.tokenType,
         token: body.tokenValue,
+        data: body.data ?? body.tokenValue,
       },
     ]);
   }
@@ -264,6 +287,9 @@ function buildRemoteTaskCreateBodies(pathname: string, body: Record<string, unkn
         meterNo: target.meterId,
         customerNo: target.customerId,
         site: target.stationId,
+        name: body.name ?? body.taskName,
+        dataPrefix: body.dataPrefix,
+        remark: body.remark,
         mode: body.protocolMode,
         payload: body.commandPayload,
         timeout: body.timeoutSeconds,
@@ -684,6 +710,160 @@ function buildDailyDataMeterBodies(body: Record<string, unknown>) {
   ]);
 }
 
+function omitActionScaffolding(body: Record<string, unknown>) {
+  const { row: _row, selectedKeys: _selectedKeys, ...rest } = body;
+  return rest;
+}
+
+function coerceNumberValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function coerceBooleanLike(value: unknown) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    if (value.trim().toLowerCase() === "true") {
+      return true;
+    }
+    if (value.trim().toLowerCase() === "false") {
+      return false;
+    }
+  }
+
+  return undefined;
+}
+
+function pickDefined(record: Record<string, unknown>) {
+  return Object.entries(record).reduce<Record<string, unknown>>((accumulator, [key, value]) => {
+    if (value !== undefined && value !== "") {
+      accumulator[key] = value;
+    }
+    return accumulator;
+  }, {});
+}
+
+function buildManagementCanonicalRecord(pathname: string, source: Record<string, unknown>) {
+  if (pathname.startsWith("/api/customer/")) {
+    return pickDefined({
+      customerId: source.customerId,
+      customerName: source.customerName,
+      type: source.type,
+      phone: source.phone,
+      address: source.address,
+      certifiName: source.certifiName,
+      certifiNo: source.certifiNo,
+      remark: source.remark,
+      stationId: source.stationId,
+    });
+  }
+
+  if (pathname.startsWith("/api/tariff/")) {
+    return pickDefined({
+      tariffId: source.tariffId,
+      tariffName: source.tariffName,
+      price: coerceNumberValue(source.price),
+      tax: coerceNumberValue(source.tax),
+      stationId: source.stationId,
+      remark: source.remark,
+    });
+  }
+
+  if (pathname.startsWith("/api/gateway/")) {
+    return pickDefined({
+      gatewayId: source.gatewayId,
+      gatewayName: source.gatewayName,
+      stationId: source.stationId,
+      remark: source.remark,
+    });
+  }
+
+  if (pathname.startsWith("/api/meter/")) {
+    return pickDefined({
+      meterId: source.meterId,
+      type: source.type,
+      isThreePhase: coerceBooleanLike(source.isThreePhase),
+      communicationWay: source.communicationWay,
+      protocolVersion: source.protocolVersion,
+      lat: coerceNumberValue(source.lat),
+      lng: coerceNumberValue(source.lng),
+      stationId: source.stationId,
+      remark: source.remark,
+    });
+  }
+
+  if (pathname.startsWith("/api/account/")) {
+    return pickDefined({
+      customerId: source.customerId,
+      meterId: source.meterId,
+      oldMeterId: source.oldMeterId,
+      tariffId: source.tariffId,
+      ctRatio: coerceNumberValue(source.ctRatio) ?? source.ctRatio,
+      stationId: source.stationId,
+      remark: source.remark,
+    });
+  }
+
+  return source;
+}
+
+function buildCrudMutationBodies(pathname: string, body: Record<string, unknown>) {
+  const lowerPathname = pathname.toLowerCase();
+  const row = toRecord(body.row);
+  const base = buildManagementCanonicalRecord(pathname, omitActionScaffolding(body));
+  const canonicalRow = buildManagementCanonicalRecord(pathname, row);
+
+  if (lowerPathname.endsWith("/create") || lowerPathname.includes("/create")) {
+    return dedupeBodies([
+      [base] as unknown as Record<string, unknown>,
+      body,
+    ]);
+  }
+
+  if (
+    lowerPathname.endsWith("/update") ||
+    lowerPathname.includes("/update") ||
+    lowerPathname.endsWith("/reset")
+  ) {
+    const merged = {
+      ...canonicalRow,
+      ...base,
+    };
+
+    return dedupeBodies([
+      [merged] as unknown as Record<string, unknown>,
+      merged,
+      body,
+    ]);
+  }
+
+  if (lowerPathname.endsWith("/delete") || lowerPathname.includes("/delete")) {
+    const selectedKeys = Array.isArray(body.selectedKeys) ? body.selectedKeys : [];
+    const deleteRows =
+      selectedKeys.length > 0
+        ? selectedKeys.map((key) => ({ id: key, key, value: key }))
+        : [Object.keys(row).length > 0 ? row : base];
+
+    return dedupeBodies([
+      deleteRows as unknown as Record<string, unknown>,
+      body,
+    ]);
+  }
+
+  return [body];
+}
+
 function buildItemListBodies(body: Record<string, unknown>) {
   const searchTerm =
     typeof body.searchTerm === "string"
@@ -789,11 +969,28 @@ function buildTokenGenerateBodies(pathname: string, body: Record<string, unknown
     authorizationPassword: authorizationPassword ?? body.authorizationPassword,
     authPassword: authorizationPassword,
     password2: authorizationPassword,
+    isPreview: body.isPreview,
+    IsPreview: body.isPreview,
+    isVendByTotalPaid: body.isVendByTotalPaid,
+    IsVendByTotalPaid: body.isVendByTotalPaid,
+    payDebtPercent: body.payDebtPercent,
+    PayDebtPercent: body.payDebtPercent,
+    isS2: body.isS2,
+    IsS2: body.isS2,
   };
 
   if (pathname === "/api/token/creditToken/generate") {
     aliasedBody.Amount = body.amount;
     aliasedBody.Unit = body.unit;
+  }
+
+  if (pathname === "/api/token/meterKey/update") {
+    aliasedBody.OldMeterKey = body.oldMeterKey ?? body.oldKey;
+    aliasedBody.NewMeterKey = body.newMeterKey ?? body.newKey;
+    aliasedBody.oldMeterKey = body.oldMeterKey ?? body.oldKey;
+    aliasedBody.newMeterKey = body.newMeterKey ?? body.newKey;
+    aliasedBody.oldKey = body.oldMeterKey ?? body.oldKey;
+    aliasedBody.newKey = body.newMeterKey ?? body.newKey;
   }
 
   if (
@@ -878,7 +1075,7 @@ export function buildUpstreamRequestPlan(
     };
   }
 
-  if (pathname === "/api/DailyDataMeter/read") {
+  if (pathname === "/api/DailyData/read" || pathname === "/api/DailyDataMeter/read") {
     return {
       body: normalizedBody,
       candidateBodies: buildDailyDataMeterBodies(normalizedBody),
@@ -901,7 +1098,28 @@ export function buildUpstreamRequestPlan(
     };
   }
 
-  if (pathname === "/API/LoadProfile/DailyData" || pathname === "/API/LoadProfile/MonthlyData") {
+  if (
+    pathname.toLowerCase().endsWith("/create") ||
+    pathname.toLowerCase().includes("/create") ||
+    pathname.toLowerCase().endsWith("/update") ||
+    pathname.toLowerCase().includes("/update") ||
+    pathname.toLowerCase().endsWith("/delete") ||
+    pathname.toLowerCase().includes("/delete") ||
+    pathname.toLowerCase().endsWith("/reset")
+  ) {
+    const candidateBodies = buildCrudMutationBodies(pathname, normalizedBody);
+    return {
+      body: candidateBodies[0] ?? normalizedBody,
+      candidateBodies,
+    };
+  }
+
+  if (
+    pathname === "/API/LoadProfile/DailyData" ||
+    pathname === "/API/LoadProfile/MonthlyData" ||
+    pathname === "/API/LoadProfile/ElectricEnergyCurve" ||
+    pathname === "/API/LoadProfile/InstantaneousValueCurve"
+  ) {
     return {
       body: normalizedBody,
       candidateBodies: buildLoadProfileBodies(pathname, normalizedBody),

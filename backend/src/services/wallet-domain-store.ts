@@ -263,7 +263,7 @@ export interface PurchaseOrderRecord {
   status: PurchaseOrderStatus;
   actorUserId: string;
   upstreamEndpoint: string;
-  upstreamStatus: "pending" | "stubbed_success" | "stubbed_failure";
+  upstreamStatus: "pending" | "stubbed_success" | "stubbed_failure" | "upstream_success" | "upstream_failure";
   failureCode: string | null;
   failureReason: string | null;
   reservedJournalId: string | null;

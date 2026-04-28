@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import type { Response } from "express";
+import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { getWalletCommissionService } from "./wallet-commission.js";
 import { getWalletLedgerService } from "./wallet-ledger.js";
 import { getWalletPurchaseRemoteService } from "./wallet-purchase-remote.js";
@@ -49,6 +51,15 @@ function requirePositiveAmount(amount: number) {
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Amount must be a positive number");
   }
+}
+
+function buildPurchaseIdempotencyKey(
+  deliveryMethod: PurchaseDeliveryMethod,
+  vendorId: string,
+  walletId: string,
+  idempotencyKey: string,
+) {
+  return `${deliveryMethod}:${normalizeCode(vendorId)}:${walletId}:${idempotencyKey.trim()}`;
 }
 
 function requiresScopedWallet(context: WalletRequestContext, walletId: string, siteCode: string) {
@@ -156,6 +167,9 @@ async function executePurchase(
   context: WalletRequestContext,
   input: WalletPurchaseInput,
   deliveryMethod: PurchaseDeliveryMethod,
+  request?: AuthenticatedRequest,
+  response?: Response,
+  upstreamPayload: Record<string, unknown> = {},
 ) {
   requirePositiveAmount(input.amount);
   if (!input.idempotencyKey.trim()) {
@@ -168,8 +182,14 @@ async function executePurchase(
     throw new Error("customer_ref is required");
   }
 
+  const access = requiresScopedWallet(context, input.walletId, input.siteCode);
   const state = getWalletDomainState();
-  const idempotencyKey = `${deliveryMethod}:${input.idempotencyKey.trim()}`;
+  const idempotencyKey = buildPurchaseIdempotencyKey(
+    deliveryMethod,
+    access.vendor.id,
+    access.wallet.id,
+    input.idempotencyKey,
+  );
   const existing = state.idempotencyResults.get(idempotencyKey) as WalletPurchaseResult | undefined;
   if (existing) {
     return {
@@ -211,8 +231,8 @@ async function executePurchase(
 
     const upstream =
       deliveryMethod === "remote_send"
-        ? await getWalletPurchaseRemoteService().execute(context, order)
-        : await getWalletPurchaseTokenService().execute(context, order);
+        ? await getWalletPurchaseRemoteService().execute(context, order, request, response)
+        : await getWalletPurchaseTokenService().execute(context, order, request, response, upstreamPayload);
 
     if (!upstream.success) {
       const releaseResult = getWalletLedgerService().releaseReservedFunds({
@@ -232,7 +252,7 @@ async function executePurchase(
       order.failureCode = "UPSTREAM_FAILED";
       order.failureReason = String(upstream.message);
       order.releasedJournalId = releaseResult.journal.id;
-      order.upstreamStatus = "stubbed_failure";
+      order.upstreamStatus = upstream.mode === "simulated" ? "stubbed_failure" : "upstream_failure";
       order.updatedAt = nowIso();
       state.purchaseOrders.set(order.id, order);
       persistPurchaseOrder(order);
@@ -250,7 +270,7 @@ async function executePurchase(
       return result;
     }
 
-    order.upstreamStatus = "stubbed_success";
+    order.upstreamStatus = upstream.mode === "simulated" ? "stubbed_success" : "upstream_success";
 
     if (shouldSimulateLocalFailure(order)) {
       order.status = "failed";
@@ -348,12 +368,23 @@ async function executePurchase(
 }
 
 export const walletPurchaseService = {
-  purchaseRemoteSend(context: WalletRequestContext, input: WalletPurchaseInput) {
-    return executePurchase(context, input, "remote_send");
+  purchaseRemoteSend(
+    context: WalletRequestContext,
+    input: WalletPurchaseInput,
+    request?: AuthenticatedRequest,
+    response?: Response,
+  ) {
+    return executePurchase(context, input, "remote_send", request, response);
   },
 
-  purchaseGenerateToken(context: WalletRequestContext, input: WalletPurchaseInput) {
-    return executePurchase(context, input, "token_generate");
+  purchaseGenerateToken(
+    context: WalletRequestContext,
+    input: WalletPurchaseInput,
+    request?: AuthenticatedRequest,
+    response?: Response,
+    upstreamPayload: Record<string, unknown> = {},
+  ) {
+    return executePurchase(context, input, "token_generate", request, response, upstreamPayload);
   },
 
   getPurchase(context: WalletRequestContext, purchaseOrderId: string) {

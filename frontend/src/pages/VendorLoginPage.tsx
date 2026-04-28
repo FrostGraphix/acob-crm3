@@ -98,7 +98,7 @@ export function VendorLoginPage() {
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <span className="login-brand-name">ACOB <strong>Vendor Network</strong></span>
+              <span className="login-brand-name">Beverly <strong>Vendor Network</strong></span>
             </div>
 
             <h2 className="login-welcome">Vendor Portal</h2>
@@ -132,7 +132,7 @@ export function VendorLoginPage() {
                 <h2 className="login-status-card__title">{accessState.title}</h2>
                 <p className="login-status-card__detail">{accessState.detail}</p>
                 <p className="login-status-card__help">
-                  Contact your ACOB administrator for access review or credential assistance.
+                  Contact your Beverly administrator for access review or credential assistance.
                 </p>
               </div>
             ) : null}
@@ -246,7 +246,7 @@ export function VendorLoginPage() {
 
             <div className="login-application-note" style={{ marginTop: "1rem" }}>
               Use the username or login ID shared during onboarding. If this is your first sign-in,
-              use the temporary password provided by ACOB and you will be taken to create a permanent
+              use the temporary password provided by Beverly and you will be taken to create a permanent
               password before wallet access is enabled.
             </div>
 
@@ -279,7 +279,7 @@ export function VendorLoginPage() {
       >
         <div className="auth-help-modal">
           <ol className="auth-help-modal__steps">
-            <li>Sign in with the username or login ID and temporary password shared by ACOB.</li>
+            <li>Sign in with the username or login ID and temporary password shared by Beverly.</li>
             <li>After successful sign-in, you will be redirected to set a permanent password.</li>
             <li>Your temporary password expires after 72 hours, and wallet actions remain blocked until the change is complete.</li>
           </ol>
@@ -300,10 +300,10 @@ export function VendorLoginPage() {
           <ul className="auth-help-modal__steps auth-help-modal__steps--unordered">
             <li>Try both your assigned username and your login email if you were given both.</li>
             <li>Make sure you are using the vendor portal and not the staff login page.</li>
-            <li>If your account was suspended or your application was rejected, only an ACOB administrator can restore access.</li>
+            <li>If your account was suspended or your application was rejected, only an Beverly administrator can restore access.</li>
           </ul>
           <div className="auth-help-modal__notice">
-            For password resets or onboarding review, contact your ACOB administrator with your business name and assigned site.
+            For password resets or onboarding review, contact your Beverly administrator with your business name and assigned site.
           </div>
         </div>
       </Modal>

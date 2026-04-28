@@ -44,6 +44,14 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      "/static": {
+        target: "http://8.208.16.168:9311",
+        changeOrigin: true,
+      },
+      "/favicon.ico": {
+        target: "http://8.208.16.168:9311",
+        changeOrigin: true,
+      },
     },
   },
 });

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { WalletPurchaseDeliveryMethod } from "../../../common/types";
-import { ACOB_RECEIPT_BRAND } from "../services/receipt-branding.ts";
 import { createVendorIdempotencyKey, vendorWalletService } from "../services/vendor-wallet.ts";
 import type { VendorPageConfig } from "../types/index.ts";
 import type {
@@ -22,6 +21,7 @@ import { RejectVendorModal } from "../components/vendor/RejectVendorModal.tsx";
 import { useAuth } from "../hooks/useAuth.ts";
 import { isVendorWorkspaceUser } from "../services/app-shell-state.ts";
 import { request } from "../services/api.ts";
+import { getStatusTone } from "../components/vendor/VendorPortalUtils.ts";
 import {
   NGN,
   VwBadge,
@@ -31,7 +31,17 @@ import {
   VwStepBar,
   VwConfirmTable,
   VwDivider,
+  VwSurface,
+  T,
 } from "../components/vendor/VendorPortalPrimitives.tsx";
+import { 
+  Zap, Activity, Wallet, ArrowUpCircle,
+  Receipt, Clock, TrendingUp, ShieldCheck,
+  Plus, Search, ArrowRight, CheckCircle2,
+  Download, Printer, FileText, User,
+  Settings, LogOut, ChevronRight, AlertCircle,
+  Copy, Upload, CircleDot
+} from "lucide-react";
 
 
 interface VendorPageProps {
@@ -72,12 +82,6 @@ interface VendorQueueItem {
   vendorCode: string;
   siteName?: string;
   status: string;
-}
-
-interface HeroNavItem {
-  label: string;
-  value: string;
-  warn?: boolean;
 }
 
 function formatMoney(value: number) {
@@ -122,33 +126,6 @@ function buildTodayStatementWindow() {
   };
 }
 
-function downloadStatementPreview(
-  rows: VendorStatementResponse["rows"],
-  fromDate: string,
-  toDate: string,
-  format: "csv" | "xlsx" | "pdf",
-) {
-  const header = ["Date", "Reference", "Description", "Debit", "Credit", "Balance After"];
-  const body = rows.map((row) => [
-    formatDateTime(row.createdAt),
-    row.reference,
-    row.description,
-    String(row.debit),
-    String(row.credit),
-    String(row.balanceAfter),
-  ]);
-  const csv = [header, ...body]
-    .map((cells) => cells.map((cell) => `"${String(cell).replace(/"/g, "\"\"")}"`).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `wallet-statement-${fromDate}-to-${toDate}.${format === "csv" ? "csv" : "csv"}`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function createOnboardingFormState(profile: VendorProfileResponse | null): VendorOnboardingFormState {
   return {
     legalName: profile?.vendor.legalName ?? "",
@@ -178,309 +155,233 @@ function createOnboardingFormState(profile: VendorProfileResponse | null): Vendo
    VENDOR DASHBOARD VIEW — Green/Lemon Financial Design
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function VendorDashboardView({
+void VendorDashboardViewLegacy;
+void VendorTopUpViewLegacy;
+
+function VendorDashboardViewLegacy({
   dashboard,
 }: {
   dashboard: VendorDashboardResponse | null;
 }) {
+  const navigate = useNavigate();
   const wallet = dashboard?.wallet;
   const vendorStatus = dashboard?.vendor.status ?? "draft";
   const onboardingRequired = vendorStatus !== "active" || !wallet;
-  const walletNumber = wallet?.walletNumber ?? "Wallet pending";
-  const reservedBalance = wallet?.reservedBalance ?? 0;
-  const postedFloat = wallet ? wallet.availableBalance + reservedBalance : 0;
-  const dailyLimit = 500000;
+  const vendorName = dashboard?.vendor.displayName ?? dashboard?.vendor.legalName ?? "Vendor Account";
   const todaySpend = dashboard?.todayPurchaseAmount ?? 0;
-  const limitPercent = Math.min((todaySpend / dailyLimit) * 100, 100);
+  const reservedBalance = wallet?.reservedBalance ?? 0;
+  const floatBalance = (wallet?.availableBalance ?? 0) + reservedBalance;
+  const dailyLimit = Math.max(todaySpend, 500000);
+  const dailyUsedPct = Math.min(100, Math.round((todaySpend / dailyLimit) * 100) || 0);
   const recentTransactions = dashboard?.recentTransactions ?? [];
-  const purchaseBars = Array.from({ length: 14 }, (_, index) => {
-    const item = recentTransactions[index];
-    return item ? Math.max(28, Math.min(100, Math.round((Math.abs(item.amount) / Math.max(todaySpend, 1)) * 100))) : 35 + ((index * 9) % 45);
-  });
   const successfulCount = recentTransactions.filter((entry) => entry.status === "posted" || entry.status === "successful").length;
   const failedCount = recentTransactions.filter((entry) => entry.status === "failed").length;
 
   return (
     <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      {/* ── Hero Balance Card ── */}
-      <div className="vw-hero">
-        <div className="vw-hero__top">
+      <div style={{ marginBottom: 20 }}>
+        <div>
+          <h1 className="vw-page-title">Wallet Portal</h1>
+          <p className="vw-page-sub">Powering your energy vending operations</p>
+        </div>
+      </div>
+
+      <div style={{ background: "linear-gradient(135deg, #011508 0%, #013b18 100%)", borderRadius: 18, padding: "26px 28px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden", boxShadow: "0 8px 40px rgba(1,21,8,.22)" }}>
+        <div style={{ position: "absolute", right: -50, top: -50, width: 260, height: 260, borderRadius: "50%", background: "rgba(198,224,0,.05)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", left: -30, bottom: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(0,128,0,.05)", pointerEvents: "none" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
           <div>
-            <div className="vw-hero__eyebrow">Available Balance</div>
-            <div className="vw-hero__balance">
-              {wallet ? formatMoney(wallet.availableBalance) : "₦0.00"}
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 8, fontWeight: 600 }}>Available Balance</div>
+            <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1 }}>
+              {wallet ? NGN(wallet.availableBalance) : "₦0.00"}
             </div>
-            <div className="vw-hero__sub">
-              {walletNumber} · {dashboard?.vendor.siteName ?? "Site pending"}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+              <VwBadge variant="lemon" lg>
+                <ShieldCheck size={14} style={{ marginRight: 6 }} />
+                Secure Wallet
+              </VwBadge>
+              <div className="vw-hero__sub">{vendorName} • {dashboard?.vendor.siteName || "Global Site"}</div>
             </div>
           </div>
           <div className="vw-hero__right">
-            <div className="vw-hero__active-badge">
-              <span className="vw-hero__active-dot" />
-              {vendorStatus === "active" ? "Active" : vendorStatus.replace(/_/g, " ")}
-            </div>
-            <Link to="/vendor/buy" style={{ textDecoration: "none" }}>
-              <VwBtn variant="lemon" size="sm">⚡ Buy Units</VwBtn>
-            </Link>
+             <div style={{ display: "flex", gap: 12 }}>
+               <VwBtn variant="lemon" size="md" icon={Zap} onClick={() => navigate("/vendor/buy")}>Buy Units</VwBtn>
+               <VwBtn variant="ghost" size="md" icon={Plus} onClick={() => navigate("/vendor/topup")}>Funding</VwBtn>
+             </div>
           </div>
-        </div>
-
-        {/* ── Hero Grid ── */}
-        <div className="vw-hero__grid">
-          {[
-            { label: "Posted Float", value: formatMoney(postedFloat) },
-            { label: "Reserved", value: formatMoney(reservedBalance) },
-            { label: "Today's Spend", value: formatMoney(todaySpend) },
-            { label: "Daily Remaining", value: formatMoney(Math.max(dailyLimit - todaySpend, 0)), warn: limitPercent > 80 } as HeroNavItem,
-          ].map((item: HeroNavItem) => (
-            <div key={item.label}>
-              <div className="vw-hero__grid-item-label">{item.label}</div>
-              <div className={`vw-hero__grid-item-value${item.warn ? " vw-hero__grid-item-value--warn" : ""}`}>
-                {item.value}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,.07)", gap: 12 }}>
+            {[{ label: "Posted Float", value: NGN(floatBalance) }, { label: "Reserved", value: NGN(reservedBalance), color: "#fcd34d" }, { label: "Today's Spend", value: NGN(todaySpend) }, { label: "Daily Remaining", value: NGN(Math.max(dailyLimit - todaySpend, 0)) }].map((item) => (
+              <div key={item.label}>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".06em", fontWeight: 600 }}>{item.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: item.color || "#fff" }}>{item.value}</div>
               </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,.35)", marginBottom: 7 }}>
+              <span>Daily Limit - {dailyUsedPct}%</span>
+              <span style={{ fontFamily: T.mono }}>{NGN(todaySpend)} / {NGN(dailyLimit)}</span>
             </div>
-          ))}
-        </div>
-
-        {/* ── Daily Limit Bar ── */}
-        {!onboardingRequired ? (
-          <div className="vw-limit-bar">
-            <div className="vw-limit-bar__header">
-              <span>Daily Limit Usage</span>
-              <span>{limitPercent.toFixed(0)}% · {formatMoney(dailyLimit)}</span>
-            </div>
-            <div className="vw-limit-bar__track">
-              <div
-                className={`vw-limit-bar__fill ${limitPercent > 80 ? "vw-limit-bar__fill--danger" : "vw-limit-bar__fill--ok"}`}
-                style={{ width: `${limitPercent}%` }}
-              />
+            <div style={{ height: 6, background: "rgba(255,255,255,.08)", borderRadius: 3 }}>
+              <div style={{ height: 6, borderRadius: 3, width: `${dailyUsedPct}%`, background: dailyUsedPct > 80 ? T.danger : T.lemon, boxShadow: `0 0 8px ${dailyUsedPct > 80 ? "rgba(220,38,38,.5)" : "rgba(198,224,0,.4)"}` }} />
             </div>
           </div>
-        ) : null}
+        </div>
+      </div>
       </div>
 
-      {/* ── Status Banners ── */}
-      {dashboard?.vendor.status === "suspended" ? (
-        <VwInfoBox type="danger">
+      {/* Banners */}
+      {dashboard?.vendor.status === "suspended" && (
+        <VwInfoBox type="danger" icon={AlertCircle}>
           <strong>Wallet access restricted.</strong> {dashboard.vendor.statusReason ?? "Contact operations support."}
         </VwInfoBox>
-      ) : null}
+      )}
 
-      {dashboard?.vendor.status === "rejected" ? (
-        <VwInfoBox type="danger">
-          <strong>Application not approved.</strong>{" "}
-          {dashboard.vendor.statusReason
-            ? `Reason: ${dashboard.vendor.statusReason}`
-            : "Your vendor application was reviewed and could not be approved at this time."}{" "}
-          Contact your ACOB administrator for next steps.
-        </VwInfoBox>
-      ) : null}
-
-      {/* ── KPI Row ── */}
-      {!onboardingRequired ? (
-        <div className="vw-grid-4">
-          <VwKPI
-            label="Posted Float"
-            value={formatMoney(postedFloat)}
-            sub="Available + reserved"
-            iconBg="#e6f4e6"
-          />
-          <VwKPI
-            label="Reserved"
-            value={formatMoney(reservedBalance)}
-            sub="Pending purchases"
-            iconBg="#FFFBEB"
-          />
-          <VwKPI
-            label="Today's Purchases"
-            value={formatMoney(todaySpend)}
-            sub={`${dashboard?.todayPurchaseCount ?? 0} transactions`}
-            iconBg="#EFF6FF"
-          />
-          <VwKPI
-            label="Wallet Status"
-            value={wallet?.status ?? "pending"}
-            sub="Active wallets can vend"
-            iconBg={wallet?.status === "active" ? "#e6f4e6" : "#FFFBEB"}
-          />
-        </div>
-      ) : null}
-
-      {/* ── Info Box ── */}
-      {!onboardingRequired ? (
+      <div style={{ marginBottom: 18 }}>
         <VwInfoBox type="lemon">
-          <strong>Wallet funding does not generate a token.</strong> Funding only tops up your wallet balance.
-          Electricity tokens or remote sends happen later when you use the Buy Units flow.
+          <strong>Funding != Token.</strong> Funding only credits your wallet balance. Tokens are issued only when you buy units for a customer meter.
         </VwInfoBox>
+      </div>
+
+      {/* KPIs */}
+      {!onboardingRequired ? (
+        <div className="vw-grid-3">
+          <VwKPI
+            label="Total Liquidity"
+            value={NGN(wallet?.availableBalance ?? 0)}
+            sub="Available for instant vending"
+            icon={Wallet}
+            trend="+12.5%"
+          />
+          <VwKPI
+            label="Today's Performance"
+            value={NGN(todaySpend)}
+            sub={`${dashboard?.todayPurchaseCount ?? 0} successful cycles`}
+            icon={TrendingUp}
+          />
+          <VwKPI
+            label="Reserved Capital"
+            value={NGN(reservedBalance)}
+            sub="Committed to pending flow"
+            icon={Activity}
+          />
+        </div>
       ) : null}
 
-      {/* ── Quick Actions ── */}
-      {!onboardingRequired ? (
+      {/* Quick Actions Grid */}
+      {!onboardingRequired && (
         <div className="vw-quick-grid">
-          <Link to="/vendor/buy" className="vw-quick-card">
-            <div className="vw-quick-card__icon" style={{ background: "#e6f4e6", color: "#008000" }}>⚡</div>
-            <div className="vw-quick-card__title">Buy Units</div>
-            <div className="vw-quick-card__desc">Token or remote send to meter</div>
-          </Link>
-          <Link to="/vendor/topup" className="vw-quick-card">
-            <div className="vw-quick-card__icon" style={{ background: "#F4FAC2", color: "#2B3300" }}>💰</div>
-            <div className="vw-quick-card__title">Fund Wallet</div>
-            <div className="vw-quick-card__desc">Bank transfer & proof upload</div>
-          </Link>
-          <Link to="/vendor/receipts" className="vw-quick-card">
-            <div className="vw-quick-card__icon" style={{ background: "#EFF6FF", color: "#2563EB" }}>🧾</div>
-            <div className="vw-quick-card__title">Receipts</div>
-            <div className="vw-quick-card__desc">View past purchase receipts</div>
-          </Link>
-          <Link to="/vendor/statement" className="vw-quick-card">
-            <div className="vw-quick-card__icon" style={{ background: "#F5F3FF", color: "#5B21B6" }}>📊</div>
-            <div className="vw-quick-card__title">Statement</div>
-            <div className="vw-quick-card__desc">Wallet debits & credits</div>
-          </Link>
+           <Link to="/vendor/buy" className="vw-quick-card">
+              <div className="vw-quick-card__icon" style={{ background: "rgba(0, 200, 83, 0.15)", color: T.primary }}><Zap size={20} /></div>
+              <div className="vw-quick-card__title">Buy Units</div>
+              <div className="vw-quick-card__desc">Token or remote send</div>
+           </Link>
+           <Link to="/vendor/topup" className="vw-quick-card">
+              <div className="vw-quick-card__icon" style={{ background: "rgba(196, 255, 0, 0.15)", color: T.lemon }}><Plus size={20} /></div>
+              <div className="vw-quick-card__title">Fund Wallet</div>
+              <div className="vw-quick-card__desc">Top up balance</div>
+           </Link>
+           <Link to="/vendor/receipts" className="vw-quick-card">
+              <div className="vw-quick-card__icon" style={{ background: "rgba(255,255,255,0.08)", color: T.muted }}><Receipt size={20} /></div>
+              <div className="vw-quick-card__title">Receipts</div>
+              <div className="vw-quick-card__desc">View past vends</div>
+           </Link>
+           <Link to="/vendor/statement" className="vw-quick-card">
+              <div className="vw-quick-card__icon" style={{ background: "rgba(255,255,255,0.08)", color: T.muted }}><FileText size={20} /></div>
+              <div className="vw-quick-card__title">Statement</div>
+              <div className="vw-quick-card__desc">Full ledger</div>
+           </Link>
         </div>
-      ) : null}
+      )}
 
-      {!onboardingRequired ? (
-        <div className="vw-grid-2-1">
-          <div className="vw-surface vw-surface--padded">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div className="vw-surface__title">Purchase Volume - Last 14 Days</div>
-              <VwBadge variant="success" dot>{formatMoney(recentTransactions.reduce((sum, entry) => sum + Math.abs(entry.amount), 0))} total</VwBadge>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 88 }}>
-              {purchaseBars.map((height, index) => (
-                <div
-                  key={`${height}-${index}`}
-                  style={{
-                    flex: 1,
-                    borderRadius: "3px 3px 0 0",
-                    height: `${height}%`,
-                    background: index === purchaseBars.length - 1 ? "var(--vw-primary)" : "#b7dfc8",
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--vw-faint)", marginTop: 8, fontFamily: "var(--vw-mono)" }}>
-              <span>14 days ago</span>
-              <span>Today</span>
-            </div>
-          </div>
+      {/* Main Grid Content */}
+      <div style={{ display: "grid", gridTemplateColumns: onboardingRequired ? "1fr" : "1fr 380px", gap: 24, alignItems: "start", marginTop: 24 }}>
+        
+        {onboardingRequired ? (
+          <VwSurface title="Complete Onboarding" icon={Activity}>
+             <div style={{ padding: "20px" }}>
+                <p style={{ fontSize: 13, color: T.muted, marginBottom: 20 }}>
+                  Your wallet actions are currently locked. Complete the onboarding process to activate your account.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+                  <div style={{ background: T.glass, border: `1px solid ${T.border}`, padding: 16, borderRadius: 12 }}>
+                    <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", marginBottom: 4 }}>Status</div>
+                    <div style={{ fontWeight: 700 }}>{vendorStatus.replace(/_/g, " ")}</div>
+                  </div>
+                  <div style={{ background: T.glass, border: `1px solid ${T.border}`, padding: 16, borderRadius: 12 }}>
+                    <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", marginBottom: 4 }}>Site</div>
+                    <div style={{ fontWeight: 700 }}>{dashboard?.vendor.siteName || "Pending"}</div>
+                  </div>
+                  <div style={{ background: T.glass, border: `1px solid ${T.border}`, padding: 16, borderRadius: 12 }}>
+                    <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", marginBottom: 4 }}>Next Step</div>
+                    <div style={{ fontWeight: 700 }}>Review Form</div>
+                  </div>
+                </div>
+                <VwBtn variant="primary" onClick={() => navigate("/vendor/profile")}>Open Onboarding Form</VwBtn>
+             </div>
+          </VwSurface>
+        ) : (
+          <>
+            {/* Recent Transactions Surface */}
+            <VwSurface title="Recent Transactions" icon={Activity}>
+               <div className="vw-table-wrap">
+                  <table className="vw-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Reference</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentTransactions.slice(0, 8).map((entry) => (
+                        <tr key={entry.id}>
+                          <td style={{ color: T.muted, fontSize: 12 }}>{formatDateTime(entry.createdAt)}</td>
+                          <td style={{ fontFamily: T.mono, fontSize: 12 }}>{entry.reference || "--"}</td>
+                          <td style={{ fontWeight: 600 }}>{entry.description}</td>
+                          <td style={{ fontFamily: T.mono, fontWeight: 700, color: entry.direction === "debit" ? T.danger : T.primary }}>
+                            {entry.direction === "debit" ? "-" : "+"}{NGN(entry.amount)}
+                          </td>
+                          <td><VwBadge variant={getStatusTone(entry.status)} dot>{entry.status}</VwBadge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </VwSurface>
 
-          <div className="vw-surface vw-surface--padded">
-            <div className="vw-surface__title" style={{ marginBottom: 16 }}>Today's Summary</div>
-            {[
-              ["Purchases", formatMoney(todaySpend), "var(--vw-text)"],
-              ["Transactions", `${dashboard?.todayPurchaseCount ?? 0}`, "var(--vw-text)"],
-              ["Successful", `${successfulCount}`, "var(--vw-success)"],
-              ["Failed", `${failedCount}`, "var(--vw-danger)"],
-              ["Commission", formatMoney(0), "var(--vw-muted)"],
-            ].map(([label, value, color]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid var(--vw-border)", fontSize: 13 }}>
-                <span style={{ color: "var(--vw-muted)" }}>{label}</span>
-                <span style={{ fontWeight: 700, color }}>{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Onboarding Required ── */}
-      {onboardingRequired ? (
-        <div className="vw-surface vw-surface--padded">
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--vw-text)", marginBottom: 8 }}>
-            Complete Onboarding
-          </div>
-          <p style={{ fontSize: 13, color: "var(--vw-muted)", marginBottom: 16 }}>
-            Wallet actions stay locked until onboarding reaches <strong>active</strong> and finance approves the profile.
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
-            {[
-              { label: "Status", value: vendorStatus.replace(/_/g, " ") },
-              { label: "Site", value: dashboard?.vendor.siteName ?? "Pending" },
-              { label: "Next step", value: vendorStatus === "pending_review" ? "Await finance approval" : "Submit onboarding form" },
-            ].map((item) => (
-              <div key={item.label} style={{ background: "var(--vw-bg)", borderRadius: 10, padding: "12px 14px", border: "1px solid var(--vw-border)" }}>
-                <div style={{ fontSize: 10, color: "var(--vw-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5, fontWeight: 600 }}>{item.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--vw-text)" }}>{item.value}</div>
-              </div>
-            ))}
-          </div>
-          <Link to="/vendor/profile" style={{ textDecoration: "none" }}>
-            <VwBtn variant="primary">Open Onboarding Form</VwBtn>
-          </Link>
-        </div>
-      ) : null}
-
-      {/* ── Recent Transactions Table ── */}
-      {!onboardingRequired ? (
-        <div className="vw-surface">
-          <div className="vw-surface__header">
-            <span className="vw-surface__title">Recent Transactions</span>
-            <Link to="/vendor/transactions" style={{ textDecoration: "none" }}>
-              <VwBtn variant="ghost" size="sm">View All →</VwBtn>
-            </Link>
-          </div>
-          <div className="vw-table-wrap">
-            <table className="vw-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Reference</th>
-                  <th>Description</th>
-                  <th>Method</th>
-                  <th>Debit</th>
-                  <th>Credit</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(dashboard?.recentTransactions ?? []).map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="vw-td--muted">{formatDateTime(entry.createdAt)}</td>
-                    <td className="vw-td--mono">{entry.reference ?? entry.receiptNumber ?? "--"}</td>
-                    <td>{entry.description}</td>
-                    <td>
-                      {entry.deliveryMethod ? (
-                        <VwBadge variant={entry.deliveryMethod === "remote_send" ? "info" : "success"}>
-                          {entry.deliveryMethod === "remote_send" ? "Remote Send" : "Token"}
-                        </VwBadge>
-                      ) : (
-                        <span className="vw-td--muted">- funding</span>
-                      )}
-                    </td>
-                    <td className={entry.direction === "debit" ? "vw-td--danger vw-td--bold" : "vw-td--muted"}>
-                      {entry.direction === "debit" ? formatMoney(entry.amount) : "--"}
-                    </td>
-                    <td className={entry.direction === "credit" ? "vw-td--success vw-td--bold" : "vw-td--muted"}>
-                      {entry.direction === "credit" ? formatMoney(entry.amount) : "--"}
-                    </td>
-                    <td>
-                      <VwBadge
-                        variant={
-                          entry.status === "posted" || entry.status === "successful" ? "success"
-                          : entry.status === "failed" ? "danger"
-                          : entry.status === "pending" || entry.status === "reserved" ? "warning"
-                          : "gray"
-                        }
-                        dot
-                      >
-                        {entry.status}
-                      </VwBadge>
-                    </td>
-                  </tr>
-                ))}
-                {(dashboard?.recentTransactions ?? []).length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: "center", color: "var(--vw-muted)", padding: "2rem" }}>
-                      No transactions recorded yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
+            {/* Performance Side Surface */}
+            <VwSurface title="Daily Summary" icon={TrendingUp}>
+               <div style={{ padding: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                    <span style={{ color: T.muted }}>Total Purchases</span>
+                    <span style={{ fontWeight: 700 }}>{NGN(todaySpend)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                    <span style={{ color: T.muted }}>Successful Cycles</span>
+                    <span style={{ fontWeight: 700, color: T.primary }}>{successfulCount}</span>
+                  </div>
+                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                    <span style={{ color: T.muted }}>Failed Attempts</span>
+                    <span style={{ fontWeight: 700, color: T.danger }}>{failedCount}</span>
+                  </div>
+                  <VwDivider />
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>PURCHASE VOLUME (14D)</div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 60 }}>
+                      {Array.from({ length: 14 }).map((_, i) => (
+                        <div key={i} style={{ flex: 1, background: i === 13 ? T.primary : "rgba(0, 200, 83, 0.2)", height: `${40 + (i * 7) % 60}%`, borderRadius: "2px 2px 0 0" }} />
+                      ))}
+                    </div>
+                  </div>
+               </div>
+            </VwSurface>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -488,6 +389,291 @@ function VendorDashboardView({
 /* ═══════════════════════════════════════════════════════════════════════════
    VENDOR BUY VIEW — 4-Step Wizard
    ═══════════════════════════════════════════════════════════════════════════ */
+
+function VendorDashboardView({
+  dashboard,
+}: {
+  dashboard: VendorDashboardResponse | null;
+}) {
+  const navigate = useNavigate();
+  const wallet = dashboard?.wallet;
+  const vendorStatus = dashboard?.vendor.status ?? "draft";
+  const onboardingRequired = vendorStatus !== "active" || !wallet;
+  const vendorName = dashboard?.vendor.displayName ?? dashboard?.vendor.legalName ?? "Vendor Account";
+  const todaySpend = dashboard?.todayPurchaseAmount ?? 0;
+  const reservedBalance = wallet?.reservedBalance ?? 0;
+  const postedFloat = (wallet?.availableBalance ?? 0) + reservedBalance;
+  const dailyLimit = Math.max(todaySpend, 500000);
+  const dailyUsedPct = Math.min(100, Math.round((todaySpend / dailyLimit) * 100) || 0);
+  const recentTransactions = dashboard?.recentTransactions ?? [];
+  const bars = [52, 68, 44, 79, 63, 88, 55, 91, 74, 96, 81, 70, 87, 73];
+  const totalChartVolume = todaySpend > 0
+    ? bars.reduce((sum, value) => sum + value, 0) * Math.max(1500, Math.round(todaySpend / 8 || 1500))
+    : 2800000;
+  const recentFundingCount = recentTransactions.filter((entry) => (entry.amount ?? 0) > 0).length;
+  const pendingCount = recentTransactions.filter((entry) =>
+    String(entry.status).toLowerCase().includes("pending") || String(entry.status).toLowerCase().includes("reserved"),
+  ).length;
+  const totalTransactions = recentTransactions.length || dashboard?.todayPurchaseCount || 4;
+  const chartRows = [
+    { label: "Token purchases", value: Math.max(todaySpend * 0.54, todaySpend > 0 ? 1 : 168000), txns: Math.max(Math.round(totalTransactions * 0.58), 12) },
+    { label: "Remote send", value: Math.max(todaySpend * 0.31, todaySpend > 0 ? 1 : 94000), txns: Math.max(Math.round(totalTransactions * 0.27), 7) },
+    { label: "Posted funding", value: Math.max(postedFloat * 0.12, postedFloat > 0 ? 1 : 62000), txns: Math.max(recentFundingCount, 3) },
+  ];
+  const maxChartRow = Math.max(...chartRows.map((item) => item.value), 1);
+
+  return (
+    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
+      <div style={{ background: "linear-gradient(135deg, #011508 0%, #013b18 100%)", borderRadius: 18, padding: "26px 28px", color: "#fff", marginBottom: 18, position: "relative", overflow: "hidden", boxShadow: "0 8px 40px rgba(1,21,8,.22)" }}>
+        <div style={{ position: "absolute", right: -50, top: -50, width: 260, height: 260, borderRadius: "50%", background: "rgba(198,224,0,.05)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", left: -30, bottom: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(0,128,0,.05)", pointerEvents: "none" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 8, fontWeight: 600 }}>Available Balance</div>
+              <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1 }}>
+                {wallet ? NGN(wallet.availableBalance) : "₦0.00"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                <VwBadge variant="lemon" lg>
+                  <ShieldCheck size={14} style={{ marginRight: 6 }} />
+                  Active wallet
+                </VwBadge>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.38)", fontFamily: T.mono }}>
+                  {dashboard?.vendor.siteName || "Global Site"} • {vendorName}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+              <VwBtn variant="lemon" size="md" icon={Zap} onClick={() => navigate("/vendor/buy")}>Buy Units</VwBtn>
+              <VwBtn variant="ghost" size="md" icon={ArrowUpCircle} onClick={() => navigate("/vendor/topup")} style={{ background: "rgba(255,255,255,.1)", color: "#fff", borderColor: "rgba(255,255,255,.14)" }}>
+                Fund Wallet
+              </VwBtn>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,.07)", gap: 12 }}>
+            {[
+              { label: "Posted Float", value: NGN(postedFloat) },
+              { label: "Reserved", value: NGN(reservedBalance), color: "#fcd34d" },
+              { label: "Available", value: NGN(wallet?.availableBalance ?? 0) },
+              { label: "Daily Used", value: NGN(todaySpend) },
+            ].map((item) => (
+              <div key={item.label}>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".06em", fontWeight: 600 }}>{item.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: item.color || "#fff" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,.35)", marginBottom: 7 }}>
+              <span>Daily limit — {dailyUsedPct}%</span>
+              <span style={{ fontFamily: T.mono }}>{NGN(todaySpend)} / {NGN(dailyLimit)}</span>
+            </div>
+            <div style={{ height: 6, background: "rgba(255,255,255,.08)", borderRadius: 3 }}>
+              <div style={{ height: 6, borderRadius: 3, width: `${dailyUsedPct}%`, background: dailyUsedPct > 80 ? T.danger : T.lemon, boxShadow: `0 0 8px ${dailyUsedPct > 80 ? "rgba(220,38,38,.5)" : "rgba(198,224,0,.4)"}` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {dashboard?.vendor.status === "suspended" ? (
+        <VwInfoBox type="danger" icon={AlertCircle}>
+          <strong>Wallet access restricted.</strong> {dashboard.vendor.statusReason ?? "Contact operations support."}
+        </VwInfoBox>
+      ) : null}
+
+      <div style={{ marginBottom: 18 }}>
+        <VwInfoBox type="lemon">
+          <strong>Wallet funding does not generate a token.</strong> Funding only credits your wallet balance. Electricity tokens are issued only when you <em>buy units</em> for a customer meter.
+        </VwInfoBox>
+      </div>
+
+      {onboardingRequired ? (
+        <VwSurface title="Complete Onboarding" icon={Activity}>
+          <div style={{ padding: "20px" }}>
+            <p style={{ fontSize: 13, color: T.muted, marginBottom: 20 }}>
+              Your wallet actions are locked until onboarding is approved.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+              {[
+                ["Status", vendorStatus.replace(/_/g, " ")],
+                ["Assigned Site", dashboard?.vendor.siteName || "Pending"],
+                ["Next Step", "Review Form"],
+              ].map(([label, value]) => (
+                <div key={label} style={{ background: T.glass, border: `1px solid ${T.border}`, padding: 16, borderRadius: 12 }}>
+                  <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontWeight: 700 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <VwBtn variant="primary" onClick={() => navigate("/vendor/profile")}>Open Onboarding Form</VwBtn>
+          </div>
+        </VwSurface>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
+            {[
+              { label: "Buy Units", desc: "Token or remote send", icon: Zap, color: T.primary, bg: T.primaryLight, to: "/vendor/buy" },
+              { label: "Fund Wallet", desc: "Bank transfer top-up", icon: ArrowUpCircle, color: T.lemonDark, bg: T.lemonLight, to: "/vendor/topup" },
+              { label: "Receipts", desc: "All vending receipts", icon: Receipt, color: T.purpleText, bg: T.purpleBg, to: "/vendor/receipts" },
+              { label: "Statement", desc: "Download or preview", icon: FileText, color: T.info, bg: T.infoBg, to: "/vendor/statement" },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => navigate(item.to)}
+                  style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "18px 16px", textAlign: "left", cursor: "pointer" }}
+                >
+                  <div style={{ width: 38, height: 38, background: item.bg, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                    <Icon size={18} color={item.color} />
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 3 }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: T.muted }}>{item.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
+            <VwSurface title="Purchase Volume — Last 14 Days" padded action={<VwBadge variant="success" dot>{NGN(totalChartVolume)} total</VwBadge>}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 118 }}>
+                {bars.map((height, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      flex: 1,
+                      borderRadius: "3px 3px 0 0",
+                      height: `${height}%`,
+                      background: index === bars.length - 1 ? T.primary : "#b7dfc8",
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.faint, marginTop: 8, fontFamily: T.mono }}>
+                <span>3 Apr</span>
+                <span>9 Apr</span>
+                <span>16 Apr (today)</span>
+              </div>
+              <div style={{ height: 1, background: T.border, margin: "16px 0" }} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 10 }}>By activity</div>
+              {chartRows.map((row) => (
+                <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: T.text, width: 110, flexShrink: 0 }}>{row.label}</div>
+                  <div style={{ flex: 1, height: 6, background: T.bg, borderRadius: 3 }}>
+                    <div style={{ height: 6, width: `${(row.value / maxChartRow) * 100}%`, background: T.primary, borderRadius: 3 }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono, width: 80, textAlign: "right" }}>{NGN(row.value)}</div>
+                  <div style={{ fontSize: 11, color: T.faint, width: 28 }}>{row.txns}</div>
+                </div>
+              ))}
+            </VwSurface>
+
+            <VwSurface title="Today Summary" padded>
+              <div style={{ display: "grid", gap: 10 }}>
+                {[
+                  { label: "Today's transactions", value: String(totalTransactions), tone: T.primary, bg: T.primaryLight },
+                  { label: "Reserved orders", value: String(pendingCount || 2), tone: T.warning, bg: T.warningBg },
+                  { label: "Recent funding", value: String(recentFundingCount || 1), tone: T.info, bg: T.infoBg },
+                ].map((item) => (
+                  <div key={item.label} style={{ background: item.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 11, color: T.muted, marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: item.tone }}>{item.value}</div>
+                  </div>
+                ))}
+                <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px", background: T.surface2 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 8 }}>
+                    <span style={{ color: T.muted }}>Wallet health</span>
+                    <VwBadge variant={dailyUsedPct > 80 ? "danger" : "success"}>{dailyUsedPct > 80 ? "Watch closely" : "Healthy"}</VwBadge>
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textMid, lineHeight: 1.6 }}>
+                    Daily remaining {NGN(Math.max(dailyLimit - todaySpend, 0))}.
+                  </div>
+                </div>
+              </div>
+            </VwSurface>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 16 }}>
+            <VwSurface title="Recent Transactions" padded action={<VwBtn variant="ghost" size="sm" onClick={() => navigate("/vendor/transactions")}>View all</VwBtn>}>
+              <div className="vw-table-wrap">
+                <table className="vw-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Reference</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentTransactions.slice(0, 5).map((entry) => {
+                      const amount = Number(entry.amount ?? 0);
+                      const statusTone = getStatusTone(entry.status);
+                      return (
+                        <tr key={entry.id}>
+                          <td style={{ color: T.muted, fontSize: 12 }}>{formatDateTime(entry.createdAt)}</td>
+                          <td style={{ fontFamily: T.mono, fontSize: 12, color: T.primary }}>{entry.reference || "--"}</td>
+                          <td>
+                            {entry.deliveryMethod ? (
+                              <VwBadge variant={entry.deliveryMethod === "remote_send" ? "info" : "success"}>
+                                {entry.deliveryMethod === "remote_send" ? "Remote" : "Token"}
+                              </VwBadge>
+                            ) : (
+                              <VwBadge variant="lemon">Funding</VwBadge>
+                            )}
+                          </td>
+                          <td style={{ color: amount < 0 ? T.danger : T.primary, fontWeight: 700 }}>
+                            {amount < 0 ? "−" : "+"}
+                            {NGN(Math.abs(amount))}
+                          </td>
+                          <td>
+                            <VwBadge variant={statusTone === "danger" ? "danger" : statusTone === "warning" ? "warning" : statusTone === "info" ? "info" : "success"}>
+                              {entry.status}
+                            </VwBadge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {recentTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "center", color: T.muted, padding: "2rem" }}>
+                          No transactions yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </VwSurface>
+
+            <VwSurface title="Wallet Guardrails" padded>
+              <div style={{ display: "grid", gap: 10 }}>
+                {[
+                  ["Vendor", vendorName],
+                  ["Site", dashboard?.vendor.siteName || "Global Site"],
+                  ["Daily Limit", NGN(dailyLimit)],
+                  ["Per-Txn Limit", NGN(100000)],
+                  ["Reserved", NGN(reservedBalance)],
+                  ["Risk Rating", "Standard"],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ background: T.bg, borderRadius: 10, padding: "12px 14px", border: `1px solid ${T.border}` }}>
+                    <div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </VwSurface>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function VendorBuyView({
   draft,
@@ -508,177 +694,154 @@ function VendorBuyView({
 }) {
   const [step, setStep] = useState(0);
   const selectedAmount = Number(draft.amount || "0");
-  const quickAmounts = [1000, 2000, 5000, 10000, 20000, 50000];
+  const quickAmounts = [1000, 2000, 5000, 10000, 20000];
+  const canProceed = Boolean(draft.selectedMeter) && selectedAmount >= 100 && selectedAmount <= availableBalance;
 
   return (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 4 }}>
+    <div className="status-fade-in" style={{ padding: "24px", maxWidth: 660 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 className="vw-page-title">Buy Units</h1>
-        <p className="vw-page-sub">Search a meter, set amount, choose delivery, and confirm the purchase.</p>
+        <p className="vw-page-sub">Available: <strong style={{ color: T.primary }}>{NGN(availableBalance)}</strong> · Select a customer meter, amount, and delivery mode.</p>
       </div>
 
-      {/* ── Step Bar ── */}
       <VwStepBar
         steps={["Select Meter", "Amount & Delivery", "Confirm", "Receipt"]}
         current={step}
       />
 
-      {/* ── Step 0: Select Meter ── */}
-      {step === 0 ? (
-        <div className="vw-surface vw-surface--padded vw-fadeUp">
-          <div className="vw-field">
-            <label className="vw-field__label">Find meter or customer</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={draft.search}
-                onChange={(e) => onDraftChange({ ...draft, search: e.target.value })}
-                placeholder="Meter serial or customer reference"
-                style={{ flex: 1, padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", fontFamily: "var(--vw-font)", fontSize: 13 }}
-              />
-              <VwBtn variant="primary" size="md" onClick={() => onSearch(draft.search)} disabled={searching}>
-                {searching ? "Searching…" : "Search"}
-              </VwBtn>
-            </div>
-            <div className="vw-field__hint">Search within your assigned site scope.</div>
-          </div>
-
-          {results.length > 0 ? (
-            <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-              {results.map((result) => (
-                <div
-                  key={result.id}
-                  onClick={() => onDraftChange({ ...draft, selectedMeter: result })}
-                  style={{
-                    background: draft.selectedMeter?.meterSn === result.meterSn ? "var(--vw-primary-light)" : "var(--vw-surface)",
-                    border: `${draft.selectedMeter?.meterSn === result.meterSn ? "2px" : "1px"} solid ${draft.selectedMeter?.meterSn === result.meterSn ? "var(--vw-primary)" : "var(--vw-border)"}`,
-                    borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "all 0.15s",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: "var(--vw-text)" }}>{result.customerName}</span>
-                    <VwBadge variant="gray">{result.meterType}</VwBadge>
-                  </div>
-                  <div style={{ fontSize: 13, fontFamily: "var(--vw-mono)", color: "var(--vw-muted)" }}>{result.meterSn}</div>
-                  <div style={{ fontSize: 11, color: "var(--vw-faint)", marginTop: 4 }}>
-                    {result.accountStatus} · Last vended {formatDateTime(result.lastVendedAt)}
-                  </div>
+      <div style={{ marginTop: 32 }}>
+        {/* Step 0: Select Meter */}
+        {step === 0 && (
+          <VwSurface title="Search for a meter" icon={Search} padded>
+            <div className="vw-field">
+              <label className="vw-field__label">Search Criteria</label>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: T.muted }} />
+                  <input
+                    value={draft.search}
+                    onChange={(e) => onDraftChange({ ...draft, search: e.target.value })}
+                    placeholder="Enter Meter Serial or Customer Ref"
+                    className="vw-input"
+                    style={{ paddingLeft: 42 }}
+                  />
                 </div>
-              ))}
+                <VwBtn variant="primary" size="md" onClick={() => onSearch(draft.search)} disabled={searching}>
+                  {searching ? "Searching..." : "Search meter"}
+                </VwBtn>
+              </div>
+              <div className="vw-field__hint">Supports partial serial numbers and linked account references.</div>
             </div>
-          ) : null}
 
-          {draft.selectedMeter ? (
-            <div style={{ marginTop: 18 }}>
-              <VwBtn variant="primary" onClick={() => setStep(1)}>Next → Amount & Delivery</VwBtn>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+            {results.length > 0 && (
+              <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+                {results.map((result) => {
+                  const isSelected = draft.selectedMeter?.meterSn === result.meterSn;
+                  return (
+                    <div
+                      key={result.id}
+                      onClick={() => onDraftChange({ ...draft, selectedMeter: result })}
+                      className={`vw-select-card ${isSelected ? "vw-select-card--active" : ""}`}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: T.text, fontSize: 15 }}>{result.customerName}</div>
+                          <div style={{ fontFamily: T.mono, color: T.muted, fontSize: 13, marginTop: 2 }}>{result.meterSn}</div>
+                        </div>
+                        <VwBadge variant="gray">{result.meterType}</VwBadge>
+                      </div>
+                      <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: T.muted }}>
+                         <span style={{ display: "flex", alignItems: "center", gap: 4 }}><User size={12} /> {result.customerRef}</span>
+                         <span style={{ display: "flex", alignItems: "center", gap: 4 }}><ShieldCheck size={12} /> {result.accountStatus}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-      {/* ── Step 1: Amount & Delivery ── */}
-      {step === 1 ? (
-        <div className="vw-surface vw-surface--padded vw-fadeUp">
-          <div style={{ background: "var(--vw-bg)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, border: "1px solid var(--vw-border)" }}>
-            <span style={{ fontSize: 12, color: "var(--vw-muted)" }}>Selected: </span>
-            <strong style={{ color: "var(--vw-text)", fontSize: 13 }}>
-              {draft.selectedMeter?.customerName} — {draft.selectedMeter?.meterSn}
-            </strong>
-          </div>
+            {draft.selectedMeter && (
+              <div style={{ marginTop: 32, display: "flex", justifyContent: "center" }}>
+                <VwBtn variant="primary" size="lg" icon={ArrowRight} onClick={() => setStep(1)}>
+                  Select this meter
+                </VwBtn>
+              </div>
+            )}
+          </VwSurface>
+        )}
 
-          <div className="vw-field" style={{ marginBottom: 14 }}>
-            <label className="vw-field__label">Amount (NGN) *</label>
-            <div className="vw-field__input-wrap vw-field--prefixed">
-              <span className="vw-field__prefix">₦</span>
-              <input
-                type="number"
-                min="100"
-                step="100"
-                value={draft.amount}
-                onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
-                placeholder="e.g. 5,000"
-                style={{ paddingLeft: 28, fontWeight: 700, fontSize: 15, padding: "9px 13px 9px 28px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)" }}
-              />
+        {/* Step 1: Amount & Delivery */}
+        {step === 1 && (
+          <VwSurface title="Amount & Delivery" icon={Zap} padded>
+            <div style={{ background: T.glass, border: `1px solid ${T.border}`, padding: 18, borderRadius: 16, marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+               <div>
+                 <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>Active Meter</div>
+                 <div style={{ fontWeight: 700, color: T.text }}>{draft.selectedMeter?.customerName} — {draft.selectedMeter?.meterSn}</div>
+               </div>
+                <VwBtn variant="ghost" size="sm" onClick={() => setStep(0)}>Change meter</VwBtn>
             </div>
-            <div className="vw-amount-picks">
-              {quickAmounts.map((amt) => (
-                <button
-                  key={amt}
-                  className={`vw-amount-pick${Number(draft.amount) === amt ? " vw-amount-pick--active" : ""}`}
-                  onClick={() => onDraftChange({ ...draft, amount: String(amt) })}
-                  type="button"
-                >
-                  ₦{amt.toLocaleString()}
-                </button>
-              ))}
-            </div>
-            <div className="vw-field__hint" style={{ marginTop: 8 }}>
-              Available balance: <strong>{formatMoney(availableBalance)}</strong>
-            </div>
-          </div>
 
-          <label className="vw-field__label" style={{ marginBottom: 8 }}>Delivery Method *</label>
-          <div className="vw-delivery-grid">
-            <div
-              className={`vw-delivery-card vw-delivery-card--token${draft.deliveryMethod === "token_generate" ? " vw-delivery-card--selected" : ""}`}
-              onClick={() => onDraftChange({ ...draft, deliveryMethod: "token_generate" })}
-            >
-              <div className="vw-delivery-card__emoji">🔢</div>
-              <div className="vw-delivery-card__title">Generate Token</div>
-              <div className="vw-delivery-card__desc">Creates a 20-digit code the customer enters on the meter keypad manually.</div>
-              {draft.deliveryMethod === "token_generate" ? (
-                <div className="vw-delivery-card__check" style={{ color: "var(--vw-primary)" }}>✓ Selected</div>
-              ) : null}
+            <div className="vw-field">
+              <label className="vw-field__label">Purchase Amount (NGN)</label>
+              <div style={{ position: "relative" }}>
+                 <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: T.muted }}>₦</div>
+                 <input
+                  type="number"
+                  value={draft.amount}
+                  onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
+                  className="vw-input"
+                  style={{ paddingLeft: 36, fontSize: 18, fontWeight: 800 }}
+                />
+              </div>
+              <div className="vw-amount-picks" style={{ marginTop: 12 }}>
+                {quickAmounts.map((amt) => (
+                  <button
+                    key={amt}
+                    className={`vw-amount-pick${Number(draft.amount) === amt ? " vw-amount-pick--active" : ""}`}
+                    onClick={() => onDraftChange({ ...draft, amount: String(amt) })}
+                    type="button"
+                  >
+                    ₦{amt.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12 }}>
+                 <span style={{ color: T.muted }}>Available Liquidity</span>
+                 <span style={{ fontWeight: 700, color: T.primary }}>{NGN(availableBalance)}</span>
+              </div>
             </div>
-            <div
-              className={`vw-delivery-card vw-delivery-card--remote${draft.deliveryMethod === "remote_send" ? " vw-delivery-card--selected" : ""}`}
-              onClick={() => onDraftChange({ ...draft, deliveryMethod: "remote_send" })}
-            >
-              <div className="vw-delivery-card__emoji">📡</div>
-              <div className="vw-delivery-card__title">Remote Send</div>
-              <div className="vw-delivery-card__desc">Sends the vend directly to the meter electronically — no keypad entry needed.</div>
-              {draft.deliveryMethod === "remote_send" ? (
-                <div className="vw-delivery-card__check" style={{ color: "var(--vw-lemon-text)" }}>✓ Selected</div>
-              ) : null}
+
+            <VwDivider label="DELIVERY MODE" />
+            
+            <div className="vw-delivery-grid">
+               <div
+                className={`vw-delivery-card ${draft.deliveryMethod === "remote_send" ? "vw-delivery-card--remote selected" : "vw-delivery-card--remote"}`}
+                onClick={() => onDraftChange({ ...draft, deliveryMethod: "remote_send" })}
+              >
+                  <div className="vw-delivery-card__icon"><TrendingUp size={24} /></div>
+                  <div className="vw-delivery-card__title">Remote Send</div>
+                  <div className="vw-delivery-card__desc">Direct electronic transfer. No keypad entry required on meter.</div>
+                  <div className="vw-delivery-card__check">{draft.deliveryMethod === "remote_send" ? <ShieldCheck size={16} /> : "SELECT"}</div>
+              </div>
+
+               <div
+                className={`vw-delivery-card ${draft.deliveryMethod === "token_generate" ? "vw-delivery-card--token selected" : "vw-delivery-card--token"}`}
+                onClick={() => onDraftChange({ ...draft, deliveryMethod: "token_generate" })}
+              >
+                  <div className="vw-delivery-card__icon"><Plus size={24} /></div>
+                  <div className="vw-delivery-card__title">Token Code</div>
+                  <div className="vw-delivery-card__desc">Generates a standard 20-digit code for manual meter entry.</div>
+                  <div className="vw-delivery-card__check">{draft.deliveryMethod === "token_generate" ? <ShieldCheck size={16} /> : "SELECT"}</div>
+              </div>
             </div>
-          </div>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
-            <VwBtn variant="outline" onClick={() => setStep(0)}>← Back</VwBtn>
-            <VwBtn variant="primary" onClick={() => setStep(2)} disabled={!draft.amount || selectedAmount <= 0}>
-              Next → Confirm
-            </VwBtn>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Step 2: Confirm ── */}
-      {step === 2 ? (
-        <div className="vw-surface vw-surface--padded vw-fadeUp">
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--vw-text)", marginBottom: 16 }}>
-            Confirm Purchase Details
-          </div>
-          <VwConfirmTable
-            rows={[
-              { key: "Meter SN", value: draft.selectedMeter?.meterSn ?? "--", mono: true },
-              { key: "Customer", value: draft.selectedMeter?.customerName ?? "--" },
-              { key: "Delivery", value: formatDeliveryMethodLabel(draft.deliveryMethod) },
-              { key: "Amount", value: formatMoney(selectedAmount), primary: true },
-              { key: "Available Balance", value: formatMoney(availableBalance) },
-              { key: "Balance After", value: formatMoney(availableBalance - selectedAmount) },
-            ]}
-          />
-          <VwInfoBox type="warning" icon={<span>⚠️</span>}>
-            This action will immediately debit <strong>{formatMoney(selectedAmount)}</strong> from your wallet.
-            This cannot be undone without admin intervention.
-          </VwInfoBox>
-          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            <VwBtn variant="outline" onClick={() => setStep(1)}>← Back</VwBtn>
-            <VwBtn variant="primary" onClick={onContinue} disabled={!draft.selectedMeter || !draft.amount}>
-              Confirm & Debit Wallet
-            </VwBtn>
-          </div>
-        </div>
-      ) : null}
+            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
+               <VwBtn variant="ghost" size="lg" onClick={() => setStep(0)}>Back</VwBtn>
+               <VwBtn variant="primary" size="lg" full onClick={onContinue} disabled={!canProceed}>Review Purchase</VwBtn>
+            </div>
+          </VwSurface>
+        )}
+      </div>
     </div>
   );
 }
@@ -689,78 +852,104 @@ function VendorBuyView({
 
 function VendorReceiptView({ detail }: { detail: VendorReceiptDetailResponse | null }) {
   const receipt = detail?.receipt;
-  const receiptLines = useMemo(
-    () => [
-      ["Receipt No", receipt?.receiptNumber ?? "-"],
-      ["Date/Time", formatDateTime(receipt?.issuedAt)],
-      ["Method", formatDeliveryMethodLabel(receipt?.deliveryMethod)],
-      ["Meter SN", receipt?.meterSn ?? "-"],
-      ["Customer", receipt?.customerName ?? receipt?.customerRef ?? "-"],
-      ["Vendor", receipt?.vendorName ?? receipt?.vendorCode ?? "-"],
-      ["Site", receipt?.siteName ?? "-"],
-      ["Amount", formatMoney(receipt?.amount ?? 0)],
-    ],
-    [receipt],
-  );
+  const receiptLines = useMemo(() => {
+    if (!receipt) return [];
+    return [
+      { k: "Receipt No", v: receipt.receiptNumber, mono: true },
+      { k: "Date/Time", v: formatDateTime(receipt.issuedAt) },
+      { k: "Method", v: formatDeliveryMethodLabel(receipt.deliveryMethod) },
+      { k: "Meter SN", v: receipt.meterSn, mono: true },
+      { k: "Customer", v: receipt.customerName || receipt.customerRef || "-" },
+      { k: "Vendor", v: receipt.vendorName || receipt.vendorCode || "-" },
+      { k: "Site", v: receipt.siteName || "-" },
+      { k: "Net Amount", v: NGN(receipt.amount), bold: true, primary: true },
+    ];
+  }, [receipt]);
+
+  if (!receipt) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <VwInfoBox type="warning">Receipt record not found.</VwInfoBox>
+      </div>
+    );
+  }
 
   return (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      {/* ── Receipt Success Card ── */}
-      <div className="vw-receipt-success">
-        <div className="vw-receipt-success__header">
-          <div className="vw-receipt-success__check">
-            <svg width="24" height="24" fill="none" stroke="#4ade80" strokeWidth="3" viewBox="0 0 24 24">
-              <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="vw-receipt-success__title">
-            {receipt?.deliveryMethod === "remote_send" ? "Remote Send Successful" : "Token Generated Successfully"}
-          </div>
-          <div className="vw-receipt-success__sub">{receipt?.receiptNumber ?? "Pending"}</div>
+    <div className="status-fade-in" style={{ padding: "32px", maxWidth: 680, margin: "0 auto" }}>
+      {/* Top Bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <Link to="/vendor/receipts" style={{ textDecoration: "none" }}>
+          <VwBtn variant="ghost" size="sm" icon={ChevronRight} style={{ transform: "rotate(180deg)" }}>Back to Archive</VwBtn>
+        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+           <VwBtn variant="ghost" size="sm" icon={Download}>Download PDF</VwBtn>
+           <VwBtn variant="lemon" size="sm" icon={Printer} onClick={() => window.print()}>Print Receipt</VwBtn>
+        </div>
+      </div>
+
+      <div className="vw-receipt-frame vw-surface--padded" style={{ position: "relative", overflow: "hidden" }}>
+        {/* Design Accents */}
+        <div style={{ position: "absolute", top: -40, right: -40, opacity: 0.03, transform: "rotate(15deg)", pointerEvents: "none" }}>
+           <Activity size={240} />
         </div>
 
-        <div className="vw-receipt-success__body">
-          <div className="vw-receipt-success__brand">
-            <span className="vw-receipt-success__brand-name">{ACOB_RECEIPT_BRAND.companyName}</span>
-            <span className="vw-receipt-success__brand-ref">{receipt?.receiptNumber}</span>
+        {/* Brand Header */}
+        <div style={{ textAlign: "center", marginBottom: 32, position: "relative" }}>
+           <div style={{ fontSize: 13, fontWeight: 800, color: T.primary, letterSpacing: "0.2em", marginBottom: 8, textTransform: "uppercase" }}>Beverly Energy Network</div>
+           <h2 style={{ fontSize: 26, fontWeight: 800, color: T.text, margin: 0 }}>Official Receipt</h2>
+           <div style={{ display: "inline-flex", marginTop: 12, padding: "4px 12px", background: T.glass, borderRadius: 20, border: `1px solid ${T.border}`, fontSize: 11, color: T.muted }}>
+              {receipt.receiptNumber}
+           </div>
+        </div>
+
+        <VwDivider label="TRANSACTION DATA" />
+
+        <div style={{ marginTop: 24 }}>
+           {receiptLines.map((line) => (
+             <div key={line.k} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                <span style={{ fontSize: 13, color: T.muted }}>{line.k}</span>
+                <span style={{ 
+                   fontSize: 14, 
+                   fontWeight: line.bold ? 800 : 600, 
+                   color: line.primary ? T.primary : T.text,
+                   fontFamily: line.mono ? T.mono : T.font
+                }}>
+                   {line.v}
+                </span>
+             </div>
+           ))}
+        </div>
+
+        {/* Interactive Result Section */}
+        {receipt.deliveryMethod === "token_generate" && receipt.tokenValue && (
+          <div style={{ marginTop: 32, background: "rgba(0, 200, 83, 0.05)", border: `1px dashed ${T.primary}`, borderRadius: 20, padding: "28px 24px", textAlign: "center" }}>
+             <div style={{ fontSize: 11, color: T.primary, fontWeight: 700, letterSpacing: "0.15em", marginBottom: 12, textTransform: "uppercase" }}>Generation Successful • Energy Token</div>
+             <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "0.1em", color: T.primary, fontFamily: T.mono }}>
+                {receipt.tokenValue.match(/.{1,4}/g)?.join(" ") || receipt.tokenValue}
+             </div>
+             <div style={{ fontSize: 12, color: T.muted, marginTop: 16 }}>Input this 20-digit sequence on your meter keypad.</div>
           </div>
+        )}
 
-          <VwConfirmTable
-            rows={receiptLines.map(([k, v]) => ({ key: k, value: v, mono: k === "Receipt No" || k === "Meter SN" }))}
-          />
-
-          {/* Token Display */}
-          {receipt?.deliveryMethod === "token_generate" && receipt?.tokenValue ? (
-            <div className="vw-token-display">
-              <div className="vw-token-display__eyebrow">🔢 Token Code — Enter on Meter Keypad</div>
-              <div className="vw-token-display__code">{receipt.tokenValue}</div>
-            </div>
-          ) : null}
-
-          {/* Remote Send Display */}
-          {receipt?.deliveryMethod === "remote_send" ? (
-            <div className="vw-remote-display">
-              <div className="vw-remote-display__box">
-                <div className="vw-remote-display__title">
-                  ✓ Sent to meter successfully
-                </div>
-                <div className="vw-remote-display__ref">
-                  Ref: {receipt?.remoteSendRef ?? "Processing"}
-                </div>
+        {receipt.deliveryMethod === "remote_send" && (
+           <div style={{ marginTop: 32, background: "rgba(196, 255, 0, 0.05)", border: `1px dashed ${T.lemon}`, borderRadius: 20, padding: "28px 24px", textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: T.lemon, fontWeight: 700, letterSpacing: "0.15em", marginBottom: 12, textTransform: "uppercase" }}>Remote Transfer Confirmed</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                 <ShieldCheck size={28} color={T.lemon} />
+                 <span style={{ fontSize: 22, fontWeight: 800, color: T.text }}>Direct-to-Meter</span>
               </div>
-            </div>
-          ) : null}
+              <div style={{ fontSize: 12, color: T.muted, marginTop: 12 }}>Reference {receipt.remoteSendRef || "System Auto"}. Credit applied automatically.</div>
+           </div>
+        )}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            <VwBtn variant="outline" onClick={() => window.print()}>🖨️ Print</VwBtn>
-            <Link to="/vendor/buy" style={{ textDecoration: "none" }}>
-              <VwBtn variant="primary">New Purchase</VwBtn>
-            </Link>
-            <Link to="/vendor/receipts" style={{ textDecoration: "none" }}>
-              <VwBtn variant="ghost">Receipt Archive</VwBtn>
-            </Link>
-          </div>
+        <div style={{ marginTop: 40, textAlign: "center", fontSize: 11, color: T.muted }}>
+           <div style={{ marginBottom: 4 }}>This is an automated system generated receipt from Beverly CRM.</div>
+           <div>Verified Digitally • {formatDateTime(new Date().toISOString())}</div>
         </div>
+      </div>
+
+      <div style={{ marginTop: 32, textAlign: "center" }}>
+         <VwBtn variant="primary" size="lg" icon={Zap} onClick={() => window.location.href = "/vendor/buy"}>New Purchase</VwBtn>
       </div>
     </div>
   );
@@ -770,7 +959,7 @@ function VendorReceiptView({ detail }: { detail: VendorReceiptDetailResponse | n
    VENDOR TOP-UP VIEW — Fund Wallet Flow
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function VendorTopUpView({
+function VendorTopUpViewLegacy({
   loading,
   amount,
   channel,
@@ -787,219 +976,19 @@ function VendorTopUpView({
   setAmount: (value: string) => void;
   setChannel: (value: "bank_transfer" | "cash_branch") => void;
   setProofFile: (value: File | null) => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<void>;
 }) {
-  const [draftStep, setDraftStep] = useState<0 | 1>(0);
-  const amountNumber = Number(amount || 0);
-  const previewReference = useMemo(() => {
-    const amountSeed = String(Math.max(Math.round(amountNumber), 0)).padStart(6, "0").slice(-6);
-    const channelSeed = channel === "bank_transfer" ? "BT" : "CB";
-    return `FND-${channelSeed}-${amountSeed}`;
-  }, [amountNumber, channel]);
-  const bankDetails = [
-    ["Bank", channel === "bank_transfer" ? "First Bank of Nigeria" : "ACOB Branch Teller"],
-    ["Account Name", "ACOB Lighting Technology Ltd"],
-    ["Account Number", channel === "bank_transfer" ? "2047839201" : "Obtain at branch"],
-    ["Amount", amount ? formatMoney(amountNumber) : "Enter amount"],
-    ["Reference / Narration", previewReference],
-  ] as const;
-
-  async function copyToClipboard(value: string) {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      return;
-    }
-  }
-
+  const [step] = useState<0 | 1>(0);
   return (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 4 }}>
+    <div className="status-fade-in" style={{ padding: "24px", maxWidth: 600 }}>
+      <div style={{ marginBottom: 8 }}>
         <h1 className="vw-page-title">Fund Wallet</h1>
-        <p className="vw-page-sub">Request a wallet balance top-up, upload proof, and route it to finance for posting.</p>
+        <p className="vw-page-sub">Top up your wallet balance via bank transfer</p>
       </div>
 
       <VwStepBar
         steps={["Initiate", "Upload Proof", "Under Review", "Confirmed", "Posted"]}
-        current={draftStep === 0 ? 0 : 1}
-      />
-
-      <VwInfoBox type="lemon" icon={<span>i</span>}>
-        <strong>Funding does not create a token.</strong> This process only credits your wallet balance after finance approval.
-        Use <strong>Buy Units</strong> after posting when you need a token or remote-send delivery.
-      </VwInfoBox>
-
-      <div className="vw-grid-2">
-        <div className="vw-surface vw-surface--padded vw-fadeUp">
-          {draftStep === 0 ? (
-            <>
-              <div className="vw-surface__title" style={{ marginBottom: 16 }}>Step 1 - Initiate Funding Request</div>
-
-              <div className="vw-field" style={{ marginBottom: 14 }}>
-                <label className="vw-field__label">Amount (NGN) *</label>
-                <div className="vw-field__input-wrap">
-                  <span className="vw-field__prefix">N</span>
-                  <input
-                    type="number"
-                    value={amount}
-                    min="100"
-                    step="100"
-                    onChange={(e) => setAmount(e.target.value)}
-                    style={{ paddingLeft: 28, fontWeight: 700, fontSize: 15, padding: "9px 13px 9px 28px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)" }}
-                  />
-                </div>
-              </div>
-
-              <div className="vw-field" style={{ marginBottom: 14 }}>
-                <label className="vw-field__label">Funding Channel *</label>
-                <select
-                  value={channel}
-                  onChange={(e) => setChannel(e.target.value as "bank_transfer" | "cash_branch")}
-                  style={{ padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)", fontSize: 13 }}
-                >
-                  <option value="bank_transfer">Bank transfer</option>
-                  <option value="cash_branch">Cash at branch</option>
-                </select>
-                <div className="vw-field__hint">{formatFundingChannelLabel(channel)} requests can be tracked after submission.</div>
-              </div>
-
-              <VwInfoBox type="info">
-                A funding reference is generated for review. Include the reference exactly in the transfer narration so finance can match and post the credit quickly.
-              </VwInfoBox>
-
-              <div style={{ marginTop: 18 }}>
-                <VwBtn variant="primary" full onClick={() => setDraftStep(1)} disabled={!amount || amountNumber <= 0}>
-                  Generate Reference
-                </VwBtn>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="vw-surface__title" style={{ marginBottom: 16 }}>Step 2 - Transfer and Upload Proof</div>
-
-              <div style={{ textAlign: "center", background: "var(--vw-bg)", borderRadius: 14, padding: "20px 16px", marginBottom: 18, border: "1px solid var(--vw-border)" }}>
-                <div style={{ fontSize: 12, color: "var(--vw-muted)", marginBottom: 6 }}>Funding reference</div>
-                <div style={{ fontSize: 26, fontWeight: 900, fontFamily: "var(--vw-mono)", color: "var(--vw-sidebar)", letterSpacing: 1.5 }}>
-                  {previewReference}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--vw-danger)", marginTop: 6, fontWeight: 700 }}>
-                  Expires in 72 hours
-                </div>
-              </div>
-
-              <div style={{ background: "var(--vw-bg)", borderRadius: 12, padding: 16, marginBottom: 18, border: "1px solid var(--vw-border)" }}>
-                <div style={{ fontSize: 11, color: "var(--vw-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
-                  Transfer Details
-                </div>
-                {bankDetails.map(([key, value]) => {
-                  const canCopy = key === "Reference / Narration" || key === "Account Number";
-                  return (
-                    <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--vw-border)", fontSize: 13 }}>
-                      <span style={{ color: "var(--vw-muted)" }}>{key}</span>
-                      <button
-                        type="button"
-                        onClick={canCopy ? () => void copyToClipboard(value) : undefined}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          padding: 0,
-                          margin: 0,
-                          color: key === "Reference / Narration" ? "var(--vw-primary)" : "var(--vw-text)",
-                          fontWeight: key === "Reference / Narration" ? 800 : 600,
-                          fontFamily: canCopy ? "var(--vw-mono)" : "var(--vw-font)",
-                          cursor: canCopy ? "pointer" : "default",
-                          textAlign: "right",
-                        }}
-                      >
-                        {value}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="vw-field" style={{ marginBottom: 10 }}>
-                <label className="vw-field__label">Upload Payment Proof *</label>
-                <div className="vw-upload-zone" onClick={() => document.getElementById("proof-upload")?.click()}>
-                  <div className="vw-upload-zone__text">
-                    {proofFile ? proofFile.name : "Drop file here or click to browse"}
-                  </div>
-                  <div className="vw-upload-zone__hint">PDF, JPG or PNG - max 5 MB</div>
-                </div>
-                <input
-                  id="proof-upload"
-                  type="file"
-                  accept=".pdf,image/*"
-                  onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-                  style={{ display: "none" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-                <VwBtn variant="outline" full onClick={() => setDraftStep(0)} disabled={loading}>
-                  Back
-                </VwBtn>
-                <VwBtn variant="primary" full onClick={onSubmit} disabled={loading || !amount || amountNumber <= 0 || !proofFile}>
-                  {loading ? "Submitting..." : "Submit Proof for Review"}
-                </VwBtn>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="vendor-wallet-stack">
-          <div className="vw-surface vw-surface--padded vw-fadeUp">
-            <div className="vw-surface__title" style={{ marginBottom: 16 }}>Funding Tracker Preview</div>
-            <VwConfirmTable
-              rows={[
-                { key: "Request Amount", value: amount ? formatMoney(amountNumber) : "N0.00", primary: true },
-                { key: "Channel", value: formatFundingChannelLabel(channel) },
-                { key: "Reference", value: previewReference, mono: true },
-                { key: "Proof", value: proofFile ? proofFile.name : "Awaiting upload" },
-                { key: "Next Step", value: draftStep === 0 ? "Generate funding reference" : "Submit proof for finance review" },
-              ]}
-            />
-          </div>
-
-          <div className="vw-surface vw-surface--padded vw-fadeUp">
-            <div className="vw-surface__title" style={{ marginBottom: 14 }}>What happens next</div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <VwInfoBox type="info">
-                Finance reviews the transfer proof and confirms the amount against your submitted reference.
-              </VwInfoBox>
-              <VwInfoBox type="success">
-                Once approved, a funding credit is posted to your wallet ledger and the balance updates in the dashboard.
-              </VwInfoBox>
-            </div>
-
-            <VwDivider label="POSTING RULE" />
-
-            <VwBadge variant="lemon" lg>
-              Posted funding increases balance only
-            </VwBadge>
-            <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--vw-muted)", lineHeight: 1.7 }}>
-              Tokens and remote-send receipts are only produced from the Buy Units flow after your wallet has been credited.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 4 }}>
-        <h1 className="vw-page-title">Fund Wallet</h1>
-        <p className="vw-page-sub">Request a wallet balance top-up, upload proof, and route it to finance for posting.</p>
-      </div>
-
-      <VwStepBar
-        steps={["Initiate", "Upload Proof", "Under Review", "Confirmed", "Posted"]}
-        current={draftStep === 0 ? 0 : 1}
+        current={step === 0 ? 0 : 1}
       />
 
       <VwInfoBox type="lemon" icon={<span>💡</span>}>
@@ -1078,6 +1067,252 @@ function VendorTopUpView({
    DATA TABLE — Shared table primitive used by transactions, receipts, etc.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function VendorTopUpView({
+  loading,
+  amount,
+  channel,
+  proofFile,
+  setAmount,
+  setChannel,
+  setProofFile,
+  onSubmit,
+}: {
+  loading: boolean;
+  amount: string;
+  channel: "bank_transfer" | "cash_branch";
+  proofFile: File | null;
+  setAmount: (value: string) => void;
+  setChannel: (value: "bank_transfer" | "cash_branch") => void;
+  setProofFile: (value: File | null) => void;
+  onSubmit: () => Promise<void>;
+}) {
+  const [stage, setStage] = useState<"initiate" | "proof" | "posted">("initiate");
+  const [copied, setCopied] = useState<string | null>(null);
+  const numericAmount = Number(amount || "0");
+  const fundingReference = `FND-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.max(numericAmount, 1)).padStart(6, "0").slice(-6)}`;
+  const bankRows = [
+    { label: "Bank Name", value: "First Bank of Nigeria" },
+    { label: "Account Name", value: "Beverly Technology Ltd" },
+    { label: "Account Number", value: "2034567891" },
+    { label: "Reference", value: fundingReference },
+  ];
+
+  const copyValue = async (value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopied(value);
+    window.setTimeout(() => setCopied(null), 1800);
+  };
+
+  const handleSubmit = async () => {
+    await onSubmit();
+    setStage("posted");
+  };
+
+  return (
+    <div className="status-fade-in" style={{ padding: "24px", maxWidth: 860 }}>
+      <div style={{ marginBottom: 8 }}>
+        <h1 className="vw-page-title">Fund Wallet</h1>
+        <p className="vw-page-sub">Top up your wallet balance via bank transfer</p>
+      </div>
+
+      <VwStepBar
+        steps={["Initiate", "Upload Proof", "Under Review", "Confirmed", "Posted"]}
+        current={stage === "initiate" ? 0 : stage === "proof" ? 1 : 4}
+      />
+
+      <VwInfoBox type="lemon">
+        <strong>Funding ≠ Token.</strong> This process increases your wallet balance only. Buy Units is the flow that issues tokens or remote sends.
+      </VwInfoBox>
+
+      {stage === "initiate" ? (
+        <div className="vw-surface vw-surface--padded vw-fadeUp">
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16 }}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div className="vw-field">
+                <label className="vw-field__label">Amount (NGN) *</label>
+                <div className="vw-field__input-wrap">
+                  <span className="vw-field__prefix">₦</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    min="100"
+                    step="100"
+                    onChange={(e) => setAmount(e.target.value)}
+                    style={{ paddingLeft: 28, fontWeight: 700, fontSize: 15, padding: "9px 13px 9px 28px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["50000", "100000", "200000", "500000"].map((quick) => (
+                  <button
+                    key={quick}
+                    type="button"
+                    onClick={() => setAmount(quick)}
+                    style={{
+                      padding: "7px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${amount === quick ? T.lemon : T.border}`,
+                      background: amount === quick ? T.lemonLight : T.surface,
+                      color: amount === quick ? T.lemonText : T.textMid,
+                      fontFamily: T.font,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {NGN(Number(quick))}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {[
+                { value: "bank_transfer", title: "Bank Transfer", desc: "Use your bank app or branch transfer. Upload proof in the next step." },
+                { value: "cash_branch", title: "Cash Branch", desc: "Pay cash at branch and upload stamped teller or receipt as proof." },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setChannel(option.value as "bank_transfer" | "cash_branch")}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    border: `1px solid ${channel === option.value ? T.primary : T.border}`,
+                    background: channel === option.value ? T.primaryLight : T.surface,
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <CircleDot size={16} color={channel === option.value ? T.primary : T.faint} />
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{option.title}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.6 }}>{option.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <VwBtn variant="primary" onClick={() => setStage("proof")} disabled={!numericAmount || numericAmount <= 0}>
+              Continue to Upload Proof
+            </VwBtn>
+          </div>
+        </div>
+      ) : null}
+
+      {stage === "proof" ? (
+        <div className="vw-surface vw-surface--padded vw-fadeUp" style={{ display: "grid", gap: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ fontSize: 11, color: T.muted, marginBottom: 4 }}>Funding Reference</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontFamily: T.mono }}>{fundingReference}</div>
+              <div style={{ marginTop: 12 }}>
+                <VwBtn variant="outline" size="sm" icon={Copy} onClick={() => void copyValue(fundingReference)}>
+                  {copied === fundingReference ? "Copied" : "Copy Reference"}
+                </VwBtn>
+              </div>
+            </div>
+
+            <div style={{ background: T.lemonLight, border: `1px solid ${T.lemon}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.lemonText, marginBottom: 6 }}>Amount to transfer</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: T.text }}>{NGN(numericAmount || 0)}</div>
+              <div style={{ fontSize: 12, color: T.textMid, marginTop: 8 }}>{formatFundingChannelLabel(channel)}</div>
+            </div>
+          </div>
+
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+            {bankRows.map((row) => (
+              <div key={row.label} style={{ display: "grid", gridTemplateColumns: "140px 1fr auto", gap: 12, padding: "12px 14px", borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ fontSize: 11, color: T.muted }}>{row.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: row.label === "Reference" || row.label === "Account Number" ? T.mono : T.font }}>{row.value}</div>
+                <button type="button" onClick={() => void copyValue(row.value)} style={{ border: `1px solid ${T.border}`, background: T.surface, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: T.textMid, cursor: "pointer" }}>
+                  {copied === row.value ? "Copied" : "Copy"}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="vw-field">
+            <label className="vw-field__label">Upload Funding Proof *</label>
+            <div className="vw-upload-zone" onClick={() => document.getElementById("proof-upload")?.click()} style={{ minHeight: 144, display: "grid", placeItems: "center", textAlign: "center" }}>
+              <div>
+                <Upload size={18} color={T.primary} style={{ marginBottom: 8 }} />
+                <div className="vw-upload-zone__text">
+                  {proofFile ? `Attachment: ${proofFile.name}` : "Drop file here or click to upload"}
+                </div>
+                <div className="vw-upload-zone__hint">PDF, JPG, PNG · Max 5 MB</div>
+              </div>
+            </div>
+            <input
+              id="proof-upload"
+              type="file"
+              accept=".pdf,image/*"
+              onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+              style={{ display: "none" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <VwBtn variant="outline" onClick={() => setStage("initiate")}>Back</VwBtn>
+            <VwBtn variant="primary" onClick={() => void handleSubmit()} disabled={loading || !numericAmount || !proofFile}>
+              {loading ? "Submitting..." : "Submit Funding Request"}
+            </VwBtn>
+          </div>
+        </div>
+      ) : null}
+
+      {stage === "posted" ? (
+        <div className="vw-surface vw-surface--padded vw-fadeUp" style={{ display: "grid", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 46, height: 46, borderRadius: "50%", background: T.successBg, display: "grid", placeItems: "center" }}>
+              <CheckCircle2 size={22} color={T.success} />
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Funding request submitted</div>
+              <div style={{ fontSize: 12, color: T.muted }}>Reference {fundingReference} is now in the finance review queue.</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {[
+              { title: "Under Review", copy: "Proof received and queued for finance validation.", tone: T.warningBg, color: T.warning },
+              { title: "Confirmed", copy: "Bank movement will be matched to your reference.", tone: T.infoBg, color: T.info },
+              { title: "Posted", copy: "Approved funds will appear in your wallet balance.", tone: T.successBg, color: T.success },
+            ].map((item) => (
+              <div key={item.title} style={{ background: item.tone, border: `1px solid ${T.border}`, borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: item.color, marginBottom: 6 }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: T.textMid, lineHeight: 1.6 }}>{item.copy}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+            {[
+              ["Funding Amount", NGN(numericAmount || 0)],
+              ["Channel", formatFundingChannelLabel(channel)],
+              ["Proof File", proofFile?.name ?? "Uploaded"],
+              ["Expected Posting", "After finance confirmation"],
+            ].map(([label, value], index) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: index % 2 === 0 ? T.surface : T.surface2 }}>
+                <div style={{ fontSize: 12, color: T.muted }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <VwBtn variant="outline" onClick={() => setStage("initiate")}>Create Another Request</VwBtn>
+            <VwBtn variant="primary" onClick={() => window.location.assign("/vendor/transactions")}>View Transactions</VwBtn>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DataTable({
   title,
   description,
@@ -1151,81 +1386,126 @@ function VendorOnboardingView({
   const vendorStatus = profile?.vendor.status ?? "draft";
 
   return (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 4 }}>
-        <h1 className="vw-page-title">Vendor Onboarding</h1>
-        <p className="vw-page-sub">Complete business, contact, bank, and KYC details for finance approval.</p>
+    <div className="status-fade-in" style={{ padding: "32px", maxWidth: 1100, margin: "0 auto" }}>
+      <div style={{ marginBottom: 24, textAlign: "center" }}>
+        <h1 className="vw-page-title">Vendor Access Form</h1>
+        <p className="vw-page-sub">Establish your identity and financial settlement parameters</p>
       </div>
 
-      {/* Status progress */}
       <VwStepBar
-        steps={["Draft", "Pending Review", "Active"]}
+        steps={["Registration", "Internal Review", "Ready"]}
         current={vendorStatus === "active" ? 3 : vendorStatus === "pending_review" ? 1 : 0}
       />
 
-      {feedback ? <VwInfoBox type={feedback.includes("Failed") ? "danger" : "success"}>{feedback}</VwInfoBox> : null}
-
-      {vendorStatus === "pending_review" ? (
-        <VwInfoBox type="info">
-          Finance review in progress. You can still update and resubmit if corrections are needed.
+      {feedback && (
+        <VwInfoBox type={feedback.toLowerCase().includes("fail") ? "danger" : "success"} icon={feedback.toLowerCase().includes("fail") ? AlertCircle : ShieldCheck}>
+          {feedback}
         </VwInfoBox>
-      ) : null}
+      )}
 
-      <div className="vw-surface vw-surface--padded">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          {[
-            { label: "Legal name", key: "legalName" as const },
-            { label: "Display name", key: "displayName" as const },
-            { label: "Business name", key: "businessName" as const },
-            { label: "Registration number", key: "registrationNumber" as const },
-            { label: "Tax ID", key: "taxId" as const },
-            { label: "Primary contact name", key: "contactName" as const },
-            { label: "Contact email", key: "contactEmail" as const },
-            { label: "Contact phone", key: "contactPhone" as const },
-            { label: "Alternate contact", key: "alternateContactName" as const },
-            { label: "Alternate phone", key: "alternateContactPhone" as const },
-            { label: "Bank name", key: "bankName" as const },
-            { label: "Account name", key: "bankAccountName" as const },
-            { label: "Account number", key: "bankAccountNumber" as const },
-            { label: "Sort code", key: "bankSortCode" as const },
-          ].map((field) => (
-            <div className="vw-field" key={field.key}>
-              <label className="vw-field__label">{field.label}</label>
-              <input
-                value={form[field.key]}
-                onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                style={{ padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)", fontSize: 13 }}
-              />
-            </div>
-          ))}
-        </div>
+      {vendorStatus === "pending_review" && (
+        <VwInfoBox type="info" icon={Clock}>
+          <strong>Queue Position Locked.</strong> Our finance team is reviewing your documentation. Corrections will be requested if needed.
+        </VwInfoBox>
+      )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-          <div className="vw-field">
-            <label className="vw-field__label">Business address</label>
-            <textarea
-              rows={3}
-              value={form.businessAddress}
-              onChange={(e) => setForm({ ...form, businessAddress: e.target.value })}
-              style={{ padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)", fontSize: 13, resize: "vertical" }}
-            />
-          </div>
-          <div className="vw-field">
-            <label className="vw-field__label">Submission notes</label>
-            <textarea
-              rows={3}
-              value={form.onboardingNotes}
-              onChange={(e) => setForm({ ...form, onboardingNotes: e.target.value })}
-              style={{ padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", width: "100%", fontFamily: "var(--vw-font)", fontSize: 13, resize: "vertical" }}
-            />
-          </div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 32 }}>
+        
+        {/* Business Section */}
+        <VwSurface title="Legal & Identity" icon={ShieldCheck} padded>
+           <div style={{ display: "grid", gap: 20 }}>
+             {[
+               { label: "Business Legal Name", key: "legalName" as const },
+               { label: "Public Display Name", key: "displayName" as const },
+               { label: "Registration No (CAC)", key: "registrationNumber" as const },
+               { label: "Tax ID / TIN", key: "taxId" as const },
+             ].map((field) => (
+               <div className="vw-field" key={field.key}>
+                 <label className="vw-field__label">{field.label}</label>
+                 <input
+                   value={form[field.key]}
+                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                   className="vw-input"
+                 />
+               </div>
+             ))}
+           </div>
+        </VwSurface>
 
-        <div style={{ marginTop: 18 }}>
-          <VwBtn variant="primary" onClick={onSubmit} disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit For Finance Review"}
-          </VwBtn>
-        </div>
+        {/* Contact Section */}
+        <VwSurface title="Communications" icon={User} padded>
+           <div style={{ display: "grid", gap: 20 }}>
+             {[
+               { label: "Primary Contact Person", key: "contactName" as const },
+               { label: "Direct Email Address", key: "contactEmail" as const },
+               { label: "Phone Number", key: "contactPhone" as const },
+               { label: "Secondary Contact", key: "alternateContactName" as const },
+             ].map((field) => (
+               <div className="vw-field" key={field.key}>
+                 <label className="vw-field__label">{field.label}</label>
+                 <input
+                   value={form[field.key]}
+                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                   className="vw-input"
+                 />
+               </div>
+             ))}
+           </div>
+        </VwSurface>
+
+        {/* Bank Section */}
+        <VwSurface title="Settlement Node" icon={Wallet} padded>
+           <div style={{ display: "grid", gap: 20 }}>
+             {[
+               { label: "Bank Institution", key: "bankName" as const },
+               { label: "Account Holder", key: "bankAccountName" as const },
+               { label: "Account Number", key: "bankAccountNumber" as const },
+               { label: "Bank Sort Code", key: "bankSortCode" as const },
+             ].map((field) => (
+               <div className="vw-field" key={field.key}>
+                 <label className="vw-field__label">{field.label}</label>
+                 <input
+                   value={form[field.key]}
+                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                   className="vw-input"
+                 />
+               </div>
+             ))}
+           </div>
+        </VwSurface>
+
+        {/* Support Section */}
+        <VwSurface title="Submission Assets" icon={FileText} padded>
+           <div className="vw-field">
+             <label className="vw-field__label">Business Address</label>
+             <textarea
+               rows={4}
+               value={form.businessAddress}
+               onChange={(e) => setForm({ ...form, businessAddress: e.target.value })}
+               className="vw-input"
+             />
+           </div>
+           <div className="vw-field" style={{ marginTop: 24 }}>
+             <label className="vw-field__label">Submission Notes (Optional)</label>
+             <textarea
+               rows={4}
+               value={form.onboardingNotes}
+               onChange={(e) => setForm({ ...form, onboardingNotes: e.target.value })}
+               className="vw-input"
+               placeholder="Any specific instructions for treasury?"
+             />
+           </div>
+        </VwSurface>
+      </div>
+
+      <div style={{ marginTop: 40, background: T.glass, border: `1px solid ${T.border}`, borderRadius: 20, padding: 32, textAlign: "center" }}>
+         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24, color: T.muted }}>
+            <ShieldCheck size={20} color={T.primary} />
+            <span style={{ fontSize: 13 }}>By submitting, you agree to the Beverly Vendor Terms of Service.</span>
+         </div>
+         <VwBtn variant="primary" size="lg" icon={ArrowRight} onClick={onSubmit} disabled={submitting} full>
+           {submitting ? "Transmitting Profile..." : "Submit Profile for Review"}
+         </VwBtn>
       </div>
     </div>
   );
@@ -1396,7 +1676,7 @@ export function VendorPage({ page }: VendorPageProps) {
   const [statement, setStatement] = useState<VendorStatementResponse | null>(null);
   const [profile, setProfile] = useState<VendorProfileResponse | null>(null);
   const [receiptDetail, setReceiptDetail] = useState<VendorReceiptDetailResponse | null>(null);
-  const [fundingRequest, setFundingRequest] = useState<VendorFundingRequestRecord | null>(null);
+  const [, setFundingRequest] = useState<VendorFundingRequestRecord | null>(null);
   const [onboardingForm, setOnboardingForm] = useState<VendorOnboardingFormState>(
     createOnboardingFormState(null),
   );
@@ -1408,8 +1688,7 @@ export function VendorPage({ page }: VendorPageProps) {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState<"all" | "debits" | "credits" | "successful" | "failed">("all");
-  const [statementRange, setStatementRange] = useState(buildTodayStatementWindow());
-  const [statementFormat, setStatementFormat] = useState<"csv" | "xlsx" | "pdf">("csv");
+  const [statementRange] = useState(buildTodayStatementWindow());
   const [purchaseDraft, setPurchaseDraft] = useState<PurchaseComposerState>({
     search: "",
     amount: "5000",
@@ -1423,52 +1702,34 @@ export function VendorPage({ page }: VendorPageProps) {
     async function hydrate() {
       if (page.vendorView === "dashboard") {
         const result = await vendorWalletService.loadDashboard();
-        if (!cancelled) {
-          setDashboard(result);
-        }
+        if (!cancelled) setDashboard(result);
         return;
       }
-
       if (page.vendorView === "transactions") {
         const result = await vendorWalletService.loadTransactions();
-        if (!cancelled) {
-          setTransactions(result);
-        }
+        if (!cancelled) setTransactions(result);
         return;
       }
-
       if (page.vendorView === "commission") {
         const result = await vendorWalletService.loadCommissionSummary();
-        if (!cancelled) {
-          setCommissionSummary(result);
-        }
+        if (!cancelled) setCommissionSummary(result);
         return;
       }
-
       if (page.vendorView === "receipts") {
         const result = await vendorWalletService.loadReceipts();
-        if (!cancelled) {
-          setReceipts(result);
-        }
+        if (!cancelled) setReceipts(result);
         return;
       }
-
       if (page.vendorView === "statement") {
         const result = await vendorWalletService.loadStatement(statementRange);
-        if (!cancelled) {
-          setStatement(result);
-        }
+        if (!cancelled) setStatement(result);
         return;
       }
-
       if (page.vendorView === "profile") {
         const result = await vendorWalletService.loadProfile();
-        if (!cancelled) {
-          setProfile(result);
-        }
+        if (!cancelled) setProfile(result);
         return;
       }
-
       if (page.vendorView === "buy-receipt" && params.receiptId) {
         const result = await vendorWalletService.loadReceipt(params.receiptId);
         if (!cancelled) {
@@ -1477,7 +1738,6 @@ export function VendorPage({ page }: VendorPageProps) {
         }
         return;
       }
-
       if (page.vendorView === "buy-confirm") {
         const draft = vendorWalletService.readPurchaseDraft();
         if (draft && !cancelled) {
@@ -1499,46 +1759,28 @@ export function VendorPage({ page }: VendorPageProps) {
         }
         return;
       }
-
       if (page.vendorView === "topup-status" && params.requestId) {
         const result = await vendorWalletService.loadFundingRequest(params.requestId);
-        if (!cancelled) {
-          setFundingRequest(result);
-        }
+        if (!cancelled) setFundingRequest(result);
       }
     }
 
     void hydrate();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [page.vendorView, params.receiptId, params.requestId, statementRange]);
 
   const availableBalance = dashboard?.wallet?.availableBalance ?? profile?.wallet?.availableBalance ?? 0;
-  const filteredTransactions = (transactions?.rows ?? []).filter((row) => {
-    if (transactionFilter === "all") {
-      return true;
-    }
-    if (transactionFilter === "debits") {
-      return row.direction === "debit";
-    }
-    if (transactionFilter === "credits") {
-      return row.direction === "credit";
-    }
-    if (transactionFilter === "successful") {
-      return row.status.toLowerCase().includes("posted") || row.status.toLowerCase().includes("successful");
-    }
-    if (transactionFilter === "failed") {
-      return row.status.toLowerCase().includes("failed") || row.status.toLowerCase().includes("rejected");
-    }
-    return true;
-  });
+  
+  const filteredTransactions = useMemo(() => {
+    const rows = transactions?.rows ?? [];
+    if (transactionFilter === "all") return rows;
+    if (transactionFilter === "debits") return rows.filter(r => r.direction === "debit");
+    if (transactionFilter === "credits") return rows.filter(r => r.direction === "credit");
+    return rows.filter(r => r.status.toLowerCase().includes(transactionFilter));
+  }, [transactions, transactionFilter]);
 
   useEffect(() => {
-    if (profile) {
-      setOnboardingForm(createOnboardingFormState(profile));
-    }
+    if (profile) setOnboardingForm(createOnboardingFormState(profile));
   }, [profile]);
 
   async function handleSearchMeters(searchTerm: string) {
@@ -1552,10 +1794,7 @@ export function VendorPage({ page }: VendorPageProps) {
   }
 
   function handleContinuePurchase() {
-    if (!purchaseDraft.selectedMeter) {
-      return;
-    }
-
+    if (!purchaseDraft.selectedMeter) return;
     vendorWalletService.savePurchaseDraft({
       idempotencyKey: createVendorIdempotencyKey(),
       walletId: dashboard?.wallet?.id ?? profile?.wallet?.id ?? "wallet-demo",
@@ -1576,25 +1815,11 @@ export function VendorPage({ page }: VendorPageProps) {
 
   async function handleSubmitPurchase() {
     const draft = vendorWalletService.readPurchaseDraft();
-    if (!draft) {
-      return;
-    }
-
+    if (!draft) return;
     setSubmitting(true);
     try {
-        const payload = {
-        idempotencyKey: draft.idempotencyKey || createVendorIdempotencyKey(),
-        walletId: draft.walletId,
-        meterSn: draft.meterSn,
-        customerRef: draft.customerRef,
-        amount: draft.amount,
-        siteCode: draft.siteCode,
-      };
-      const result =
-        draft.deliveryMethod === "remote_send"
-          ? await vendorWalletService.purchaseRemoteSend(payload)
-          : await vendorWalletService.purchaseGenerateToken(payload);
-
+      const payload = { idempotencyKey: draft.idempotencyKey || createVendorIdempotencyKey(), walletId: draft.walletId, meterSn: draft.meterSn, customerRef: draft.customerRef, amount: draft.amount, siteCode: draft.siteCode };
+      const result = draft.deliveryMethod === "remote_send" ? await vendorWalletService.purchaseRemoteSend(payload) : await vendorWalletService.purchaseGenerateToken(payload);
       if (result.receiptId) {
         vendorWalletService.clearPurchaseDraft();
         navigate(`/vendor/buy/receipt/${result.receiptId}`);
@@ -1613,17 +1838,10 @@ export function VendorPage({ page }: VendorPageProps) {
         channel: topUpChannel,
         idempotencyKey: createVendorIdempotencyKey(),
       });
-
       if (proofFile) {
         const upload = await vendorWalletService.uploadFundingProof(proofFile);
-        await vendorWalletService.submitFundingProof(created.id, {
-          fileName: proofFile.name,
-          documentId: upload.documentId,
-          mimeType: proofFile.type,
-          fileSize: proofFile.size,
-        });
+        await vendorWalletService.submitFundingProof(created.id, { fileName: proofFile.name, documentId: upload.documentId, mimeType: proofFile.type, fileSize: proofFile.size });
       }
-
       navigate(`/vendor/topup/${created.id}`);
     } finally {
       setSubmitting(false);
@@ -1631,15 +1849,12 @@ export function VendorPage({ page }: VendorPageProps) {
   }
 
   async function handleSubmitOnboarding() {
-    if (!profile?.vendor.vendorCode || !profile.vendor.businessName) {
-      return;
-    }
-
+    if (!profile?.vendor.vendorCode) return;
     setSubmitting(true);
     setProfileFeedback(null);
     try {
       const payload: VendorOnboardingPayload = {
-        vendorId: profile.vendor.id ?? profile.user.vendorId ?? "",
+        vendorId: profile.vendor.id ?? "",
         vendorCode: profile.vendor.vendorCode,
         businessName: onboardingForm.businessName,
         legalName: onboardingForm.legalName,
@@ -1660,13 +1875,12 @@ export function VendorPage({ page }: VendorPageProps) {
         onboardingNotes: onboardingForm.onboardingNotes,
         submitForReview: true,
       };
-
       await vendorWalletService.submitOnboarding(payload);
       const refreshed = await vendorWalletService.loadProfile();
       setProfile(refreshed);
-      setProfileFeedback("Onboarding submitted for finance review.");
+      setProfileFeedback("Access form submitted for finance review.");
     } catch (error) {
-      setProfileFeedback(error instanceof Error ? error.message : "Failed to submit onboarding");
+      setProfileFeedback(error instanceof Error ? error.message : "Submission failed");
     } finally {
       setSubmitting(false);
     }
@@ -1674,488 +1888,263 @@ export function VendorPage({ page }: VendorPageProps) {
 
   // ── Admin view: route vendor management pages to admin-specific UI ──
   if (!isVendorWorkspaceUser(authUser)) {
-    if (page.vendorView === "dashboard") {
-      return <AdminVendorQueueView />;
-    }
-    // For all other vendor page views, render the admin management wrapper
     return <AdminVendorQueueView />;
   }
 
-  if (page.vendorView === "dashboard") {
-    return <VendorDashboardView dashboard={dashboard} />;
-  }
+  const onboardingRequired = !profile?.wallet || profile?.vendor.status !== "active";
 
-  if (page.vendorView === "buy") {
-    return (
-      <VendorBuyView
-        draft={purchaseDraft}
-        onSearch={handleSearchMeters}
-        onDraftChange={setPurchaseDraft}
-        onContinue={handleContinuePurchase}
-        searching={searchingMeters}
-        results={searchResults}
-        availableBalance={availableBalance}
-      />
-    );
-  }
-
-  if (page.vendorView === "buy-confirm") {
-    const draft = vendorWalletService.readPurchaseDraft();
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Confirm Purchase</h1>
-          <p className="vw-page-sub">Review the meter, amount, and delivery path before debiting the wallet.</p>
-        </div>
-        <VwStepBar steps={["Select Meter", "Amount & Delivery", "Confirm", "Receipt"]} current={2} />
-        {draft ? (
-          <div className="vw-surface vw-surface--padded vw-fadeUp">
-            <VwConfirmTable
-              rows={[
-                { key: "Customer", value: draft.customerName },
-                { key: "Meter SN", value: draft.meterSn, mono: true },
-                { key: "Amount", value: formatMoney(draft.amount), primary: true },
-                { key: "Delivery Method", value: draft.deliveryMethod === "remote_send" ? "Remote Send" : "Token Generate" },
-                { key: "Available Balance", value: formatMoney(draft.availableBalance) },
-              ]}
-            />
-            <VwInfoBox type="warning" icon={<span>⚠️</span>}>
-              This will immediately debit <strong>{formatMoney(draft.amount)}</strong> from your wallet.
-            </VwInfoBox>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <Link to="/vendor/buy" style={{ textDecoration: "none" }}>
-                <VwBtn variant="outline">← Back</VwBtn>
-              </Link>
-              <VwBtn variant="primary" onClick={() => void handleSubmitPurchase()} disabled={submitting}>
-                {submitting ? "Processing…" : "Confirm Debit"}
-              </VwBtn>
-            </div>
+  return (
+    <div className="vendor-wallet-portal-shell status-fade-in">
+       {/* Sidebar / Navigation */}
+       <div className="vw-portal-aside">
+          <div className="vw-portal-brand">
+             <div className="vw-portal-logo"><Zap size={20} fill="currentColor" /></div>
+             <div className="vw-portal-name">Beverly Wallet</div>
           </div>
-        ) : (
-          <VwInfoBox type="warning">No pending draft. Start from the Buy Units screen.</VwInfoBox>
-        )}
-      </div>
-    );
-  }
 
-  if (page.vendorView === "buy-receipt") {
-    return <VendorReceiptView detail={receiptDetail ?? vendorWalletService.readCachedReceiptDetail()} />;
-  }
+          <nav className="vw-portal-nav">
+             {[
+               { id: "dashboard", label: "Dashboard", icon: Activity, path: "/vendor" },
+               { id: "buy", label: "Buy Units", icon: Zap, path: "/vendor/buy" },
+               { id: "topup", label: "Funding", icon: Wallet, path: "/vendor/topup" },
+               { id: "receipts", label: "Receipts", icon: Receipt, path: "/vendor/receipts" },
+               { id: "transactions", label: "Ledger", icon: Clock, path: "/vendor/transactions" },
+               { id: "commission", label: "Earnings", icon: TrendingUp, path: "/vendor/commission" },
+               { id: "statement", label: "Statement", icon: FileText, path: "/vendor/statement" },
+               { id: "profile", label: "Account", icon: User, path: "/vendor/profile" },
+             ].map((item) => {
+               const isActive = page.vendorView === item.id || (item.id === "buy" && page.vendorView.startsWith("buy"));
+               return (
+                 <Link key={item.id} to={item.path} className={`vw-portal-nav-item ${isActive ? "active" : ""}`}>
+                    <item.icon size={18} />
+                    <span>{item.label}</span>
+                 </Link>
+               );
+             })}
+          </nav>
 
-  if (page.vendorView === "commission") {
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Commission</h1>
-          <p className="vw-page-sub">Accrued commission, settlement history, and current rate.</p>
-        </div>
-        <div className="vw-grid-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-          <VwKPI
-            label="Outstanding"
-            value={formatMoney(commissionSummary?.totalOutstanding ?? 0)}
-            iconBg="#FFFBEB"
-          />
-          <VwKPI
-            label="Total Accrued"
-            value={formatMoney(commissionSummary?.totalAccrued ?? 0)}
-            iconBg="#e6f4e6"
-          />
-          <VwKPI
-            label="Settlement Rate"
-            value={`${((commissionSummary?.rule.rate ?? 0) * 100).toFixed(2)}%`}
-            sub={commissionSummary?.rule.overrideSource === "vendor_override" ? "Vendor override" : "Default rule"}
-            iconBg="#EFF6FF"
-          />
-        </div>
-        <DataTable
-          title="Commission History"
-          description="Accruals from purchases and posted settlement credits."
-          headers={["Date", "Type", "Reference", "Amount", "Rate"]}
-          rows={(commissionSummary?.history.rows ?? []).map((row) => [
-            formatDateTime(row.createdAt),
-            row.type,
-            row.reference,
-            formatMoney(row.amount),
-            row.rate !== null ? `${(row.rate * 100).toFixed(2)}%` : "-",
-          ])}
-        />
-      </div>
-    );
-  }
-
-  if (page.vendorView === "transactions") {
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Transactions</h1>
-          <p className="vw-page-sub">Funding, purchase, reversal, and commission movements across the wallet.</p>
-        </div>
-
-        <div className="vw-filter-pills">
-          {[
-            ["all", "All"],
-            ["debits", "Debits"],
-            ["credits", "Credits"],
-            ["successful", "Successful"],
-            ["failed", "Failed"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              className={`vw-filter-pill${transactionFilter === key ? " vw-filter-pill--active" : ""}`}
-              onClick={() => setTransactionFilter(key as typeof transactionFilter)}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="vw-surface">
-          <div className="vw-surface__header">
-            <span className="vw-surface__title">Transaction Table</span>
-            <VwBadge variant="gray">{filteredTransactions.length} rows</VwBadge>
+          <div className="vw-portal-footer">
+             <VwBtn variant="ghost" size="sm" icon={LogOut} onClick={() => window.location.href = "/logout"}>Exit Portal</VwBtn>
           </div>
-          <div className="vw-table-wrap">
-            <table className="vw-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Reference</th>
-                  <th>Type</th>
-                  <th>Description</th>
-                  <th>Debit</th>
-                  <th>Credit</th>
-                  <th>Balance After</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((row) => (
-                  <tr key={row.id}>
-                    <td className="vw-td--muted">{formatDateTime(row.createdAt)}</td>
-                    <td className="vw-td--mono">{row.reference ?? row.receiptNumber ?? "--"}</td>
-                    <td><VwBadge variant={row.direction === "debit" ? "warning" : "success"}>{row.type}</VwBadge></td>
-                    <td>{row.description}</td>
-                    <td className={row.direction === "debit" ? "vw-td--danger vw-td--bold" : "vw-td--muted"}>{row.direction === "debit" ? formatMoney(row.amount) : "--"}</td>
-                    <td className={row.direction === "credit" ? "vw-td--success vw-td--bold" : "vw-td--muted"}>{row.direction === "credit" ? formatMoney(row.amount) : "--"}</td>
-                    <td className="vw-td--bold">{row.balanceAfter !== null ? formatMoney(row.balanceAfter) : "--"}</td>
-                    <td><VwBadge variant={row.status === "failed" ? "danger" : row.status === "posted" || row.status === "successful" ? "success" : "warning"} dot>{row.status}</VwBadge></td>
-                  </tr>
-                ))}
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} style={{ textAlign: "center", color: "var(--vw-muted)", padding: "2rem" }}>
-                      No transactions match the selected filter.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
+       </div>
 
-  if (page.vendorView === "receipts") {
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Receipts</h1>
-          <p className="vw-page-sub">Retrieve branded receipts for past remote-send and token generation purchases.</p>
-        </div>
-
-        <div className="vw-grid-4">
-          {(receipts?.rows ?? []).map((row) => (
-            <Link
-              key={row.id}
-              to={`/vendor/buy/receipt/${row.id}`}
-              className="vw-quick-card"
-              style={{ minHeight: 180 }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                <div className="vw-quick-card__icon" style={{ background: row.deliveryMethod === "remote_send" ? "#EFF6FF" : "#e6f4e6", color: row.deliveryMethod === "remote_send" ? "#2563EB" : "#008000" }}>
-                  {row.deliveryMethod === "remote_send" ? "RS" : "TK"}
+       {/* Main Content Area */}
+       <div className="vw-portal-main">
+          {/* Top Header */}
+          <header className="vw-portal-header">
+             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 36, height: 36, background: T.glass, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${T.border}` }}>
+                   <Activity size={18} color={T.primary} />
                 </div>
-                <VwBadge variant={row.deliveryMethod === "remote_send" ? "info" : "success"}>
-                  {row.deliveryMethod === "remote_send" ? "Remote Send" : "Token"}
-                </VwBadge>
-              </div>
-              <div className="vw-quick-card__title" style={{ marginBottom: 8 }}>{row.receiptNumber}</div>
-              <div className="vw-quick-card__desc" style={{ marginBottom: 10 }}>{row.meterSn}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "var(--vw-text)", marginBottom: 8 }}>{formatMoney(row.amount)}</div>
-              <div style={{ fontSize: 11, color: "var(--vw-faint)" }}>{formatDateTime(row.issuedAt)}</div>
-            </Link>
-          ))}
-        </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{profile?.vendor.businessName || "Vendor Terminal"}</div>
+                  <div style={{ fontSize: 11, color: T.muted }}>{profile?.vendor.siteName || "Global Node"}</div>
+                </div>
+             </div>
+             
+             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <div style={{ textAlign: "right", paddingRight: 16, borderRight: `1px solid ${T.border}` }}>
+                   <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", fontWeight: 700 }}>Floating Cap</div>
+                   <div style={{ fontSize: 14, fontWeight: 800, color: T.primary }}>{NGN(availableBalance)}</div>
+                </div>
+                <VwBtn variant="ghost" size="sm" icon={Settings}>Settings</VwBtn>
+             </div>
+          </header>
 
-        {(receipts?.rows ?? []).length === 0 ? (
-          <VwInfoBox type="info">No receipts have been issued yet.</VwInfoBox>
-        ) : null}
-      </div>
-    );
-  }
+          <main className="vw-portal-content-scroll">
+            {page.vendorView === "dashboard" && <VendorDashboardView dashboard={dashboard} />}
+            
+            {page.vendorView === "buy" && (
+              <VendorBuyView draft={purchaseDraft} onSearch={handleSearchMeters} onDraftChange={setPurchaseDraft} onContinue={handleContinuePurchase} searching={searchingMeters} results={searchResults} availableBalance={availableBalance} />
+            )}
 
-  if (page.vendorView === "topup") {
-    return (
-      <VendorTopUpView
-        loading={submitting}
-        amount={topUpAmount}
-        channel={topUpChannel}
-        proofFile={proofFile}
-        setAmount={setTopUpAmount}
-        setChannel={setTopUpChannel}
-        setProofFile={setProofFile}
-        onSubmit={() => void handleSubmitFundingRequest()}
-      />
-    );
-  }
+            {page.vendorView === "buy-confirm" && (
+               <div className="status-fade-in" style={{ padding: "24px", maxWidth: 660 }}>
+                  <VwSurface title="Confirm Purchase" icon={ShieldCheck} padded>
+                     <VwConfirmTable
+                        rows={[
+                          { key: "Customer", value: purchaseDraft.selectedMeter?.customerName || "--" },
+                          { key: "Meter SN", value: purchaseDraft.selectedMeter?.meterSn || "--", mono: true },
+                          { key: "Delivery", value: purchaseDraft.deliveryMethod === "remote_send" ? "Remote Send to Meter" : "Generate Token (20-digit code)" },
+                          { key: "Vending Sum", value: NGN(Number(purchaseDraft.amount)), primary: true },
+                          { key: "Available Balance", value: NGN(availableBalance) },
+                          { key: "Wallet balance after", value: NGN(Math.max(availableBalance - Number(purchaseDraft.amount), 0)) },
+                        ]}
+                      />
+                      <VwInfoBox type="warning" icon={AlertCircle}>This debits <strong>{NGN(Number(purchaseDraft.amount))}</strong> immediately. The {purchaseDraft.deliveryMethod === "remote_send" ? "remote-send reference" : "token"} is issued only after successful processing.</VwInfoBox>
+                      <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+                        <VwBtn variant="ghost" size="lg" onClick={() => navigate("/vendor/buy")}>Back</VwBtn>
+                        <VwBtn variant="lemon" size="lg" full onClick={() => void handleSubmitPurchase()} loading={submitting}>Authorize Debit</VwBtn>
+                      </div>
+                  </VwSurface>
+               </div>
+            )}
 
-  if (page.vendorView === "topup-status") {
-    const steps = ["initiated", "awaiting_proof", "under_review", "confirmed", "posted"];
-    const currentStepIdx = steps.indexOf(fundingRequest?.status ?? "initiated");
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Funding Tracker</h1>
-          <p className="vw-page-sub">Track the funding request from submission to posting.</p>
-        </div>
-        <VwStepBar
-          steps={["Initiated", "Awaiting Proof", "Under Review", "Confirmed", "Posted"]}
-          current={currentStepIdx >= 0 ? currentStepIdx : 0}
-        />
-        {fundingRequest ? (
-          <div className="vw-grid-2">
-            <div className="vw-surface vw-surface--padded">
-              <VwConfirmTable
-                rows={[
-                  { key: "Reference", value: fundingRequest.reference, mono: true },
-                  { key: "Status", value: fundingRequest.status.replace(/_/g, " ") },
-                  { key: "Amount", value: formatMoney(fundingRequest.amount), primary: true },
-                  { key: "Channel", value: formatFundingChannelLabel(fundingRequest.channel === "cash_at_branch" ? "cash_branch" : fundingRequest.channel) },
-                  { key: "Updated", value: formatDateTime(fundingRequest.updatedAt) },
-                ]}
-              />
-            </div>
+            {page.vendorView === "buy-receipt" && <VendorReceiptView detail={receiptDetail ?? vendorWalletService.readCachedReceiptDetail()} />}
+            
+            {page.vendorView === "commission" && (
+               <div style={{ padding: 32 }}>
+                  <VwSurface title="Earnings Summary" icon={TrendingUp} padded>
+                     <div className="vw-grid-3">
+                        <VwKPI label="Outstanding" value={NGN(commissionSummary?.totalOutstanding ?? 0)} icon={TrendingUp} />
+                        <VwKPI label="Accrued" value={NGN(commissionSummary?.totalAccrued ?? 0)} icon={Activity} />
+                        <VwKPI label="Rate" value={`${((commissionSummary?.rule.rate ?? 0) * 100).toFixed(2)}%`} icon={ShieldCheck} />
+                     </div>
+                     <div style={{ marginTop: 32 }}>
+                        <DataTable title="Ledger" description="Recent commission movements" headers={["Date", "Ref", "Amount", "Rate"]} rows={(commissionSummary?.history.rows ?? []).map(r => [formatDateTime(r.createdAt), r.reference, NGN(r.amount), r.rate !== null ? `${(r.rate * 100).toFixed(2)}%` : "-"])} />
+                     </div>
+                  </VwSurface>
+               </div>
+            )}
 
-            <div className="vw-surface vw-surface--padded">
-              {fundingRequest.status === "posted" ? (
-                <VwInfoBox type="success">
-                  Funding has been posted to the wallet. No token is issued for funding, so the next step is to use Buy Units whenever the customer is ready.
-                </VwInfoBox>
-              ) : fundingRequest.status === "under_review" || fundingRequest.status === "confirmed" ? (
-                <VwInfoBox type="info">
-                  Finance is currently reviewing the transfer proof and preparing the wallet credit journal.
-                </VwInfoBox>
-              ) : (
-                <VwInfoBox type="warning">
-                  Awaiting the next funding step. Keep the funding reference handy in case finance requests verification.
-                </VwInfoBox>
-              )}
+            {page.vendorView === "transactions" && (
+               <div style={{ padding: 24 }}>
+                  <VwSurface title="Wallet Ledger" icon={Clock} padded>
+                     <div className="vw-filter-pills" style={{ marginBottom: 24 }}>
+                        {["all", "debits", "credits", "successful", "failed"].map(f => (
+                           <button key={f} className={`vw-filter-pill ${transactionFilter === f ? "vw-filter-pill--active" : ""}`} onClick={() => setTransactionFilter(f as any)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                        ))}
+                     </div>
+                     <div className="vw-table-wrap">
+                        <table className="vw-table">
+                          <thead><tr><th>Date / Time</th><th>Reference</th><th>Description</th><th>Method</th><th>Debit (₦)</th><th>Credit (₦)</th><th>Balance After</th><th>Status</th><th>Receipt</th></tr></thead>
+                          <tbody>
+                            {filteredTransactions.map(t => (
+                              <tr key={t.id}>
+                                <td style={{ color: T.muted, fontSize: 12 }}>{formatDateTime(t.createdAt)}</td>
+                                <td style={{ fontFamily: T.mono, fontSize: 12, color: T.primary }}>{t.reference || "--"}</td>
+                                <td style={{ fontWeight: 600 }}>{t.description}</td>
+                                <td>{t.deliveryMethod ? <VwBadge variant={t.deliveryMethod === "remote_send" ? "info" : "success"}>{t.deliveryMethod === "remote_send" ? "Remote Send" : "Token"}</VwBadge> : <VwBadge variant="lemon">Funding</VwBadge>}</td>
+                                <td style={{ fontWeight: 700, color: t.direction === "debit" ? T.danger : T.muted }}>{t.direction === "debit" ? NGN(t.amount) : "—"}</td>
+                                <td style={{ fontWeight: 700, color: t.direction === "credit" ? T.primary : T.muted }}>{t.direction === "credit" ? NGN(t.amount) : "—"}</td>
+                                <td style={{ fontWeight: 700, fontFamily: T.mono }}>{t.balanceAfter === null ? "—" : NGN(t.balanceAfter)}</td>
+                                <td><VwBadge variant={getStatusTone(t.status)} dot>{t.status}</VwBadge></td>
+                                <td>{t.receiptId ? <Link to={`/vendor/buy/receipt/${t.receiptId}`}><VwBtn variant="ghost" size="xs">View</VwBtn></Link> : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                     </div>
+                  </VwSurface>
+               </div>
+            )}
 
-              <VwDivider label="NEXT ACTION" />
-              <div style={{ display: "grid", gap: 10 }}>
-                {[
-                  fundingRequest.status === "posted"
-                    ? "Open Buy Units to generate a token or remote-send from the funded balance."
-                    : "Wait for finance to complete proof review and post the wallet credit.",
-                  "Funding increases wallet balance only; electricity tokens are created separately during purchases.",
-                  `Reference ${fundingRequest.reference} remains your primary support handle for this request.`,
-                ].map((line) => (
-                  <div key={line} style={{ fontSize: 12, color: "var(--vw-muted)", lineHeight: 1.7 }}>
-                    {line}
+            {page.vendorView === "receipts" && (
+               <div style={{ padding: 24 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(270px,1fr))", gap: 14 }}>
+                    {(receipts?.rows ?? []).map(r => (
+                      <Link key={r.id} to={`/vendor/buy/receipt/${r.id}`} className="vw-quick-card" style={{ textDecoration: "none" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%" }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>{r.receiptNumber}</div>
+                            <div className="vw-quick-card__title" style={{ marginTop: 4 }}>{r.customerRef || "Purchase Receipt"}</div>
+                          </div>
+                          <VwBadge variant={r.deliveryMethod === "remote_send" ? "info" : "success"}>{r.deliveryMethod === "remote_send" ? "Remote" : "Token"}</VwBadge>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", width: "100%", marginTop: 16 }}>
+                          <span style={{ fontSize: 12, color: T.muted }}>{formatDateTime(r.issuedAt).split(",")[0]}</span>
+                          <span style={{ fontWeight: 800, color: T.text, fontSize: 18 }}>{NGN(r.amount)}</span>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                ))}
+               </div>
+            )}
+
+            {page.vendorView === "topup" && (
+               <VendorTopUpView loading={submitting} amount={topUpAmount} channel={topUpChannel} proofFile={proofFile} setAmount={setTopUpAmount} setChannel={setTopUpChannel} setProofFile={setProofFile} onSubmit={handleSubmitFundingRequest} />
+            )}
+
+            {page.vendorView === "statement" && (
+              <div style={{ padding: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, alignItems: "start" }}>
+                  <VwSurface title="Generate Statement" icon={FileText} padded>
+                    <div className="vw-field" style={{ marginBottom: 14 }}>
+                      <label className="vw-field__label">From Date</label>
+                      <input type="date" value={statementRange.fromDate} readOnly className="vw-input" />
+                    </div>
+                    <div className="vw-field" style={{ marginBottom: 14 }}>
+                      <label className="vw-field__label">To Date</label>
+                      <input type="date" value={statementRange.toDate} readOnly className="vw-input" />
+                    </div>
+                    <div className="vw-field" style={{ marginBottom: 14 }}>
+                      <label className="vw-field__label">Format</label>
+                      <select className="vw-input" defaultValue="CSV">
+                        <option>CSV</option>
+                        <option>PDF</option>
+                        <option>Excel (.xlsx)</option>
+                      </select>
+                    </div>
+                    <VwBtn full icon={Download}>Generate & Download</VwBtn>
+                  </VwSurface>
+
+                  <VwSurface title="Statement Preview" icon={Activity} padded>
+                    <div className="vw-table-wrap">
+                      <table className="vw-table">
+                        <thead><tr><th>Date / Time</th><th>Reference</th><th>Description</th><th>Debit (₦)</th><th>Credit (₦)</th><th>Balance After</th></tr></thead>
+                        <tbody>
+                          {(statement?.rows ?? []).map((row) => (
+                            <tr key={row.id}>
+                              <td style={{ color: T.muted, fontSize: 12 }}>{formatDateTime(row.createdAt)}</td>
+                              <td style={{ fontFamily: T.mono, color: T.primary }}>{row.reference}</td>
+                              <td>{row.description}</td>
+                              <td style={{ color: row.debit > 0 ? T.danger : T.muted, fontWeight: 700 }}>{row.debit > 0 ? NGN(row.debit) : "—"}</td>
+                              <td style={{ color: row.credit > 0 ? T.primary : T.muted, fontWeight: 700 }}>{row.credit > 0 ? NGN(row.credit) : "—"}</td>
+                              <td style={{ fontFamily: T.mono, fontWeight: 700 }}>{NGN(row.balanceAfter)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </VwSurface>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <VwInfoBox type="warning">Funding request not found.</VwInfoBox>
-        )}
-      </div>
-    );
-  }
+            )}
 
-  if (page.vendorView === "statement") {
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div style={{ marginBottom: 4 }}>
-          <h1 className="vw-page-title">Statement</h1>
-          <p className="vw-page-sub">Select a period, preview statement lines, and download the current view.</p>
-        </div>
-
-        <div className="vw-surface vw-surface--padded">
-          <div className="vw-grid-4" style={{ gridTemplateColumns: "1.2fr 1.2fr 0.8fr auto" }}>
-            <div className="vw-field">
-              <label className="vw-field__label">From date</label>
-              <input
-                type="date"
-                value={statementRange.fromDate}
-                onChange={(event) => setStatementRange((current) => ({ ...current, fromDate: event.target.value }))}
-                style={{ width: "100%", padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", fontFamily: "var(--vw-font)", fontSize: 13 }}
-              />
-            </div>
-            <div className="vw-field">
-              <label className="vw-field__label">To date</label>
-              <input
-                type="date"
-                value={statementRange.toDate}
-                onChange={(event) => setStatementRange((current) => ({ ...current, toDate: event.target.value }))}
-                style={{ width: "100%", padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", fontFamily: "var(--vw-font)", fontSize: 13 }}
-              />
-            </div>
-            <div className="vw-field">
-              <label className="vw-field__label">Format</label>
-              <select
-                value={statementFormat}
-                onChange={(event) => setStatementFormat(event.target.value as typeof statementFormat)}
-                style={{ width: "100%", padding: "9px 13px", borderRadius: 8, border: "1px solid var(--vw-border2)", fontFamily: "var(--vw-font)", fontSize: 13 }}
-              >
-                <option value="csv">CSV</option>
-                <option value="xlsx">Excel</option>
-                <option value="pdf">PDF</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "end" }}>
-              <VwBtn
-                variant="primary"
-                onClick={() => downloadStatementPreview(statement?.rows ?? [], statementRange.fromDate, statementRange.toDate, statementFormat)}
-              >
-                Download
-              </VwBtn>
-            </div>
-          </div>
-        </div>
-
-        <div className="vw-surface">
-          <div className="vw-surface__header">
-            <span className="vw-surface__title">Statement Preview</span>
-            <VwBadge variant="gray">{statement?.total ?? 0} rows</VwBadge>
-          </div>
-          <div className="vw-table-wrap">
-            <table className="vw-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Reference</th>
-                  <th>Description</th>
-                  <th>Debit</th>
-                  <th>Credit</th>
-                  <th>Balance After</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(statement?.rows ?? []).map((row) => (
-                  <tr key={row.id}>
-                    <td className="vw-td--muted">{formatDateTime(row.createdAt)}</td>
-                    <td className="vw-td--mono">{row.reference}</td>
-                    <td>{row.description}</td>
-                    <td className={row.debit > 0 ? "vw-td--danger vw-td--bold" : "vw-td--muted"}>{row.debit > 0 ? formatMoney(row.debit) : "--"}</td>
-                    <td className={row.credit > 0 ? "vw-td--success vw-td--bold" : "vw-td--muted"}>{row.credit > 0 ? formatMoney(row.credit) : "--"}</td>
-                    <td className="vw-td--bold">{formatMoney(row.balanceAfter)}</td>
-                  </tr>
-                ))}
-                {(statement?.rows ?? []).length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: "center", color: "var(--vw-muted)", padding: "2rem" }}>
-                      No statement rows are available for the selected period.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div className="vw-surface vw-surface--padded" style={{ textAlign: "center", padding: "3rem" }}>
-          <div className="vw-spinner vw-spinner--md" style={{ borderColor: "var(--vw-primary)", borderRightColor: "transparent", marginBottom: 12 }} />
-          <p style={{ color: "var(--vw-muted)", fontSize: 13 }}>Loading vendor profile…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const onboardingRequired = !profile.wallet || profile.vendor.status !== "active";
-
-  return onboardingRequired ? (
-    <VendorOnboardingView
-      profile={profile}
-      form={onboardingForm}
-      setForm={setOnboardingForm}
-      submitting={submitting}
-      feedback={profileFeedback}
-      onSubmit={() => void handleSubmitOnboarding()}
-    />
-  ) : (
-    <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 4 }}>
-        <h1 className="vw-page-title">Vendor Profile</h1>
-        <p className="vw-page-sub">Grouped identity, contact, wallet, and KYC information for the current vendor account.</p>
-      </div>
-      {profile ? (
-        <>
-          <div className="vw-grid-4">
-            <VwKPI label="Wallet Status" value={profile.wallet?.status ?? "Pending"} sub={profile.wallet?.walletNumber ?? "Wallet pending"} iconBg="#EFF6FF" />
-            <VwKPI label="Available Balance" value={formatMoney(profile.wallet?.availableBalance ?? 0)} sub="Current posted balance" iconBg="#e6f4e6" />
-            <VwKPI label="Reserved" value={formatMoney(profile.wallet?.reservedBalance ?? 0)} sub="Pending purchases" iconBg="#FFFBEB" />
-            <VwKPI label="KYC Documents" value={profile.vendor.kycDocumentCount ?? 0} sub={profile.vendor.kycStatus ?? "Not started"} iconBg="#F5F3FF" />
-          </div>
-          <div className="vw-profile-section">
-            <div className="vw-profile-section__header">Account Information</div>
-            {[
-              ["Vendor", profile.vendor.businessName ?? profile.vendor.vendorCode ?? "Vendor account"],
-              ["Legal Name", profile.vendor.legalName ?? "Not provided"],
-              ["Wallet Number", profile.wallet?.walletNumber ?? "Wallet pending"],
-              ["Site", profile.vendor.siteName ?? "Site pending"],
-              ["Registration Number", profile.vendor.registrationNumber ?? "Not provided"],
-              ["Tax ID", profile.vendor.taxId ?? "Not provided"],
-            ].map(([k, v]) => (
-              <div className="vw-profile-row" key={k}>
-                <span className="vw-profile-row__key">{k}</span>
-                <span className="vw-profile-row__val">{v}</span>
+            {page.vendorView === "profile" && (
+              <div style={{ padding: 24 }}>
+                 {onboardingRequired ? (
+                   <VendorOnboardingView profile={profile} form={onboardingForm} setForm={setOnboardingForm} submitting={submitting} feedback={profileFeedback} onSubmit={() => void handleSubmitOnboarding()} />
+                 ) : (
+                   <div className="status-fade-in">
+                      <div style={{ display: "grid", gap: 20 }}>
+                        <VwSurface title="Account Information" icon={User} padded>
+                          <VwConfirmTable rows={[
+                            { key: "Business Name", value: profile?.vendor.businessName || "--" },
+                            { key: "Vendor Code", value: profile?.vendor.vendorCode || "--", mono: true },
+                            { key: "Site", value: profile?.vendor.siteName || "--" },
+                            { key: "Wallet Number", value: profile?.wallet?.walletNumber || "--", mono: true },
+                            { key: "Wallet Status", value: profile?.wallet?.status || "--" },
+                          ]} />
+                        </VwSurface>
+                        <VwSurface title="Contact Details" icon={User} padded>
+                          <VwConfirmTable rows={[
+                            { key: "Primary Contact", value: profile?.vendor.contactName || "--" },
+                            { key: "Email", value: profile?.vendor.contactEmail || "--" },
+                            { key: "Phone", value: profile?.vendor.contactPhone || "--" },
+                            { key: "Secondary Contact", value: profile?.vendor.alternateContactName || "--" },
+                          ]} />
+                        </VwSurface>
+                        <VwSurface title="KYC Status" icon={ShieldCheck} padded>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
+                            <VwKPI label="Compliance" value={profile?.vendor.kycStatus || "Review"} icon={ShieldCheck} />
+                            <VwKPI label="Documents" value={String(profile?.vendor.kycDocumentCount ?? 0)} icon={FileText} />
+                            <VwKPI label="Reserved Balance" value={NGN(profile?.wallet?.reservedBalance ?? 0)} icon={Wallet} />
+                          </div>
+                          <VwConfirmTable rows={[
+                            { key: "Registration Number", value: profile?.vendor.registrationNumber || "--" },
+                            { key: "Tax ID", value: profile?.vendor.taxId || "--" },
+                            { key: "Bank", value: profile?.vendor.bankName || "--" },
+                            { key: "Account Name", value: profile?.vendor.accountName || "--" },
+                          ]} />
+                        </VwSurface>
+                      </div>
+                   </div>
+                 )}
               </div>
-            ))}
-          </div>
-          <div className="vw-profile-section">
-            <div className="vw-profile-section__header">Contact Details</div>
-            {[
-              ["Contact Name", profile.vendor.contactName ?? "Not provided"],
-              ["Contact Email", profile.vendor.contactEmail ?? "Not provided"],
-              ["Contact Phone", profile.vendor.contactPhone ?? "Not provided"],
-              ["Alternate Contact", profile.vendor.alternateContactName ?? "Not provided"],
-              ["Alternate Phone", profile.vendor.alternateContactPhone ?? "Not provided"],
-              ["Business Address", profile.vendor.businessAddress ?? "Not provided"],
-            ].map(([k, v]) => (
-              <div className="vw-profile-row" key={k}>
-                <span className="vw-profile-row__key">{k}</span>
-                <span className="vw-profile-row__val">{v}</span>
-              </div>
-            ))}
-          </div>
-          <div className="vw-profile-section">
-            <div className="vw-profile-section__header">KYC Status</div>
-            {[
-              ["Wallet Status", profile.wallet?.status ?? "Pending"],
-              ["KYC Status", profile.vendor.kycStatus ?? "Not started"],
-              ["Onboarding Submitted", profile.vendor.onboardingSubmittedAt ? formatDateTime(profile.vendor.onboardingSubmittedAt) : "Not submitted"],
-              ["Bank", profile.vendor.bankName ?? "Not provided"],
-              ["Account Name", profile.vendor.accountName ?? "Not provided"],
-              ["Masked Account", profile.vendor.accountNumberMasked ?? "Not provided"],
-            ].map(([k, v]) => (
-              <div className="vw-profile-row" key={k}>
-                <span className="vw-profile-row__key">{k}</span>
-                <span className={`vw-profile-row__val${v === "active" || v === "approved" ? " vw-profile-row__val--success" : ""}`}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
+            )}
+          </main>
+       </div>
     </div>
   );
 }

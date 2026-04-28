@@ -1,10 +1,10 @@
 import type { CookieOptions } from "express";
 import { env } from "./env.js";
 
-export const SESSION_COOKIE_NAME = "acob_session";
-export const REFRESH_COOKIE_NAME = "acob_refresh";
-export const UPSTREAM_SESSION_COOKIE_NAME = "acob_upstream_session";
-export const CSRF_COOKIE_NAME = "acob_csrf";
+export const SESSION_COOKIE_NAME = "beverly_session";
+export const REFRESH_COOKIE_NAME = "beverly_refresh";
+export const UPSTREAM_SESSION_COOKIE_NAME = "beverly_upstream_session";
+export const CSRF_COOKIE_NAME = "beverly_csrf";
 
 export function buildSessionCookieOptions(maxAgeMs: number): CookieOptions {
   return {

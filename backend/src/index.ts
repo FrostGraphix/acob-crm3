@@ -80,7 +80,7 @@ export async function startServer() {
 
   app.listen(env.port, () => {
     // eslint-disable-next-line no-console
-    console.log(`ACOB CRM3 backend listening on http://localhost:${env.port}`);
+    console.log(`Beverly backend listening on http://localhost:${env.port}`);
     // eslint-disable-next-line no-console
     console.log("Runtime diagnostics", runtime);
   });

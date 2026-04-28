@@ -8,4 +8,4 @@ accountRouter.post("/read", proxyHandler);
 accountRouter.post("/create", proxyHandler);
 accountRouter.post("/update", proxyHandler);
 accountRouter.post("/delete", proxyHandler);
-accountRouter.post("/import", createBulkImportHandler("/api/account/create", "account"));
+accountRouter.post("/import", createBulkImportHandler("/api/account/import", "account"));

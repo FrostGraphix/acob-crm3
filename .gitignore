@@ -5,3 +5,11 @@ build/
 .DS_Store
 *.log
 coverage/
+
+# Temporary and scratch files
+tmp-*
+tmp_*
+scratch_*.js
+*.png
+tmp-video-frames/
+.live-amr-assets/

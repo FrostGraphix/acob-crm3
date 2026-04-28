@@ -250,8 +250,7 @@ export const walletLedgerService = {
 
   reserveFunds(input: WalletLedgerPostingInput) {
     const wallet = requireWallet(input.walletId);
-    const availableWithCredit = roundMoney(wallet.availableBalance + wallet.creditLimit);
-    if (availableWithCredit < input.amount) {
+    if (wallet.availableBalance < input.amount) {
       throw new Error("Insufficient wallet balance for reservation");
     }
 

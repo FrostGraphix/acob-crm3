@@ -15,6 +15,9 @@ interface RemoteTokenSendInput {
   operation: RemoteTokenOperation;
   loadMode?: RemoteTokenLoadMode;
   amount?: number;
+  taskName?: string;
+  scheduleDate?: string;
+  operatorReason?: string;
 }
 
 interface CreditResolution {
@@ -422,8 +425,10 @@ async function resolveCreditValues(
   }
 
   if (nairaPerUnit === null || nairaPerUnit <= 0) {
-    nairaPerUnit = 1;
-    source = "fallback-1-to-1";
+    const meterId = readString(row, ["meterId", "MeterId", "meterNo", "MeterNo"]) ?? "selected meter";
+    throw new Error(
+      `Unable to resolve tariff rate for ${meterId}; remote token send is blocked to avoid incorrect unit delivery.`,
+    );
   }
 
   if (loadMode === "naira") {
@@ -448,13 +453,18 @@ function buildRemoteDeliveryCandidates(args: {
   stationId: string | null;
   tokenValue: string;
   tokenType: "credit" | "clear-credit";
+  taskName?: string | null;
+  scheduleDate?: string | null;
+  operatorReason?: string | null;
 }) {
   const compactToken = args.tokenValue.replace(/\s+/g, "");
-  const scheduleDate = new Date().toISOString().slice(0, 10);
+  const scheduleDate = args.scheduleDate?.trim() || new Date().toISOString().slice(0, 10);
   const operationRemark =
-    args.tokenType === "clear-credit" ? "Clear credit token" : "Credit token";
+    args.operatorReason?.trim() ||
+    (args.tokenType === "clear-credit" ? "Clear credit token" : "Credit token");
   const taskLabel =
-    args.tokenType === "clear-credit" ? "Clear Credit Token" : "Send Credit Token";
+    args.taskName?.trim() ||
+    (args.tokenType === "clear-credit" ? "Clear Credit Token" : "Send Credit Token");
   const common = {
     meterId: args.meterId,
     customerId: args.customerId ?? args.meterId,
@@ -556,6 +566,8 @@ function buildGprsDeliveryCandidates(args: {
   stationId: string | null;
   tokenValue: string;
   protocolId: number;
+  taskName?: string | null;
+  operatorReason?: string | null;
 }) {
   const compactToken = args.tokenValue.replace(/\s+/g, "");
   const now = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -564,11 +576,11 @@ function buildGprsDeliveryCandidates(args: {
     customerName: args.customerName ?? args.customerId ?? args.meterId,
     meterId: args.meterId,
     protocolId: args.protocolId,
-    name: "Send Token",
+    name: args.taskName?.trim() || "Send Token",
     data: compactToken,
     dataPrefix: "",
     stationId: args.stationId ?? "",
-    remark: null,
+    remark: args.operatorReason?.trim() || null,
   };
 
   return [
@@ -797,6 +809,9 @@ export async function executeRemoteTokenSend(
     stationId,
     tokenValue,
     tokenType: input.operation === "clear-credit" ? "clear-credit" : "credit",
+    taskName: input.taskName,
+    scheduleDate: input.scheduleDate,
+    operatorReason: input.operatorReason,
   });
   const gprsCandidates = buildGprsDeliveryCandidates({
     meterId,
@@ -805,6 +820,8 @@ export async function executeRemoteTokenSend(
     stationId,
     tokenValue,
     protocolId,
+    taskName: input.taskName,
+    operatorReason: input.operatorReason,
   });
   const isDirectGprsCandidate = looksLikeDirectGprsMeter(row);
   const directCredential = resolveDirectSendCredential(stationId);

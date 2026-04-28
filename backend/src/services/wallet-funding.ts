@@ -425,15 +425,6 @@ export const walletFundingService = {
       }
     }
 
-    request.status = "posted";
-    request.approvedBy = context.actorUserId;
-    request.externalBankRef = externalBankRef ?? request.externalBankRef;
-    request.reviewerNote = input.reviewerNote?.trim() ?? request.reviewerNote;
-    request.reviewedAt = nowIso();
-    request.postedAt = nowIso();
-    request.updatedAt = nowIso();
-    getWalletDomainState().fundingRequests.set(request.id, request);
-
     const ledgerResult = getWalletLedgerService().postFundingCredit({
       walletId: request.walletId,
       vendorId: request.vendorId,
@@ -447,6 +438,15 @@ export const walletFundingService = {
         channel: request.channel,
       },
     });
+    const approvedAt = nowIso();
+    request.status = "posted";
+    request.approvedBy = context.actorUserId;
+    request.externalBankRef = externalBankRef ?? request.externalBankRef;
+    request.reviewerNote = input.reviewerNote?.trim() ?? request.reviewerNote;
+    request.reviewedAt = approvedAt;
+    request.postedAt = approvedAt;
+    request.updatedAt = approvedAt;
+    getWalletDomainState().fundingRequests.set(request.id, request);
     persistFundingRequest(request);
     safeAudit({
       actor_user_id: context.actorUserId,

@@ -208,9 +208,9 @@ export const env: AppEnv = {
         : "single-instance",
   redisUrl: parseString(process.env.REDIS_URL, "redis://127.0.0.1:6379"),
   redisConnectTimeoutMs: parsePositiveInteger(process.env.REDIS_CONNECT_TIMEOUT_MS, 750),
-  redisKeyPrefix: parseString(process.env.REDIS_KEY_PREFIX, "acob:session:"),
-  runtimeStateKeyPrefix: parseString(process.env.RUNTIME_STATE_KEY_PREFIX, "acob:runtime:"),
-  schedulerLeaderKeyPrefix: parseString(process.env.SCHEDULER_LEADER_KEY_PREFIX, "acob:leader:"),
+  redisKeyPrefix: parseString(process.env.REDIS_KEY_PREFIX, "beverly:session:"),
+  runtimeStateKeyPrefix: parseString(process.env.RUNTIME_STATE_KEY_PREFIX, "beverly:runtime:"),
+  schedulerLeaderKeyPrefix: parseString(process.env.SCHEDULER_LEADER_KEY_PREFIX, "beverly:leader:"),
   schedulerLeaderLeaseMs: parsePositiveInteger(process.env.SCHEDULER_LEADER_LEASE_MS, 20_000),
   schedulerLeaderHeartbeatMs: parsePositiveInteger(
     process.env.SCHEDULER_LEADER_HEARTBEAT_MS,

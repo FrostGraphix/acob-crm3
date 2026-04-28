@@ -50,7 +50,39 @@ function buildRemoteAuditDetails(body: Record<string, unknown>) {
 }
 
 function resolveUpstreamPathname(pathname: string) {
-  return pathname === "/api/item/read" ? "/api/item/readItemList" : pathname;
+  const aliases = new Map<string, string>([
+    ["/api/item/read", "/api/item/readItemList"],
+    ["/api/dailyData/read", "/api/DailyData/read"],
+    ["/api/dailyData/readMore", "/api/DailyData/readMore"],
+    ["/api/dailyData/readMonthly", "/api/DailyData/readMonthly"],
+    ["/api/remoteMeterTask/createReadingTask", "/API/RemoteMeterTask/CreateReadingTask"],
+    ["/api/remoteMeterTask/createSettingTask", "/API/RemoteMeterTask/CreateSettingTask"],
+    ["/api/remoteMeterTask/createControlTask", "/API/RemoteMeterTask/CreateControlTask"],
+    ["/api/remoteMeterTask/createTokenTask", "/API/RemoteMeterTask/CreateTokenTask"],
+    ["/api/remoteMeterTask/CreateTransparentForwardingTask", "/API/RemoteMeterTask/CreateTransparentForwardingTask"],
+    ["/api/remoteMeterTask/getReadingTask", "/API/RemoteMeterTask/GetReadingTask"],
+    ["/api/remoteMeterTask/getSettingTask", "/API/RemoteMeterTask/GetSettingTask"],
+    ["/api/remoteMeterTask/getControlTask", "/API/RemoteMeterTask/GetControlTask"],
+    ["/api/remoteMeterTask/getTokenTask", "/API/RemoteMeterTask/GetTokenTask"],
+    ["/api/remoteMeterTask/GetTransparentForwardingTask", "/API/RemoteMeterTask/GetTransparentForwardingTask"],
+    ["/api/remoteMeterTask/updateReadingTask", "/API/RemoteMeterTask/UpdateReadingTask"],
+    ["/api/remoteMeterTask/updateSettingTask", "/API/RemoteMeterTask/UpdateSettingTask"],
+    ["/api/remoteMeterTask/updateControlTask", "/API/RemoteMeterTask/UpdateControlTask"],
+    ["/api/remoteMeterTask/updateTokenTask", "/API/RemoteMeterTask/UpdateTokenTask"],
+    ["/api/gprsOnlineStatus/read", "/API/GPRSOnlineStatus/Read"],
+    ["/api/gprsOnlineStatus/view", "/API/GPRSOnlineStatus/View"],
+    ["/api/updateFirmwareTask/getUpdateFirmwareTask", "/API/UpdateFirmwareTask/GetUpdateFirmwareTask"],
+    ["/api/updateFirmwareTask/createUpdateFirmwareTask", "/API/UpdateFirmwareTask/CreateUpdateFirmwareTask"],
+    ["/api/loadProfile/electricEnergyCurve", "/API/LoadProfile/ElectricEnergyCurve"],
+    ["/api/loadProfile/instantaneousValueCurve", "/API/LoadProfile/InstantaneousValueCurve"],
+    ["/api/loadProfile/dailyData", "/API/LoadProfile/DailyData"],
+    ["/api/loadProfile/monthlyData", "/API/LoadProfile/MonthlyData"],
+    ["/api/eventNotification/read", "/API/EventNotification/Read"],
+    ["/api/file/upload", "/API/File/Upload"],
+    ["/api/file/uploadBin", "/API/File/UploadBin"],
+  ]);
+
+  return aliases.get(pathname) ?? pathname;
 }
 
 function isBrokenItemCatalogResponse(
@@ -147,10 +179,12 @@ export async function proxyCanonicalPath(
           upstreamPathname === "/API/PrepayReport/LowPurchaseSituation" ||
           upstreamPathname === "/API/PrepayReport/LongNonpurchaseSituation" ||
           upstreamPathname === "/API/PrepayReport/ConsumptionStatistics" ||
+          upstreamPathname === "/api/DailyData/read" ||
           upstreamPathname === "/api/DailyDataMeter/read" ||
           upstreamPathname === "/api/item/readItemList" ||
           upstreamPathname === "/API/LoadProfile/DailyData" ||
-          upstreamPathname === "/API/LoadProfile/MonthlyData"
+          upstreamPathname === "/API/LoadProfile/MonthlyData" ||
+          fallbackCandidates.length > 0
         ) {
           for (const candidateBody of fallbackCandidates) {
             if (result.statusCode < 400 && result.payload.code === 0) {

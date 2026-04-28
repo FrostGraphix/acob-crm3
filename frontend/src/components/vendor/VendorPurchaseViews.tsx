@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ACOB_RECEIPT_BRAND } from "../../services/receipt-branding.ts";
+import { BEVERLY_RECEIPT_BRAND } from "../../services/receipt-branding.ts";
 import { createVendorIdempotencyKey, vendorWalletService } from "../../services/vendor-wallet.ts";
 import type {
   VendorDashboardResponse,
@@ -446,12 +446,12 @@ export function VendorReceiptView() {
           <div className="vw-receipt-success__title">
             VENDING RECEIPT {isTokenReceipt ? "TOKEN" : "REMOTE SEND"}
           </div>
-          <div className="vw-receipt-success__sub">{ACOB_RECEIPT_BRAND.companyName}</div>
+          <div className="vw-receipt-success__sub">{BEVERLY_RECEIPT_BRAND.companyName}</div>
         </div>
 
         <div className="vw-receipt-success__body">
           <div className="vw-receipt-success__brand">
-            <span className="vw-receipt-success__brand-name">{ACOB_RECEIPT_BRAND.website}</span>
+            <span className="vw-receipt-success__brand-name">{BEVERLY_RECEIPT_BRAND.website}</span>
             <span className="vw-receipt-success__brand-ref">{receipt.receiptNumber}</span>
           </div>
 
@@ -482,8 +482,8 @@ export function VendorReceiptView() {
           ) : null}
 
           <p style={{ marginTop: 16, color: "var(--vw-faint)", fontSize: 12 }}>
-            This receipt is issued by {ACOB_RECEIPT_BRAND.companyName}. For support, contact{" "}
-            {ACOB_RECEIPT_BRAND.email} or {ACOB_RECEIPT_BRAND.primaryPhone}.
+            This receipt is issued by {BEVERLY_RECEIPT_BRAND.companyName}. For support, contact{" "}
+            {BEVERLY_RECEIPT_BRAND.email} or {BEVERLY_RECEIPT_BRAND.primaryPhone}.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>

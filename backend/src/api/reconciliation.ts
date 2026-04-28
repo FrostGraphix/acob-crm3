@@ -297,6 +297,26 @@ reconciliationRouter.post("/exceptions/resolve", (request, response) => {
   }
 });
 
+reconciliationRouter.get("/settlement/latest", (request, response) => {
+  try {
+    const context = createWalletRequestContext(request as AuthenticatedRequest);
+    sendEnvelope(
+      response,
+      200,
+      getWalletReconciliationService().getSettlementReport(context, "latest"),
+      "success",
+    );
+  } catch (error) {
+    sendEnvelope(
+      response,
+      toStatusCode(error),
+      null,
+      error instanceof Error ? error.message : "Failed to load latest settlement report",
+      1,
+    );
+  }
+});
+
 reconciliationRouter.get("/settlement/:settlementRef", (request, response) => {
   try {
     const context = createWalletRequestContext(request as AuthenticatedRequest);

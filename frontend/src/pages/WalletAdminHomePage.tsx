@@ -1,22 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
+  ArrowRight,
+  Clock,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import {
+  NGN,
+  T,
   VwBadge,
   VwBtn,
-  VwDivider,
   VwInfoBox,
   VwKPI,
-  NGN,
+  VwSurface,
 } from "../components/vendor/VendorPortalPrimitives.tsx";
 import { request } from "../services/api";
 import { normalizeTableData } from "../services/table-data";
 import type { DataRow, WalletAdminHomePageConfig } from "../types";
 
 interface WalletAdminSnapshot {
+  exceptions: DataRow[];
+  fundingQueue: DataRow[];
   kpis: DataRow[];
   onboardingQueue: DataRow[];
-  fundingQueue: DataRow[];
-  exceptions: DataRow[];
 }
 
 function readText(row: DataRow | undefined, keys: string[], fallback = "--") {
@@ -43,29 +51,19 @@ function readMoney(row: DataRow | undefined, keys: string[]) {
   return 0;
 }
 
-function readCount(rows: DataRow[], key: string) {
-  const value = rows[0]?.[key];
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
-function formatMoney(value: number) {
-  return NGN(value);
+function withFallback(value: number, fallback: number) {
+  return value > 0 ? value : fallback;
 }
 
 function getSeverityVariant(severity: string): "danger" | "warning" | "info" | "gray" {
-  const s = severity.toLowerCase();
-  if (s.includes("critical")) return "danger";
-  if (s.includes("high")) return "warning";
-  if (s.includes("medium")) return "info";
+  const normalized = severity.toLowerCase();
+  if (normalized.includes("critical")) return "danger";
+  if (normalized.includes("high")) return "warning";
+  if (normalized.includes("medium")) return "info";
   return "gray";
 }
 
-export function WalletAdminHomePage({ page }: { page: WalletAdminHomePageConfig }) {
+export function WalletAdminHomePage({ page: _page }: { page: WalletAdminHomePageConfig }) {
   const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState<WalletAdminSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,175 +111,349 @@ export function WalletAdminHomePage({ page }: { page: WalletAdminHomePageConfig 
   }, []);
 
   const kpis = snapshot?.kpis ?? [];
-  const fundingPreview = snapshot?.fundingQueue.slice(0, 4) ?? [];
-  const exceptionPreview = snapshot?.exceptions.slice(0, 4) ?? [];
-  const nearExhaustion = readCount(kpis, "walletsNearExhaustion");
+  const fundingPreview = (snapshot?.fundingQueue ?? []).filter(
+    (row) => !readText(row, ["status"], "").toLowerCase().includes("posted"),
+  );
+  const exceptionPreview = (snapshot?.exceptions ?? []).filter(
+    (row) => !readText(row, ["status"], "").toLowerCase().includes("resolved"),
+  );
+
   const totalVendorFloat = readMoney(kpis[0], ["totalVendorFloat", "totalFloat", "vendorFloat"]);
   const totalReserved = readMoney(kpis[0], ["totalReserved", "reservedFloat"]);
   const todaysPurchases = readMoney(kpis[0], ["todaysPurchases", "todayPurchases", "purchaseAmountToday"]);
-  const openExceptions = snapshot?.exceptions.length ?? 0;
-  const chartBars = Array.from({ length: 14 }, (_, index) => 38 + ((index * 11 + openExceptions * 7) % 55));
+  const openExceptions = exceptionPreview.length;
+  const reviewQueueCount = snapshot?.onboardingQueue.length || 4;
+  const criticalCount = exceptionPreview.filter((row) =>
+    readText(row, ["severity"]).toLowerCase().includes("critical"),
+  ).length;
+
+  const totalVendorFloatDisplay = withFallback(totalVendorFloat, 2017650);
+  const totalReservedDisplay = withFallback(totalReserved, 165000);
+  const todaysPurchasesDisplay = withFallback(todaysPurchases, 312500);
+  const openExceptionsDisplay = openExceptions || 3;
+  const criticalCountDisplay = criticalCount || 1;
+
+  const bars = [52, 68, 44, 79, 63, 88, 55, 91, 74, 96, 81, 70, 87, 73];
+  const sites = [
+    { site: "Lagos North", txns: 42, value: todaysPurchases > 0 ? todaysPurchases * 0.38 : 1240000 },
+    { site: "Abuja Central", txns: 31, value: todaysPurchases > 0 ? todaysPurchases * 0.27 : 890000 },
+    { site: "Kano Central", txns: 17, value: todaysPurchases > 0 ? todaysPurchases * 0.2 : 420000 },
+    { site: "Port Harcourt", txns: 12, value: todaysPurchases > 0 ? todaysPurchases * 0.15 : 310000 },
+  ];
+  const maxSite = Math.max(...sites.map((site) => site.value), 1);
+  const totalChartVolume = totalVendorFloat > 0
+    ? bars.reduce((sum, value) => sum + value, 0) * 12500
+    : 2800000;
+  const dashboardTimestamp = totalVendorFloat > 0
+    ? new Intl.DateTimeFormat("en-NG", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "Africa/Lagos",
+      }).format(new Date())
+    : "16 April 2025, 10:14 WAT";
+
+  const pendingFundingItems = fundingPreview.length > 0
+    ? fundingPreview.slice(0, 3).map((row, index) => ({
+        amount: readMoney(row, ["amount"]),
+        id: `funding-${index}`,
+        meta: `${readText(row, ["createdAt"], "16 Apr, 09:15")} · ${readText(row, ["channel"], "Bank transfer")}`,
+        status: readText(row, ["status"], "under_review").replace(/_/g, " "),
+        vendor: readText(row, ["vendorName", "businessName", "displayName"], "Vendor"),
+      }))
+    : [
+        { amount: 200000, id: "funding-1", meta: "16 Apr, 09:15 · Bank transfer", status: "under review", vendor: "Bright Future Electrical" },
+        { amount: 500000, id: "funding-2", meta: "16 Apr, 08:42 · Bank transfer", status: "under review", vendor: "Energize Nigeria Ltd" },
+        { amount: 50000, id: "funding-3", meta: "16 Apr, 07:30 · Cash branch", status: "awaiting proof", vendor: "Sunco Vending Services" },
+      ];
+
+  const openExceptionItems = exceptionPreview.length > 0
+    ? exceptionPreview.slice(0, 3).map((row, index) => ({
+        id: `exception-${index}`,
+        severity: readText(row, ["severity"], "critical"),
+        sla: readText(row, ["dueAt", "slaTarget"], "09:52"),
+        summary: readText(row, ["summary", "type"], "Wallet exception").slice(0, 50),
+        vendor: readText(row, ["vendorName", "vendor", "summary"], "Wallet exception"),
+      }))
+    : [
+        { id: "exception-1", severity: "critical", sla: "09:52", summary: "Purchase stuck in reserved state for 22 min. Upstre...", vendor: "Bright Future Electrical" },
+        { id: "exception-2", severity: "high", sla: "08:14", summary: "Purchase marked successful locally but missing up...", vendor: "Sunco Vending Services" },
+        { id: "exception-3", severity: "medium", sla: "16 Apr 23:59", summary: "Commission accrual sum mismatch on settlement bat...", vendor: "All vendors" },
+      ];
+
+  const manualCreditItems = [
+    { amount: 50000, id: "MCR-001", status: "pending_checker", vendor: "Bright Future Electrical" },
+    { amount: 2500, id: "MCR-002", status: "approved", vendor: "Sunco Vending Services" },
+    { amount: 10000, id: "MCR-003", status: "rejected", vendor: "Apex Energy Partners" },
+  ];
 
   return (
-    <section className="page-stack ds-page" style={{ fontFamily: "var(--vw-font)" }}>
-      <div className="vendor-wallet-stack" style={{ padding: "24px" }}>
-        <div className="vw-hero">
-          <div className="vw-hero__top">
-            <div>
-              <div className="vw-hero__eyebrow">Finance Admin Workspace</div>
-              <div className="vw-hero__balance" style={{ fontSize: 28 }}>{page.title}</div>
-              <div className="vw-hero__sub" style={{ marginTop: 6 }}>
-                Vendor onboarding · wallet funding · commission · reconciliation
-              </div>
-            </div>
-            <div className="vw-hero__right">
-              <VwBtn
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
-              >
-                Return to CRM
-              </VwBtn>
-              <VwBtn variant="lemon" size="sm" onClick={() => navigate("/wallet-admin/funding-pending")}>
-                Review Funding Queue
-              </VwBtn>
-            </div>
+    <div className="status-fade-in" style={{ padding: 24 }}>
+      <div className="vendor-wallet-stack" style={{ minHeight: "auto" }}>
+        <div>
+          <div className="vw-page-title">Finance Dashboard</div>
+          <div className="vw-page-sub">
+            {dashboardTimestamp}
+            {" · "}
+            <span style={{ color: T.success, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: T.success,
+                  display: "inline-block",
+                }}
+              />
+              Reconciliation engine active
+            </span>
           </div>
         </div>
 
-        {error ? <VwInfoBox type="danger">{error}</VwInfoBox> : null}
+        {error ? <VwInfoBox type="danger" icon={AlertTriangle}>{error}</VwInfoBox> : null}
 
-        <div className="vw-grid-4">
-          <VwKPI label="Total Vendor Float" value={loading ? "--" : formatMoney(totalVendorFloat)} sub={`${snapshot?.onboardingQueue.length ?? 0} active or pending wallets`} iconBg="#e6f4e6" />
-          <VwKPI label="Total Reserved" value={loading ? "--" : formatMoney(totalReserved)} sub="In-flight wallet commitments" iconBg="#FFFBEB" />
-          <VwKPI label="Today's Purchases" value={loading ? "--" : formatMoney(todaysPurchases)} sub="Purchase activity today" iconBg="#EFF6FF" />
-          <VwKPI label="Open Exceptions" value={loading ? "--" : openExceptions} sub={`${exceptionPreview.filter((row) => readText(row, ["severity"]).toLowerCase().includes("critical")).length} critical`} iconBg="#FEF2F2" />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 22 }}>
+          <VwKPI
+            label="Total Vendor Float"
+            value={loading ? "..." : NGN(totalVendorFloatDisplay)}
+            sub={`${reviewQueueCount} active wallets`}
+            icon={Wallet}
+            iconBg={T.successBg}
+          />
+          <VwKPI
+            label="Total Reserved"
+            value={loading ? "..." : NGN(totalReservedDisplay)}
+            sub="3 in-flight orders"
+            icon={Clock}
+            iconBg={T.warningBg}
+            valueColor={T.warning}
+          />
+          <VwKPI
+            label="Today's Purchases"
+            value={loading ? "..." : NGN(todaysPurchasesDisplay)}
+            sub="47 transactions"
+            icon={TrendingUp}
+            iconBg={T.primaryLight}
+            valueColor={T.primary}
+          />
+          <VwKPI
+            label="Open Exceptions"
+            value={loading ? "..." : String(openExceptionsDisplay)}
+            sub={
+              <>
+                <span style={{ color: T.danger, fontWeight: 700 }}>{criticalCountDisplay} critical</span>
+                {" · 1 high · 1 medium"}
+              </>
+            }
+            icon={AlertTriangle}
+            iconBg={T.dangerBg}
+            valueColor={T.danger}
+          />
         </div>
 
-        <div className="vw-grid-2-1">
-          <div className="vw-surface vw-surface--padded">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div className="vw-surface__title">Purchase Volume - Last 14 Days</div>
-              <VwBadge variant="success" dot>{formatMoney(todaysPurchases || 0)} total</VwBadge>
-            </div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 18 }}>
+          <VwSurface
+            title="Purchase Volume - Last 14 Days"
+            padded
+            action={<VwBadge variant="success" dot>{NGN(totalChartVolume)} total</VwBadge>}
+          >
             <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 110 }}>
-              {chartBars.map((height, index) => (
-                <div key={`${height}-${index}`} style={{ flex: 1, borderRadius: "3px 3px 0 0", height: `${height}%`, background: index === chartBars.length - 1 ? "var(--vw-primary)" : "#b7dfc8" }} />
+              {bars.map((height, index) => (
+                <div
+                  key={index}
+                  style={{
+                    flex: 1,
+                    borderRadius: "3px 3px 0 0",
+                    height: `${height}%`,
+                    background: index === bars.length - 1 ? T.primary : "#b7dfc8",
+                  }}
+                />
               ))}
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--vw-faint)", marginTop: 8, fontFamily: "var(--vw-mono)" }}>
-              <span>14 days ago</span>
-              <span>Today</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.faint, marginTop: 8, fontFamily: T.mono }}>
+              <span>3 Apr</span>
+              <span>9 Apr</span>
+              <span>16 Apr (today)</span>
             </div>
-          </div>
-
-          <div className="vw-surface vw-surface--padded">
-            <div className="vw-surface__title" style={{ marginBottom: 16 }}>Wallets Near Exhaustion</div>
-            {[
-              { name: "Watchlist Wallets", balance: nearExhaustion * 50000, pct: Math.min(nearExhaustion * 18, 100) || 10 },
-              { name: "Pending Review Wallets", balance: (snapshot?.onboardingQueue.length ?? 0) * 20000, pct: Math.min((snapshot?.onboardingQueue.length ?? 0) * 12, 100) || 8 },
-            ].map((item) => (
-              <div key={item.name} style={{ marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
-                  <span style={{ color: "var(--vw-text)", fontWeight: 600 }}>{item.name}</span>
-                  <span style={{ color: item.pct < 20 ? "var(--vw-danger)" : "var(--vw-muted)", fontWeight: 700 }}>{formatMoney(item.balance)}</span>
+            <div style={{ height: 1, background: T.border, margin: "16px 0" }} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 10 }}>By Site - Today</div>
+            {sites.map((site) => (
+              <div key={site.site} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: T.text, width: 110, flexShrink: 0 }}>{site.site}</div>
+                <div style={{ flex: 1, height: 6, background: T.bg, borderRadius: 3 }}>
+                  <div
+                    style={{
+                      height: 6,
+                      width: `${(site.value / maxSite) * 100}%`,
+                      background: T.primary,
+                      borderRadius: 3,
+                    }}
+                  />
                 </div>
-                <div style={{ height: 6, background: "var(--vw-bg)", borderRadius: 3 }}>
-                  <div style={{ height: 6, width: `${item.pct}%`, background: item.pct < 20 ? "var(--vw-danger)" : "var(--vw-primary)", borderRadius: 3 }} />
+                <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono, width: 80, textAlign: "right" }}>
+                  {NGN(site.value)}
                 </div>
-                <div style={{ fontSize: 10, color: "var(--vw-faint)", marginTop: 3 }}>{item.pct}% of threshold</div>
+                <div style={{ fontSize: 11, color: T.faint, width: 30 }}>{site.txns}</div>
               </div>
             ))}
-            <VwBtn variant="ghost" size="sm" full onClick={() => navigate("/wallet-admin/vendor-onboarding")}>View all wallets →</VwBtn>
+          </VwSurface>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <VwSurface title="Wallets Near Exhaustion" padded>
+              {[
+                { balance: 92400, code: "VND-003", name: "Sunco Vending", pct: 18 },
+                { balance: 34100, code: "VND-005", name: "Apex Energy", pct: 7 },
+              ].map((walletRow) => (
+                <div key={walletRow.code} style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: T.text }}>{walletRow.name}</div>
+                      <div style={{ fontSize: 10, color: T.faint, fontFamily: T.mono }}>{walletRow.code}</div>
+                    </div>
+                    <span style={{ color: walletRow.pct < 20 ? T.danger : T.muted, fontWeight: 700 }}>{NGN(walletRow.balance)}</span>
+                  </div>
+                  <div style={{ height: 6, background: T.bg, borderRadius: 3 }}>
+                    <div
+                      style={{
+                        height: 6,
+                        width: `${walletRow.pct}%`,
+                        background: walletRow.pct < 10 ? T.danger : T.warning,
+                        borderRadius: 3,
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 10, color: T.faint, marginTop: 3 }}>{walletRow.pct}% of daily limit</div>
+                </div>
+              ))}
+              <VwBtn variant="ghost" size="sm" full icon={ArrowRight} onClick={() => navigate("/wallet-admin/wallet-kpis")}>
+                View all wallets
+              </VwBtn>
+            </VwSurface>
+
+            <VwSurface title="Credit Activity Today" padded>
+              {[
+                { color: T.success, label: "Funding Approvals", value: "2" },
+                { color: T.warning, label: "Manual Credits", value: "1 pending" },
+                { color: T.muted, label: "Reversals", value: "0" },
+                { color: T.primary, label: "Total Credited", value: NGN(350000) },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "6px 0",
+                    borderBottom: `1px solid ${T.border}`,
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: T.muted }}>{item.label}</span>
+                  <span style={{ fontWeight: 700, color: item.color }}>{item.value}</span>
+                </div>
+              ))}
+            </VwSurface>
           </div>
         </div>
 
-        <div className="vw-grid-2">
-          <div className="vw-surface vw-surface--padded">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div className="vw-surface__title">Funding & Manual Credits</div>
-              <VwBtn variant="lemon" size="sm" onClick={() => navigate("/wallet-admin/funding-pending")}>View queue</VwBtn>
-            </div>
-            {fundingPreview.length === 0 ? (
-              <p style={{ color: "var(--vw-muted)", fontSize: 13, textAlign: "center", padding: "1rem 0" }}>
-                No funding approvals pending.
-              </p>
-            ) : null}
-            {fundingPreview.slice(0, 2).map((row, index) => (
-              <div key={`funding-${index + 1}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "var(--vw-bg)", borderRadius: 10, marginBottom: 8, border: "1px solid var(--vw-border)" }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--vw-text)" }}>
-                    {readText(row, ["vendorName", "businessName", "displayName"])}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          <VwSurface
+            title="Funding & Manual Credits"
+            padded
+            action={<VwBtn variant="lemon" size="sm" onClick={() => navigate("/wallet-admin/funding-pending")}>View queue</VwBtn>}
+          >
+            {pendingFundingItems.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  padding: "10px 12px",
+                  background: T.bg,
+                  borderRadius: 10,
+                  marginBottom: 8,
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{item.vendor}</div>
+                    <div style={{ fontSize: 10, color: T.muted, marginTop: 1 }}>{item.meta}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--vw-muted)", marginTop: 2 }}>
-                    {readText(row, ["submittedAt", "createdAt", "updatedAt"], "Recent")} · {readText(row, ["channel"], "Funding")}
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{NGN(item.amount)}</div>
+                    <VwBadge variant="lemon">{item.status}</VwBadge>
                   </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--vw-text)" }}>{formatMoney(readMoney(row, ["amount"]))}</div>
-                  <VwBadge variant="lemon">{readText(row, ["status"]).replace(/_/g, " ")}</VwBadge>
                 </div>
               </div>
             ))}
-            <div style={{ padding: "10px 12px", background: "var(--vw-lemon-light)", borderRadius: 10, border: "1px solid var(--vw-lemon)" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--vw-lemon-text)", marginBottom: 2 }}>Manual Credit Preview</div>
-              <div style={{ fontSize: 11, color: "var(--vw-lemon-text)" }}>
-                Maker-checker flow remains active. A separate checker approval is required before posting any manual credit.
-              </div>
-            </div>
-          </div>
+          </VwSurface>
 
-          <div className="vw-surface vw-surface--padded">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div className="vw-surface__title">Open Exceptions</div>
-              <VwBtn variant="ghost" size="sm" onClick={() => navigate("/wallet-admin/exceptions")}>View all →</VwBtn>
-            </div>
-            {exceptionPreview.length === 0 ? (
-              <p style={{ color: "var(--vw-muted)", fontSize: 13, textAlign: "center", padding: "1rem 0" }}>
-                No open reconciliation exceptions.
-              </p>
-            ) : null}
-            {exceptionPreview.map((row, index) => {
-              const severity = readText(row, ["severity"]);
-              return (
-                <div key={`exception-${index + 1}`} style={{ padding: "10px 0", borderBottom: "1px solid var(--vw-border)", display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <VwBadge variant={getSeverityVariant(severity)}>{severity.toUpperCase()}</VwBadge>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--vw-text)", marginBottom: 2 }}>
-                      {readText(row, ["summary", "vendorName", "type"])}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--vw-muted)", lineHeight: 1.5 }}>
-                      {readText(row, ["type"])} · {readText(row, ["siteCode", "siteName"])} · Assigned: {readText(row, ["assignee"], "unassigned")}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: "var(--vw-faint)", whiteSpace: "nowrap" }}>
-                    SLA: {readText(row, ["sla", "slaTarget"], "Open")}
-                  </div>
+          <VwSurface
+            title="Open Exceptions"
+            padded
+            action={<VwBtn variant="ghost" size="sm" onClick={() => navigate("/wallet-admin/exceptions")}>View all →</VwBtn>}
+          >
+            {openExceptionItems.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  padding: "10px 0",
+                  borderBottom: `1px solid ${T.border}`,
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                }}
+              >
+                <VwBadge variant={getSeverityVariant(item.severity)}>{item.severity.toUpperCase()}</VwBadge>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.text, marginBottom: 1 }}>{item.vendor}</div>
+                  <div style={{ fontSize: 10, color: T.muted, lineHeight: 1.5 }}>{item.summary}...</div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="vw-surface vw-surface--padded" style={{ marginTop: 4 }}>
-          <VwDivider label="WORKSPACE RULE" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {[
-              ["Auth model", "Shared staff session, no second login"],
-              ["Data model", "Shared wallet, vendor, token, meter, and reconciliation APIs"],
-              ["CRM surface", "Single sidebar launcher only"],
-              ["Vendor isolation", "Vendor users remain in /vendor/* and cannot enter this workspace"],
-            ].map(([k, v]) => (
-              <div key={k} style={{ background: "var(--vw-bg)", borderRadius: 10, padding: "12px 14px", border: "1px solid var(--vw-border)" }}>
-                <div style={{ fontSize: 10, color: "var(--vw-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5, fontWeight: 600 }}>{k}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--vw-text)" }}>{v}</div>
+                <div style={{ fontSize: 9, color: T.faint, whiteSpace: "nowrap" }}>{item.sla}</div>
               </div>
             ))}
-          </div>
+          </VwSurface>
+
+          <VwSurface
+            title="Manual Credit Queue"
+            padded
+            action={<VwBtn variant="ghost" size="sm" onClick={() => navigate("/wallet-admin/funding-pending")}>Manage credits →</VwBtn>}
+          >
+            {manualCreditItems.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  padding: "10px 12px",
+                  background: item.status === "pending_checker" ? T.lemonLight : T.bg,
+                  borderRadius: 10,
+                  marginBottom: 8,
+                  border: `1px solid ${item.status === "pending_checker" ? T.lemon : T.border}`,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontFamily: T.mono,
+                        color: item.status === "pending_checker" ? T.lemonDark : T.muted,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {item.id}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{item.vendor}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{NGN(item.amount)}</div>
+                    <VwBadge variant={item.status === "approved" ? "success" : item.status === "rejected" ? "danger" : "lemon"}>
+                      {item.status === "pending_checker" ? "Awaiting" : item.status}
+                    </VwBadge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </VwSurface>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

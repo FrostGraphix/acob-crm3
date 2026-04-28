@@ -12,10 +12,10 @@
   --input: 216 25% 19%;
   --ring: 142 72% 42%;
   /* ACOB Brand Colors (Synced from acoblighting.com) */
-  --acob-green: #068612;
-  --acob-green-hover: #056e0f;
-  --acob-green-subtle: rgba(6, 134, 18, 0.12);
-  --acob-yellow: #facc15;
+  --beverly-green: #068612;
+  --beverly-green-hover: #056e0f;
+  --beverly-green-subtle: rgba(6, 134, 18, 0.12);
+  --beverly-yellow: #facc15;
 
   /* System / Default (Light Mode) */
   --bg-app: #f6f8f3;
@@ -125,7 +125,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--acob-green) 5%, transparent), transparent 40%),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--beverly-green) 5%, transparent), transparent 40%),
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--sapphire) 4%, transparent), transparent 40%),
     var(--bg-app);
   color: var(--text-main);
@@ -199,6 +199,128 @@ button {
   transition: grid-template-columns 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.reference-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(31, 132, 247, 0.08), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(106, 170, 78, 0.12), transparent 24%),
+    linear-gradient(180deg, #eef5e8 0%, #f6f8f2 38%, #f7f7f3 100%);
+  transition: grid-template-columns 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reference-shell--collapsed {
+  grid-template-columns: clamp(88px, 7.2vw, 104px) minmax(0, 1fr);
+}
+
+.reference-shell__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.reference-shell__glow {
+  position: absolute;
+  display: block;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 999px;
+  filter: blur(72px);
+  opacity: 0.32;
+}
+
+.reference-shell__glow--left {
+  top: -9rem;
+  left: -7rem;
+  background: rgba(31, 132, 247, 0.18);
+}
+
+.reference-shell__glow--right {
+  top: -10rem;
+  right: -8rem;
+  background: rgba(106, 170, 78, 0.2);
+}
+
+.reference-shell__main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.reference-shell__workspace {
+  min-width: 0;
+  padding: 0 1.1rem 1.1rem;
+}
+
+.reference-shell__content {
+  min-height: calc(100vh - 6rem);
+  padding: 1rem;
+  border: 1px solid rgba(158, 177, 150, 0.28);
+  border-radius: 1.35rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.88));
+  box-shadow:
+    0 20px 60px rgba(79, 98, 68, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.reference-shell__content--token {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.reference-shell--token .reference-shell__workspace {
+  padding: 0 1.1rem 1.1rem 0;
+}
+
+.reference-shell--token .crm-header {
+  height: 66px;
+  padding: 0 1.2rem 0 0.9rem;
+  border-bottom: 0;
+  background: linear-gradient(180deg, rgba(239, 245, 232, 0.94), rgba(239, 245, 232, 0.7));
+  box-shadow: none;
+  backdrop-filter: blur(10px);
+}
+
+.reference-shell--token .header-primary {
+  gap: 0.9rem;
+}
+
+.reference-shell--token .desktop-sidebar-toggle {
+  width: 3.15rem;
+  height: 3.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(106, 170, 78, 0.4);
+  background: linear-gradient(180deg, #f8fbf4, #eef5e8);
+  box-shadow: 0 8px 20px rgba(106, 170, 78, 0.18);
+}
+
+.reference-shell--token .header-dashboard-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1f2f22;
+}
+
+.header-controls--token {
+  min-width: 2rem;
+}
+
+.reference-shell__mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(15, 23, 42, 0.28);
+}
+
 .crm-shell.sidebar-collapsed {
   grid-template-columns: clamp(88px, 7.2vw, 104px) minmax(0, 1fr);
 }
@@ -241,7 +363,7 @@ button {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: linear-gradient(135deg, var(--acob-green), #0a5c0e);
+  background: linear-gradient(135deg, var(--beverly-green), #0a5c0e);
   color: #fff;
   border-radius: 10px;
   flex-shrink: 0;
@@ -297,8 +419,8 @@ button {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  background: color-mix(in srgb, var(--acob-green) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--acob-green) 20%, transparent);
+  background: color-mix(in srgb, var(--beverly-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--beverly-green) 20%, transparent);
   border-radius: 10px;
   flex-shrink: 0;
   transition: all 0.3s ease;
@@ -319,7 +441,7 @@ button {
 
 .brand-title strong {
   font-weight: 800;
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .brand-subtitle {
@@ -421,7 +543,7 @@ button {
 .sidebar-section-toggle:hover .sidebar-section-icon-wrap,
 .sidebar-section-toggle.expanded .sidebar-section-icon-wrap {
   opacity: 1;
-  color: var(--acob-yellow);
+  color: var(--beverly-yellow);
 }
 
 .sidebar-section-label {
@@ -508,7 +630,7 @@ button {
 }
 
 .sidebar-link-active .sidebar-link-glow {
-  background: var(--acob-green);
+  background: var(--beverly-green);
   box-shadow: 0 0 15px var(--sidebar-glow);
   width: 4px;
   left: 0;
@@ -654,7 +776,7 @@ button {
 
 .premium-card:hover {
   transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--acob-green) 30%, transparent);
+  border-color: color-mix(in srgb, var(--beverly-green) 30%, transparent);
   background: var(--bg-panel-hover);
 }
 
@@ -665,7 +787,7 @@ button {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--acob-green), transparent);
+  background: linear-gradient(90deg, transparent, var(--beverly-green), transparent);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -774,7 +896,7 @@ button {
 .site-consumption-eyebrow {
   display: inline-flex;
   margin-bottom: 0.65rem;
-  color: var(--acob-green);
+  color: var(--beverly-green);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -994,9 +1116,9 @@ button {
 }
 
 .header-icon-button:hover {
-  background: var(--acob-green);
+  background: var(--beverly-green);
   color: #fff;
-  border-color: var(--acob-green);
+  border-color: var(--beverly-green);
   transform: translateY(-1px);
 }
 
@@ -1115,7 +1237,7 @@ button {
   letter-spacing: 0.08em;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .toolbar-panel,
@@ -1230,8 +1352,8 @@ button {
 .field textarea:focus,
 .table-pagination select:focus {
   outline: none;
-  border-color: var(--acob-green);
-  box-shadow: 0 0 0 3px var(--acob-green-subtle);
+  border-color: var(--beverly-green);
+  box-shadow: 0 0 0 3px var(--beverly-green-subtle);
 }
 
 .field textarea {
@@ -1275,13 +1397,13 @@ button {
 
 .button-primary {
   color: #ffffff;
-  background: linear-gradient(145deg, var(--acob-green), #0ea31b);
+  background: linear-gradient(145deg, var(--beverly-green), #0ea31b);
   box-shadow: 0 10px 24px rgba(6, 134, 18, 0.28);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
 .button-primary:hover:not(:disabled) {
-  background: var(--acob-green-hover);
+  background: var(--beverly-green-hover);
   box-shadow: 0 14px 28px rgba(6, 134, 18, 0.38);
 }
 
@@ -1310,7 +1432,7 @@ button {
 
 .button-text {
   padding: 0;
-  color: var(--acob-green);
+  color: var(--beverly-green);
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -1318,7 +1440,7 @@ button {
 }
 
 .button-text:hover:not(:disabled) {
-  color: var(--acob-green-hover);
+  color: var(--beverly-green-hover);
 }
 
 .button-danger {
@@ -1468,8 +1590,8 @@ button {
 }
 
 .search-field-group:focus-within {
-  border-color: var(--acob-green);
-  box-shadow: 0 0 0 3px var(--acob-green-subtle);
+  border-color: var(--beverly-green);
+  box-shadow: 0 0 0 3px var(--beverly-green-subtle);
   background: color-mix(in srgb, var(--panel-glass-strong) 92%, transparent);
 }
 
@@ -1543,8 +1665,8 @@ button {
 }
 
 .data-table-checkbox:checked {
-  background: var(--acob-green);
-  border-color: var(--acob-green);
+  background: var(--beverly-green);
+  border-color: var(--beverly-green);
 }
 
 .data-table-checkbox:checked::before {
@@ -1568,7 +1690,7 @@ button {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--acob-green);
+  background: var(--beverly-green);
   animation: pulse-animation 1.5s infinite ease-in-out;
 }
 
@@ -1806,7 +1928,7 @@ button {
 }
 
 .pagination-number.active {
-  background: var(--acob-green);
+  background: var(--beverly-green);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 12px rgba(6, 134, 18, 0.3);
@@ -2095,7 +2217,7 @@ button {
 .vp-orb--green {
   width: 60vw;
   height: 60vw;
-  background: var(--acob-green);
+  background: var(--beverly-green);
   bottom: -20%;
   left: -20%;
 }
@@ -2152,7 +2274,7 @@ button {
   width: 3.8rem;
   height: 3.8rem;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--acob-green), #0a5c0e);
+  background: linear-gradient(135deg, var(--beverly-green), #0a5c0e);
   color: #fff;
   box-shadow: 0 12px 24px rgba(6, 134, 18, 0.25);
   flex-shrink: 0;
@@ -2164,7 +2286,7 @@ button {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .vp-portal-title {
@@ -2237,10 +2359,10 @@ button {
 
 .vp-input:focus {
   outline: none;
-  border-color: var(--acob-green);
+  border-color: var(--beverly-green);
   background: color-mix(in srgb, var(--panel-glass) 90%, transparent);
   box-shadow: 
-    0 0 0 4px var(--acob-green-subtle),
+    0 0 0 4px var(--beverly-green-subtle),
     inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
@@ -2293,7 +2415,7 @@ button {
   height: 3.75rem;
   margin-top: 0.75rem;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--acob-green), #0a5c0e);
+  background: linear-gradient(135deg, var(--beverly-green), #0a5c0e);
   color: #fff;
   font-size: 1.05rem;
   font-weight: 700;
@@ -2377,7 +2499,7 @@ button {
 }
 
 .vp-password-rule--pass .vp-password-rule-icon {
-  color: var(--acob-green);
+  color: var(--beverly-green);
   opacity: 1;
 }
 
@@ -2423,7 +2545,7 @@ button {
 }
 
 .vp-staff-link:hover {
-  color: var(--acob-green);
+  color: var(--beverly-green);
   text-decoration: underline;
 }
 

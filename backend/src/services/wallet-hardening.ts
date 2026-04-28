@@ -244,6 +244,7 @@ function getApprovalQueueRows() {
     .filter((request) => request.requestType !== "vendor_onboarding")
     .map((request) => ({
       id: request.id,
+      requestId: request.id,
       requestType: request.requestType,
       vendorId: request.vendorId,
       siteCode: request.siteCode,

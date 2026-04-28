@@ -8,4 +8,4 @@ gatewayRouter.post("/read", proxyHandler);
 gatewayRouter.post("/create", proxyHandler);
 gatewayRouter.post("/update", proxyHandler);
 gatewayRouter.post("/delete", proxyHandler);
-gatewayRouter.post("/import", createBulkImportHandler("/api/gateway/create", "gateway"));
+gatewayRouter.post("/import", createBulkImportHandler("/api/gateway/import", "gateway"));

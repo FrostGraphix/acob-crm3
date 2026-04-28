@@ -10,7 +10,7 @@ import { getWalletPurchaseService } from "../services/wallet-purchase.js";
 import { getWalletReceiptService } from "../services/wallet-receipt.js";
 import { getWalletSettlementService } from "../services/wallet-settlement.js";
 import { isSupabaseDbEnabled, searchWarehouseEntities } from "../services/supabase-db.js";
-import { createWalletRequestContext } from "../services/wallet-domain-store.js";
+import { createWalletRequestContext, getWalletDomainState } from "../services/wallet-domain-store.js";
 import { getVendorWalletRiskService } from "../services/vendor-wallet-risk.js";
 
 function readString(value: unknown) {
@@ -101,11 +101,16 @@ function buildVendorTransactions(context: ReturnType<typeof createWalletRequestC
     direction: "debit",
     balanceAfter: null,
     status: record.status,
+    vendorId: record.vendorId,
+    walletId: record.walletId,
+    siteCode: record.siteCode,
     reference: record.remoteSendRef ?? record.tokenValue ?? record.id,
     receiptId: record.receiptId,
     receiptNumber: record.receiptRef,
     meterSn: record.meterSn,
+    customerRef: record.customerRef,
     deliveryMethod: record.deliveryMethod,
+    upstreamStatus: record.upstreamStatus,
   }));
 
   const funding = getWalletFundingService().listFundingRequests(context).rows.map((record) => ({
@@ -117,11 +122,16 @@ function buildVendorTransactions(context: ReturnType<typeof createWalletRequestC
     direction: "credit",
     balanceAfter: null,
     status: record.status,
+    vendorId: record.vendorId,
+    walletId: record.walletId,
+    siteCode: record.siteCode,
     reference: record.reference,
     receiptId: null,
     receiptNumber: null,
     meterSn: null,
+    customerRef: null,
     deliveryMethod: null,
+    upstreamStatus: null,
   }));
 
   return [...purchases, ...funding].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
@@ -337,6 +347,62 @@ walletRouter.get("/finance/kpis", (request, response) => {
       toStatusCode(error),
       null,
       error instanceof Error ? error.message : "Failed to load wallet finance KPIs",
+      1,
+    );
+  }
+});
+
+walletRouter.get("/wallets", (request, response) => {
+  try {
+    const context = createWalletRequestContext(request as AuthenticatedRequest);
+    if (!["super_admin", "admin", "finance", "ops_manager"].includes(context.appRole)) {
+      sendEnvelope(response, 403, null, "Only internal roles can view wallet rows", 1);
+      return;
+    }
+
+    const state = getWalletDomainState();
+    const rows = Array.from(state.wallets.values())
+      .map((wallet) => {
+        const vendor = state.vendors.get(wallet.vendorId);
+        return {
+          id: wallet.id,
+          walletId: wallet.id,
+          vendorId: wallet.vendorId,
+          vendorCode: vendor?.vendorCode ?? wallet.vendorId,
+          vendorName: vendor?.businessName ?? wallet.vendorId,
+          businessName: vendor?.businessName ?? wallet.vendorId,
+          siteCode: wallet.siteCode,
+          status: wallet.status,
+          availableBalance: wallet.availableBalance,
+          totalFloat: wallet.availableBalance,
+          reservedBalance: wallet.reservedBalance,
+          reservedFloat: wallet.reservedBalance,
+          creditLimit: wallet.creditLimit,
+          totalFunded: wallet.totalFunded,
+          totalPurchased: wallet.totalPurchased,
+          totalCommissionAccrued: wallet.totalCommissionAccrued,
+          totalCommissionSettled: wallet.totalCommissionSettled,
+          createdAt: wallet.createdAt,
+          updatedAt: wallet.updatedAt,
+        };
+      })
+      .sort((left, right) => left.vendorCode.localeCompare(right.vendorCode));
+
+    sendEnvelope(
+      response,
+      200,
+      {
+        rows,
+        total: rows.length,
+      },
+      "success",
+    );
+  } catch (error) {
+    sendEnvelope(
+      response,
+      toStatusCode(error),
+      null,
+      error instanceof Error ? error.message : "Failed to load wallet rows",
       1,
     );
   }
@@ -655,8 +721,24 @@ walletRouter.get("/transactions", (request, response) => {
     const rows = buildVendorTransactions(context);
     const search = readString(request.query.search).toLowerCase();
     const type = readString(request.query.type);
+    const fromDate = readString(request.query.fromDate);
+    const toDate = readString(request.query.toDate);
+    const vendorId = readString(request.query.vendorId);
+    const siteCode = readString(request.query.siteCode);
     const filtered = rows.filter((entry) => {
       if (type && type !== "all" && entry.type !== type) {
+        return false;
+      }
+      if (fromDate && entry.createdAt.slice(0, 10) < fromDate) {
+        return false;
+      }
+      if (toDate && entry.createdAt.slice(0, 10) > toDate) {
+        return false;
+      }
+      if (vendorId && entry.vendorId !== vendorId) {
+        return false;
+      }
+      if (siteCode && entry.siteCode !== siteCode) {
         return false;
       }
       if (!search) {
@@ -1023,7 +1105,10 @@ walletRouter.post("/funding-request", async (request, response) => {
     const amount = readAmount(body.amount);
     const channel = readString(body.channel);
 
-    if (amount === null || !["bank_transfer", "cash_branch", "cash_at_branch"].includes(channel)) {
+    if (
+      amount === null ||
+      !["bank_transfer", "cash_at_branch", "cash_branch", "payment_gateway", "internal_transfer"].includes(channel)
+    ) {
       sendEnvelope(response, 400, null, "amount and valid channel are required", 1);
       return;
     }
@@ -1033,7 +1118,7 @@ walletRouter.post("/funding-request", async (request, response) => {
       channel:
         channel === "cash_branch"
           ? "cash_at_branch"
-          : (channel as "bank_transfer" | "cash_at_branch"),
+          : (channel as "bank_transfer" | "cash_at_branch" | "payment_gateway" | "internal_transfer"),
       idempotencyKey: readString(body.idempotencyKey) || readString(body.idempotency_key),
       reference: readString(body.reference) || undefined,
       notes: readString(body.notes) || undefined,
@@ -1389,7 +1474,7 @@ walletRouter.post("/purchase/remote-send", async (request, response) => {
       customerRef,
       amount,
       siteCode,
-    });
+    }, request as AuthenticatedRequest, response);
 
     sendEnvelope(response, result.receipt ? 200 : 202, result, result.receipt ? "Remote-send purchase completed" : "Remote-send purchase requires follow-up");
   } catch (error) {
@@ -1432,7 +1517,7 @@ walletRouter.post("/purchase/generate-token", async (request, response) => {
       customerRef,
       amount,
       siteCode,
-    });
+    }, request as AuthenticatedRequest, response, body);
 
     sendEnvelope(response, result.receipt ? 200 : 202, result, result.receipt ? "Token purchase completed" : "Token purchase requires follow-up");
   } catch (error) {

@@ -76,10 +76,10 @@
     radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.06), transparent 42%),
     var(--ds-surface-canvas);
 
-  --acob-green: var(--ds-color-brand-500);
-  --acob-green-hover: var(--ds-color-brand-600);
-  --acob-green-subtle: var(--ds-color-brand-100);
-  --acob-yellow: var(--ds-color-accent-amber);
+  --beverly-green: var(--ds-color-brand-500);
+  --beverly-green-hover: var(--ds-color-brand-600);
+  --beverly-green-subtle: var(--ds-color-brand-100);
+  --beverly-yellow: var(--ds-color-accent-amber);
   --bg-app: var(--ds-surface-canvas);
   --bg-panel: var(--ds-surface-strong);
   --bg-panel-hover: var(--ds-surface-muted);

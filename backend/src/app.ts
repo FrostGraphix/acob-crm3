@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import axios from "axios";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -6,6 +7,7 @@ import morgan from "morgan";
 import { accountRouter } from "./api/account.js";
 import { authRouter } from "./api/auth.js";
 import { customerRouter } from "./api/customer.js";
+import { dailyDataRouter } from "./api/daily-data.js";
 import { dailyDataMeterRouter } from "./api/daily-data-meter.js";
 import { dashboardRouter } from "./api/dashboard.js";
 import { debtRouter } from "./api/debt.js";
@@ -16,12 +18,14 @@ import { documentRouter } from "./api/documents.js";
 import { eventNotificationRouter } from "./api/event-notification.js";
 import { fileUploadRouter } from "./api/file-upload.js";
 import { gatewayRouter } from "./api/gateway.js";
+import { gprsOnlineStatusRouter } from "./api/gprs-online-status.js";
 import { gprsMeterTaskRouter } from "./api/gprs-meter-task.js";
 import { itemRouter } from "./api/item.js";
 import { loadProfileRouter } from "./api/load-profile.js";
 import { logRouter } from "./api/log.js";
 import { managementAnalyticsRouter } from "./api/management-analytics.js";
 import { meterRouter } from "./api/meter.js";
+import { operationsRouter } from "./api/operations.js";
 import { proxyHandler } from "./api/proxy.js";
 import { siteConsumptionRouter } from "./api/site-consumption.js";
 import { remoteRouter } from "./api/remote.js";
@@ -30,8 +34,11 @@ import { reconciliationRouter } from "./api/reconciliation.js";
 import { runtimeRouter } from "./api/runtime.js";
 import { searchRouter } from "./api/search.js";
 import { restAliasesRouter } from "./api/rest-aliases.js";
+import { roleRouter } from "./api/role.js";
 import { tariffRouter } from "./api/tariff.js";
 import { tokenRouter } from "./api/token.js";
+import { stationRouter } from "./api/station.js";
+import { updateFirmwareTaskRouter } from "./api/update-firmware-task.js";
 import { userRouter } from "./api/user.js";
 import { vendorRouter } from "./api/vendor.js";
 import { walletRouter } from "./api/wallet.js";
@@ -51,6 +58,48 @@ import { checkSessionStoreHealth } from "./services/session-store.js";
 import { checkSupabaseDbHealth } from "./services/supabase-db.js";
 import { checkUpstreamHealth } from "./services/upstream.js";
 import { theftRouter } from "./api/theft.js";
+
+function buildReferenceFrontendUrl(pathname: string) {
+  const upstreamUrl = new URL(env.upstreamApiUrl);
+  upstreamUrl.port = "9311";
+  upstreamUrl.pathname = pathname;
+  upstreamUrl.search = "";
+  return upstreamUrl.toString();
+}
+
+async function proxyReferenceFrontendAsset(
+  request: express.Request,
+  response: express.Response,
+  pathname: string,
+) {
+  try {
+    const upstreamResponse = await axios.get<ArrayBuffer>(buildReferenceFrontendUrl(pathname), {
+      responseType: "arraybuffer",
+      timeout: 15_000,
+      proxy: false,
+      validateStatus: () => true,
+    });
+
+    const contentType = upstreamResponse.headers["content-type"];
+    const cacheControl = upstreamResponse.headers["cache-control"];
+
+    if (contentType) {
+      response.setHeader("content-type", contentType);
+    }
+    if (cacheControl) {
+      response.setHeader("cache-control", cacheControl);
+    }
+
+    response.status(upstreamResponse.status).send(Buffer.from(upstreamResponse.data));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load reference asset";
+    response.status(502).json({
+      code: 1,
+      reason: message,
+      result: null,
+    });
+  }
+}
 
 export function createApp() {
   const app = express();
@@ -76,7 +125,7 @@ export function createApp() {
   app.get("/health", (_request, response) => {
     response.status(200).json({
       status: "ok",
-      service: "acob-crm3-backend",
+      service: "beverly-backend",
       timestamp: new Date().toISOString(),
       runtime: readRuntimeDiagnostics(),
     });
@@ -93,7 +142,7 @@ export function createApp() {
     const ok = upstream.ok && sessionStore.ok && runtimeStateStore.ok;
     response.status(ok ? 200 : 503).json({
       status: ok ? "ok" : "degraded",
-      service: "acob-crm3-backend",
+      service: "beverly-backend",
       timestamp: new Date().toISOString(),
       runtime: readRuntimeDiagnostics(),
       dependencies: {
@@ -111,6 +160,14 @@ export function createApp() {
     });
   }
 
+  app.get("/favicon.ico", async (request, response) => {
+    await proxyReferenceFrontendAsset(request, response, "/favicon.ico");
+  });
+
+  app.get(/^\/static\/.+/, async (request, response) => {
+    await proxyReferenceFrontendAsset(request, response, request.path);
+  });
+
   // --- Auth (public + protected) ---
   app.use("/api/user", authRouter);
   app.use("/api/user", requireAuth, requireCsrf, userRouter);
@@ -123,7 +180,11 @@ export function createApp() {
   app.use("/api/tariff", requireAuth, requireCsrf, requireRouteAccess, tariffRouter);
   app.use("/api/gateway", requireAuth, requireCsrf, requireRouteAccess, gatewayRouter);
   app.use("/api/meter", requireAuth, requireCsrf, requireRouteAccess, meterRouter);
+  app.use("/api/station", requireAuth, requireCsrf, requireRouteAccess, stationRouter);
+  app.use("/api/role", requireAuth, requireCsrf, requireRouteAccess, roleRouter);
   app.use("/api/token", requireAuth, requireCsrf, requireRouteAccess, tokenRouter);
+  app.use("/api/DailyData", requireAuth, requireCsrf, requireRouteAccess, dailyDataRouter);
+  app.use("/api/dailyData", requireAuth, requireCsrf, requireRouteAccess, dailyDataRouter);
   app.use("/api/DailyDataMeter", requireAuth, requireCsrf, requireRouteAccess, dailyDataMeterRouter);
   app.use(
     "/api/management/analytics",
@@ -133,6 +194,7 @@ export function createApp() {
     managementAnalyticsRouter,
   );
   app.use("/api/site-consumption", requireAuth, requireCsrf, requireRouteAccess, siteConsumptionRouter);
+  app.use("/api/operations", requireAuth, requireCsrf, requireRouteAccess, operationsRouter);
 
   // --- New domain routers ---
   app.use("/api/debt", requireAuth, requireCsrf, requireRouteAccess, debtRouter);
@@ -142,12 +204,21 @@ export function createApp() {
   app.use("/api/item", requireAuth, requireCsrf, requireRouteAccess, itemRouter);
   app.use("/api/Log", requireAuth, requireCsrf, requireRouteAccess, logRouter);
   app.use("/API/LoadProfile", requireAuth, requireCsrf, requireRouteAccess, loadProfileRouter);
+  app.use("/api/loadProfile", requireAuth, requireCsrf, requireRouteAccess, loadProfileRouter);
   app.use("/API/EventNotification", requireAuth, requireCsrf, requireRouteAccess, eventNotificationRouter);
+  app.use("/api/eventNotification", requireAuth, requireCsrf, requireRouteAccess, eventNotificationRouter);
   app.use("/API/File", requireAuth, requireCsrf, requireRouteAccess, fileUploadRouter);
+  app.use("/api/file", requireAuth, requireCsrf, requireRouteAccess, fileUploadRouter);
 
   // --- Remote & Reports ---
   app.use("/API/RemoteMeterTask", requireAuth, requireCsrf, requireRouteAccess, remoteRouter);
+  app.use("/api/remoteMeterTask", requireAuth, requireCsrf, requireRouteAccess, remoteRouter);
   app.use("/API/GPRSMeterTask", requireAuth, requireCsrf, requireRouteAccess, gprsMeterTaskRouter);
+  app.use("/api/GPRSMeterTask", requireAuth, requireCsrf, requireRouteAccess, gprsMeterTaskRouter);
+  app.use("/API/GPRSOnlineStatus", requireAuth, requireCsrf, requireRouteAccess, gprsOnlineStatusRouter);
+  app.use("/api/gprsOnlineStatus", requireAuth, requireCsrf, requireRouteAccess, gprsOnlineStatusRouter);
+  app.use("/API/UpdateFirmwareTask", requireAuth, requireCsrf, requireRouteAccess, updateFirmwareTaskRouter);
+  app.use("/api/updateFirmwareTask", requireAuth, requireCsrf, requireRouteAccess, updateFirmwareTaskRouter);
   app.use("/API/PrepayReport", requireAuth, requireCsrf, requireRouteAccess, reportRouter);
   app.use("/api/notifications", requireAuth, requireCsrf, requireRouteAccess, notificationRouter);
   app.use("/api/runtime", requireAuth, requireCsrf, requireRouteAccess, runtimeRouter);

@@ -2,6 +2,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../../design-system";
 import type { AppPageConfig } from "../../types";
 import { ThemeToggle } from "../common/ThemeToggle";
+import { WalletShellTopbar } from "./AdminShell";
 import { NotificationBell } from "./NotificationBell";
 
 interface HeaderProps {
@@ -21,6 +22,8 @@ export function Header({
   const isWalletAdminView = (currentPage.workspace ?? "operations") === "wallet-admin";
   const isVendorWalletView = (currentPage.workspace ?? "operations") === "vendor";
   const isWalletWorkspace = isWalletAdminView || isVendorWalletView;
+  const isReferenceTokenPage =
+    currentPage.path.startsWith("/token-generate/") || currentPage.path.startsWith("/token-record/");
   const isAdmin = user?.role?.toLowerCase().includes("admin") ?? false;
   const operatorName = user?.displayName ?? user?.username ?? "Operator";
   const operatorInitials = operatorName
@@ -32,33 +35,11 @@ export function Header({
 
   if (isWalletWorkspace) {
     return (
-      <header className="crm-header wallet-shell-topbar">
-        <div className="wallet-shell-topbar__copy">
-          <div className="wallet-shell-topbar__title">{currentPage.title}</div>
-          <div className="wallet-shell-topbar__sub">{currentPage.description}</div>
-        </div>
-
-        <div className="wallet-shell-topbar__actions">
-          {isWalletAdminView ? (
-            <Button onClick={() => onNavigate("/dashboard")} tone="ghost" size="sm">
-              CRM Workspace
-            </Button>
-          ) : null}
-
-          <div className="wallet-shell-topbar__bell">
-            <NotificationBell />
-          </div>
-
-          <button
-            className="wallet-shell-topbar__avatar"
-            onClick={() => onNavigate(isVendorWalletView ? "/vendor/profile" : "/profile")}
-            title={`${operatorName} profile`}
-            type="button"
-          >
-            {operatorInitials}
-          </button>
-        </div>
-      </header>
+      <WalletShellTopbar
+        currentPage={currentPage}
+        mode={isVendorWalletView ? "vendor" : "wallet-admin"}
+        onNavigate={onNavigate}
+      />
     );
   }
 
@@ -91,17 +72,21 @@ export function Header({
         </div>
       </div>
 
-      <div className="header-controls header-controls--dashboard">
+      <div
+        className={`header-controls header-controls--dashboard ${
+          isReferenceTokenPage ? "header-controls--token" : ""
+        }`}
+      >
         {isWalletAdminView && (
           <Button onClick={() => onNavigate("/dashboard")} tone="ghost" size="sm">
             CRM Workspace
           </Button>
         )}
-        
-        <ThemeToggle />
-        <NotificationBell />
-        
-        {isAdmin && (
+
+        {!isReferenceTokenPage ? <ThemeToggle /> : null}
+        {!isReferenceTokenPage ? <NotificationBell /> : null}
+
+        {!isReferenceTokenPage && isAdmin ? (
           <Button
             className="header-icon-button"
             onClick={() => onNavigate("/system/runtime")}
@@ -113,19 +98,21 @@ export function Header({
               <path d="M12 3v6m0 6v6m9-9h-6M9 12H3m15.364-6.364l-4.243 4.243M9.88 14.12l-4.244 4.244m0-12.728l4.244 4.243m8.484 8.485l-4.243-4.244" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
             </svg>
           </Button>
-        )}
+        ) : null}
 
-        <button
-          className="header-avatar-btn"
-          onClick={() => onNavigate("/profile")}
-          title={`${operatorName} profile`}
-          type="button"
-        >
-          <div className="header-avatar">
-            {operatorInitials}
-            <span className="header-avatar-status" />
-          </div>
-        </button>
+        {!isReferenceTokenPage ? (
+          <button
+            className="header-avatar-btn"
+            onClick={() => onNavigate("/profile")}
+            title={`${operatorName} profile`}
+            type="button"
+          >
+            <div className="header-avatar">
+              {operatorInitials}
+              <span className="header-avatar-status" />
+            </div>
+          </button>
+        ) : null}
       </div>
     </header>
   );

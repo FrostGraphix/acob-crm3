@@ -1,4 +1,4 @@
-# ACOB CRM3 Walkthrough
+# Beverly CRM3 Walkthrough
 
 ## Phase 13: Statistical Summary Overlays
 - `frontend/src/pages/ReportsPage.tsx` renders stat cards above the active report surface.
@@ -10,9 +10,9 @@
 - `frontend/src/components/charts/TrendChart.tsx` renders the active analytical view.
 - CSV export remains available from the report header against the currently loaded dataset.
 
-## Phase 15: Branding Sync With ACOB Lighting
+## Phase 15: Branding Sync With Beverly Lighting
 - `frontend/index.html` loads `Plus Jakarta Sans`.
-- `frontend/src/index.css` now centralizes ACOB brand tokens for:
+- `frontend/src/index.css` now centralizes Beverly brand tokens for:
   - green/yellow palette
   - light and dark surface variables
   - rounded panel/button radii

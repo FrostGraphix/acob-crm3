@@ -5,6 +5,7 @@ import {
   VwBadge,
   VwBtn,
   VwInfoBox,
+  VwStepBar,
 } from "./VendorPortalPrimitives.tsx";
 
 interface Props {
@@ -77,6 +78,8 @@ export function ApproveVendorModal({ vendorId, businessName, onClose, onApproved
 
         <form onSubmit={handleSubmit}>
           <div className="vw-modal__body">
+            <VwStepBar steps={["KYC Pack", "Controls", "Activate"]} current={2} />
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
               {[
                 ["Vendor Name", businessName],
@@ -99,7 +102,7 @@ export function ApproveVendorModal({ vendorId, businessName, onClose, onApproved
                 ["Director's ID", "KYC identity review", "approved"],
                 ["Utility Bill", "Address verification pack", "pending"],
               ].map(([name, sub, status]) => (
-                <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--vw-bg)", borderRadius: 10, marginBottom: 8, border: "1px solid var(--vw-border)" }}>
+                <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "var(--vw-bg)", borderRadius: 12, marginBottom: 8, border: "1px solid var(--vw-border)" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--vw-text)" }}>{name}</div>
                     <div style={{ fontSize: 11, color: "var(--vw-muted)" }}>{sub}</div>
@@ -137,6 +140,19 @@ export function ApproveVendorModal({ vendorId, businessName, onClose, onApproved
                 <label className="vw-field__label">Review Note (optional)</label>
                 <textarea style={{ ...fieldInput, resize: "vertical", minHeight: 80 }} value={reviewerNote} onChange={(event) => setReviewerNote(event.target.value)} placeholder="Add any notes..." />
               </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              {[
+                ["Risk", riskRating.toUpperCase()],
+                ["Daily", NGN(dailyLimitValue || 0)],
+                ["Per-Txn", NGN(perTransactionValue || 0)],
+              ].map(([label, value]) => (
+                <div key={label} style={{ background: "var(--vw-surface2)", border: "1px solid var(--vw-border)", borderRadius: 12, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 10, color: "var(--vw-muted)", marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--vw-text)" }}>{value}</div>
+                </div>
+              ))}
             </div>
 
             <VwInfoBox type="lemon">

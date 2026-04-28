@@ -367,7 +367,10 @@ function createRemoteBasePayload(row: DataRow | undefined, values: Record<string
     ok: true,
     payload: {
       taskName: taskNameResult.taskName,
+      name: taskNameResult.taskName,
       scheduleDate: sanitizeOptionalString(values.scheduleDate),
+      dataPrefix: sanitizeOptionalString(values.dataPrefix),
+      remark: sanitizeOptionalString(values.remark),
       target,
     },
   } as const;
@@ -408,6 +411,7 @@ function buildReadingTaskPayload(row: DataRow | undefined, values: Record<string
       taskType: "reading",
       ...base.payload,
       dataItem: dataItem.value,
+      flag: sanitizeOptionalString(values.dataPrefix) ?? dataItem.value,
       readMode: sanitizeOptionalString(values.readMode),
     },
   };
@@ -436,6 +440,7 @@ function buildSettingTaskPayload(row: DataRow | undefined, values: Record<string
       ...base.payload,
       settingKey: settingKey.value,
       settingValue: settingValue.value,
+      data: sanitizeOptionalString(values.data),
       valueType: sanitizeOptionalString(values.valueType) ?? "string",
     },
   };
@@ -468,6 +473,7 @@ function buildControlTaskPayload(row: DataRow | undefined, values: Record<string
       ...base.payload,
       controlCommand: controlCommand.value,
       reason: sanitizeOptionalString(values.reason),
+      data: sanitizeOptionalString(values.data),
       operatorReason: reason.operatorReason,
       reviewConfirmed: values.reviewConfirmed === true || values.reviewConfirmed === "true",
     },
@@ -497,6 +503,7 @@ function buildTokenTaskPayload(row: DataRow | undefined, values: Record<string, 
       ...base.payload,
       tokenType: tokenType.value,
       tokenValue: sanitizeOptionalString(values.tokenValue),
+      data: sanitizeOptionalString(values.data),
       operatorReason: reason.operatorReason,
       reviewConfirmed: values.reviewConfirmed === true || values.reviewConfirmed === "true",
     },
@@ -712,6 +719,7 @@ function mapActionByKind(
       ok: true,
       payload: {
         row,
+        ...filterFilledValues(values),
         taskName: taskNameResult.taskName,
         scheduleDate: values.scheduleDate,
       },

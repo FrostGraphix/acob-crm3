@@ -148,7 +148,7 @@ export function syncOpenedTabsWithUserAccess(
   fallbackPage: AppPageConfig,
 ) {
   const allowedPaths = new Set(allowedPages.map((page) => page.path));
-  const nextTabs = tabs.filter((tab) => allowedPaths.has(tab.path));
+  const nextTabs = tabs.filter((tab) => tab && allowedPaths.has(tab.path));
   return nextTabs.length > 0 ? nextTabs : [fallbackPage];
 }
 

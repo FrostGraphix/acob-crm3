@@ -1,6 +1,6 @@
-# ACOB CRM3
+# Beverly
 
-ACOB CRM3 is a frontend replacement for the upstream Meter System, with a Node/Express backend proxy that keeps credentials and session handling off the browser.
+Beverly is a frontend replacement for the upstream Meter System, with a Node/Express backend proxy that keeps credentials and session handling off the browser.
 
 ## Supported scope
 

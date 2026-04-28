@@ -99,6 +99,7 @@
 /api/token/changeMeterKeyTokenRecord/read
 /api/token/setMaximumOverdraftLimitToken/generate
 /api/token/setMaximumOverdraftLimitTokenRecord/read
+/api/wallet/transactions
 /api/user/login
 /api/user/info
 /api/user/logout

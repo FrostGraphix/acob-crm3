@@ -125,8 +125,8 @@ function sanitizeQuery(
   );
 }
 
-const PURCHASE_DRAFT_STORAGE_KEY = "acob-vendor-wallet:purchase-draft";
-const RECEIPT_CACHE_STORAGE_KEY = "acob-vendor-wallet:receipt-cache";
+const PURCHASE_DRAFT_STORAGE_KEY = "beverly-vendor-wallet:purchase-draft";
+const RECEIPT_CACHE_STORAGE_KEY = "beverly-vendor-wallet:receipt-cache";
 
 export function createVendorIdempotencyKey() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

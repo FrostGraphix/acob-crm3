@@ -85,6 +85,11 @@ function toIsoDate(value: string | undefined) {
   return `${year}-${month}-${day}`;
 }
 
+function readBodyDate(body: Record<string, unknown>, key: string) {
+  const value = body[key];
+  return typeof value === "string" ? toIsoDate(value) : null;
+}
+
 function clampRange(
   requestedFromDate: string | null,
   requestedToDate: string | null,
@@ -388,4 +393,25 @@ siteConsumptionRouter.post("/refresh", (_request, response) => {
     },
     "refresh started",
   );
+});
+
+siteConsumptionRouter.post("/backfill", async (request, response) => {
+  const body = typeof request.body === "object" && request.body !== null
+    ? (request.body as Record<string, unknown>)
+    : {};
+  const fromDate = readBodyDate(body, "fromDate");
+  const toDate = readBodyDate(body, "toDate");
+
+  if (!fromDate || !toDate) {
+    sendEnvelope(response, 400, null, "fromDate and toDate are required in YYYY-MM-DD or DD/MM/YYYY format", 1);
+    return;
+  }
+
+  try {
+    const result = await siteConsumptionEngine.backfill(fromDate, toDate);
+    sendEnvelope(response, 200, result, "backfill completed");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Site consumption backfill failed";
+    sendEnvelope(response, 502, null, message, 1);
+  }
 });

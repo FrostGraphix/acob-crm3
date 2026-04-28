@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { AuthSessionToken, AuthUser } from "../../../common/types/index.js";
@@ -47,7 +47,7 @@ const CSRF_MAX_AGE_MS = LEGACY_SESSION_MAX_AGE_MS;
 function createLegacyUser(username: string, permissions: string[] = []): AuthUser {
   return applyAdminIdentityOverrides({
     username,
-    displayName: username === "admin" ? "ACOB Admin" : username,
+    displayName: username === "admin" ? "Beverly Admin" : username,
     role: "Administrator",
     permissions,
     email: username.includes("@") ? username : undefined,
@@ -178,20 +178,20 @@ function resolveVendorAccessError(
     ? normalizeCode(user.vendorId)
     : null;
   if (!vendorId) {
-    return "Vendor account is missing an assigned vendor profile. Contact your ACOB administrator.";
+    return "Vendor account is missing an assigned vendor profile. Contact your Beverly administrator.";
   }
 
   const vendor = getWalletDomainState().vendors.get(vendorId);
   if (!vendor) {
-    return "Vendor account is not linked to an active vendor profile. Contact your ACOB administrator.";
+    return "Vendor account is not linked to an active vendor profile. Contact your Beverly administrator.";
   }
 
   if (vendor.status === "suspended") {
-    return "Your vendor account is suspended. Contact your ACOB administrator.";
+    return "Your vendor account is suspended. Contact your Beverly administrator.";
   }
 
   if (vendor.status === "rejected") {
-    return "Your onboarding application was rejected. Contact your ACOB administrator.";
+    return "Your onboarding application was rejected. Contact your Beverly administrator.";
   }
 
   return null;
@@ -211,6 +211,28 @@ function resolveVendorLoginIdentifier(input: string) {
     if (invitation.username.trim().toLowerCase() === normalized) {
       return invitation.loginIdentifier;
     }
+  }
+
+  return normalized;
+}
+
+function resolveStaffLoginIdentifier(input: string) {
+  const normalized = input.trim();
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.includes("@")) {
+    return normalized;
+  }
+
+  const usernameLower = normalized.toLowerCase();
+  const adminUsernameMatches = env.adminUsernames.some(
+    (value) => value.trim().toLowerCase() === usernameLower,
+  );
+
+  if (adminUsernameMatches && env.adminEmails.length > 0) {
+    return env.adminEmails[0]!;
   }
 
   return normalized;
@@ -314,6 +336,15 @@ async function closeUpstreamSession(sessionId: string) {
 
 export const authRouter = Router();
 
+function sendCurrentUserInfo(request: AuthenticatedRequest, response: Response) {
+  if (!request.authSession) {
+    sendEnvelope(response, 401, null, "Not authenticated", 1);
+    return;
+  }
+
+  sendEnvelope(response, 200, request.authSession.user);
+}
+
 authRouter.post("/login", async (request, response) => {
   const body = readLoginBody(request.body);
   const password = parsePassword(body);
@@ -326,9 +357,9 @@ authRouter.post("/login", async (request, response) => {
 
   if (isSupabaseAuthEnabled()) {
     const username = parseUsername(body, "");
-    const loginIdentifier = portal === "vendor"
-      ? resolveVendorLoginIdentifier(username)
-      : username;
+      const loginIdentifier = portal === "vendor"
+        ? resolveVendorLoginIdentifier(username)
+        : resolveStaffLoginIdentifier(username);
 
     if (!loginIdentifier) {
       sendEnvelope(response, 400, null, "Username or email is required", 1);
@@ -532,14 +563,24 @@ authRouter.post("/login", async (request, response) => {
 });
 
 authRouter.get("/info", requireAuth, (request, response) => {
-  const authRequest = request as AuthenticatedRequest;
+  sendCurrentUserInfo(request as AuthenticatedRequest, response);
+});
 
-  if (!authRequest.authSession) {
-    sendEnvelope(response, 401, null, "Not authenticated", 1);
+authRouter.get("/upstream-token", requireAuth, (request, response) => {
+  const authRequest = request as AuthenticatedRequest;
+  const upstreamCookie = authRequest.upstreamCookie;
+
+  if (!upstreamCookie || upstreamCookie.trim().length === 0) {
+    sendEnvelope(response, 404, null, "No upstream session available", 1);
     return;
   }
 
-  sendEnvelope(response, 200, authRequest.authSession.user);
+  // Return only the raw JWT — never expose the Beverly session or CSRF token here.
+  sendEnvelope(response, 200, { token: upstreamCookie });
+});
+
+authRouter.post("/info", requireAuth, (request, response) => {
+  sendCurrentUserInfo(request as AuthenticatedRequest, response);
 });
 
 authRouter.post("/logout", requireAuth, requireCsrf, async (request, response) => {

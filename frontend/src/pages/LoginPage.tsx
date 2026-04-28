@@ -55,7 +55,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <span className="login-brand-name">ACOB <strong>Workspace</strong></span>
+              <span className="login-brand-name">Beverly <strong>Workspace</strong></span>
             </div>
 
             <h2 className="login-welcome">Welcome Back</h2>
@@ -81,18 +81,18 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
           <div className="login-card">
             <h1 className="login-card-title">Staff Sign In</h1>
             <p className="login-card-subtitle">
-              Enter your credentials below to continue.
+              Enter your email or username to continue.
             </p>
 
             <form className="login-form" onSubmit={handleSubmit}>
               <div className="login-field-group">
-                <label className="login-label" htmlFor="login-username">USERNAME</label>
+                <label className="login-label" htmlFor="login-username">EMAIL OR USERNAME</label>
                 <div className="login-input-wrap">
                   <input
                     autoComplete="username"
                     id="login-username"
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="admin"
+                    placeholder="admin@acoblighting.com"
                     value={username}
                   />
                 </div>
@@ -164,6 +164,10 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                 )}
               </button>
             </form>
+
+            <p className="login-helper-note">
+              `admin` and `admin@acoblighting.com` both map to the staff admin account.
+            </p>
 
             <p className="login-security-note">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

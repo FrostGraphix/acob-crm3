@@ -11,6 +11,9 @@ export interface RemoteTokenFormState {
   operation: RemoteTokenOperation;
   loadMode: RemoteTokenLoadMode;
   amount: string;
+  taskName: string;
+  scheduleDate: string;
+  operatorReason: string;
 }
 
 export interface RemoteTokenReceipt {
@@ -41,20 +44,6 @@ interface MappingResult {
 
 function sanitizeString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function compactRow(row: DataRow | undefined) {
-  if (!row) {
-    return undefined;
-  }
-
-  return Object.entries(row).reduce<Record<string, unknown>>((accumulator, [key, value]) => {
-    if (value !== null && value !== "") {
-      accumulator[key] = value;
-    }
-
-    return accumulator;
-  }, {});
 }
 
 function readRowString(row: DataRow | undefined, keys: string[]) {
@@ -131,6 +120,9 @@ export function createDefaultRemoteTokenForm(): RemoteTokenFormState {
     operation: "send-credit",
     loadMode: "naira",
     amount: "",
+    taskName: "",
+    scheduleDate: "",
+    operatorReason: "",
   };
 }
 
@@ -155,8 +147,7 @@ export function buildRemoteTokenSendPayload(
   row: DataRow | undefined,
   form: RemoteTokenFormState,
 ): MappingResult {
-  const compact = compactRow(row);
-  if (!compact) {
+  if (!row) {
     return {
       ok: false,
       message: "Select a meter before sending a token.",
@@ -175,8 +166,11 @@ export function buildRemoteTokenSendPayload(
     return {
       ok: true,
       payload: {
-        row: compact,
+        row,
         operation: "clear-credit",
+        taskName: sanitizeString(form.taskName) || undefined,
+        scheduleDate: sanitizeString(form.scheduleDate) || undefined,
+        operatorReason: sanitizeString(form.operatorReason) || undefined,
       },
     };
   }
@@ -194,10 +188,13 @@ export function buildRemoteTokenSendPayload(
   return {
     ok: true,
     payload: {
-      row: compact,
+      row,
       operation: "send-credit",
       loadMode: form.loadMode,
       amount: numericAmount,
+      taskName: sanitizeString(form.taskName) || undefined,
+      scheduleDate: sanitizeString(form.scheduleDate) || undefined,
+      operatorReason: sanitizeString(form.operatorReason) || undefined,
     },
   };
 }
@@ -218,11 +215,16 @@ export function buildRemoteTokenConfirmationLines(
     form.operation === "clear-credit" ? "Clear credit" : "Send credit token";
   const quote = options?.quote ?? null;
   const tariffRate = options?.tariffRate ?? null;
+  const taskName = sanitizeString(form.taskName);
+  const scheduleDate = sanitizeString(form.scheduleDate);
+  const operatorReason = sanitizeString(form.operatorReason);
 
   return [
     `Target meter: ${meterId} (${customerName})`,
     `Station: ${stationId}`,
     `Operation: ${operationLabel}`,
+    ...(taskName ? [`Task Name: ${taskName}`] : []),
+    ...(scheduleDate ? [`Schedule Date: ${scheduleDate}`] : []),
     ...(form.operation === "send-credit"
       ? [
           `Load by: ${form.loadMode === "naira" ? "Naira" : "Unit"}`,
@@ -238,6 +240,7 @@ export function buildRemoteTokenConfirmationLines(
             : []),
         ]
       : []),
+    ...(operatorReason ? [`Operator Reason: ${operatorReason}`] : []),
     "Delivery: Generate token and push remotely",
   ];
 }
@@ -311,7 +314,7 @@ function buildRemoteTokenReceiptHtml(pageTitle: string, receipt: RemoteTokenRece
       ? receipt.operation === "clear-credit" ? "Clear Credit" : "Remote Send"
       : "Manual Follow-up",
     tokenValue: formatRemoteTokenValue(receipt.tokenValue),
-    footerNote: "For delivery verification, contact ACOB Lighting support with the receipt number.",
+    footerNote: "For delivery verification, contact Beverly support with the receipt number.",
     rows: [
       { label: "Receipt Number", value: receipt.receiptNumber },
       { label: "Customer", value: receipt.customerName },

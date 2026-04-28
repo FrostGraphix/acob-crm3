@@ -52,6 +52,22 @@ function toQueryParams(body: Record<string, unknown>) {
   );
 }
 
+function resolvePathParams(path: string, body: Record<string, unknown>) {
+  const row =
+    typeof body.row === "object" && body.row !== null
+      ? (body.row as Record<string, unknown>)
+      : null;
+
+  return path.replace(/:([A-Za-z0-9_]+)/g, (_match, key: string) => {
+    const resolved = body[key] ?? row?.[key];
+    if (resolved === null || resolved === undefined || String(resolved).trim().length === 0) {
+      throw new Error(`Missing path parameter: ${key}`);
+    }
+
+    return encodeURIComponent(String(resolved).trim());
+  });
+}
+
 export interface ProfileActionResult {
   success: boolean;
   message: string;
@@ -151,7 +167,7 @@ httpClient.interceptors.request.use((config) => {
   const isLoginPath = url.includes("/api/user/login");
 
   if (!isLoginPath) {
-    const csrfToken = readCookieValue("acob_csrf");
+    const csrfToken = readCookieValue("beverly_csrf");
     if (csrfToken) {
       if (!config.headers) {
         config.headers = new AxiosHeaders();
@@ -850,11 +866,24 @@ export const apiClient = {
     return mapDashboardSummaryRecord(result);
   },
   dashboard: {
+    async readPanelGroup() {
+      const result = await request<Record<string, unknown>>("/api/dashboard/readPanelGroup", {
+        body: {},
+        timeoutMs: DASHBOARD_REQUEST_TIMEOUT_MS,
+      });
+      return {
+        totalAccountCount: Number(result.totalAccountCount ?? 0),
+        totalPurchaseTimes: Number(result.totalPurchaseTimes ?? 0),
+        totalPurchaseUnit: Number(result.totalPurchaseUnit ?? 0),
+        totalPurchaseMoney: Number(result.totalPurchaseMoney ?? 0),
+      };
+    },
     async readLineChart(req: {
       from: string;
       to: string;
       siteId?: OdysseySiteId;
       type: number;
+      days?: number;
     }) {
       const result = await request<Record<string, unknown>>("/api/dashboard/readLineChart", {
         body: req,
@@ -952,7 +981,7 @@ export async function loadTableData(
 }
 
 export function runPageAction(path: string, body: Record<string, unknown>) {
-  return request<ActionResponse>(path, { body });
+  return request<ActionResponse>(resolvePathParams(path, body), { body });
 }
 
 export function loadRuntimeEngines() {

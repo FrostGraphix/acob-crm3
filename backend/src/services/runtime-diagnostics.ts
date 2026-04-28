@@ -28,7 +28,7 @@ export interface RuntimeDiagnosticsSnapshot {
 
 export function readRuntimeDiagnostics(): RuntimeDiagnosticsSnapshot {
   return {
-    service: "acob-crm3-backend",
+    service: "beverly-backend",
     nodeEnv: env.nodeEnv,
     sessionStoreMode: env.sessionStoreMode,
     runtimeStateStoreMode: env.runtimeStateStoreMode,

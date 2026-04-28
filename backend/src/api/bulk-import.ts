@@ -50,6 +50,7 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
 
     const failures: BulkImportResult["failures"] = [];
     let importedCount = 0;
+    const usesNativeImport = createPath.toLowerCase().endsWith("/import");
     const startedAt = new Date().toISOString();
     const importJob = isSupabaseDbEnabled()
       ? await createImportJob({
@@ -59,27 +60,32 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
           started_at: startedAt,
           summary: {
             totalRecords: records.length,
-            createPath,
+            upstreamPath: createPath,
+            mode: usesNativeImport ? "native-import" : "row-create",
           },
         })
       : null;
 
-    for (const [index, record] of records.entries()) {
+    if (usesNativeImport) {
       try {
         const upstreamResult = await forwardWithUpstreamSessionRecovery(
           request,
           response,
-          (upstreamCookie) => forwardToUpstream(createPath, record, upstreamCookie),
+          (upstreamCookie) =>
+            forwardToUpstream(
+              createPath,
+              records as unknown as Record<string, unknown>,
+              upstreamCookie,
+            ),
         );
         if (upstreamResult.statusCode >= 400 || upstreamResult.payload.code !== 0) {
           failures.push({
-            index,
+            index: -1,
             reason: upstreamResult.payload.reason || `Failed to import ${entityLabel}`,
           });
-          continue;
+        } else {
+          importedCount = records.length;
         }
-
-        importedCount += 1;
       } catch (error) {
         if (error instanceof UpstreamSessionError) {
           if (importJob?.id) {
@@ -100,9 +106,51 @@ export function createBulkImportHandler(createPath: string, entityLabel: string)
         }
 
         failures.push({
-          index,
+          index: -1,
           reason: error instanceof Error ? error.message : `Failed to import ${entityLabel}`,
         });
+      }
+    } else {
+      for (const [index, record] of records.entries()) {
+        try {
+          const upstreamResult = await forwardWithUpstreamSessionRecovery(
+            request,
+            response,
+            (upstreamCookie) => forwardToUpstream(createPath, record, upstreamCookie),
+          );
+          if (upstreamResult.statusCode >= 400 || upstreamResult.payload.code !== 0) {
+            failures.push({
+              index,
+              reason: upstreamResult.payload.reason || `Failed to import ${entityLabel}`,
+            });
+            continue;
+          }
+
+          importedCount += 1;
+        } catch (error) {
+          if (error instanceof UpstreamSessionError) {
+            if (importJob?.id) {
+              void updateImportJob(importJob.id, {
+                status: "failed",
+                completed_at: new Date().toISOString(),
+                error_message: error.message,
+                summary: {
+                  totalRecords: records.length,
+                  importedCount,
+                  failedCount: failures.length,
+                  failures,
+                },
+              });
+            }
+            sendEnvelope(response, 401, null, error.message, 1);
+            return;
+          }
+
+          failures.push({
+            index,
+            reason: error instanceof Error ? error.message : `Failed to import ${entityLabel}`,
+          });
+        }
       }
     }
 

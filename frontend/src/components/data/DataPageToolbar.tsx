@@ -19,6 +19,8 @@ interface DataPageToolbarProps {
     setPaused: (paused: boolean) => void;
     lastUpdatedAt: number | null;
   };
+  hideLiveMeta?: boolean;
+  hideQuotaNote?: boolean;
 }
 
 export function DataPageToolbar({
@@ -33,6 +35,8 @@ export function DataPageToolbar({
   onBulkAction,
   onRefresh,
   live,
+  hideLiveMeta = false,
+  hideQuotaNote = false,
 }: DataPageToolbarProps) {
   const lastUpdatedLabel =
     live?.lastUpdatedAt != null ? new Date(live.lastUpdatedAt).toLocaleString() : "Not yet";
@@ -72,7 +76,7 @@ export function DataPageToolbar({
           <Button onClick={onRefresh} size="sm" tone="ghost">
             Refresh
           </Button>
-          {live?.enabled ? (
+          {live?.enabled && !hideLiveMeta ? (
             <Button
               active={!live.paused}
               onClick={() => live.setPaused(!live.paused)}
@@ -85,14 +89,14 @@ export function DataPageToolbar({
         </div>
       </div>
 
-      {live?.enabled ? (
+      {live?.enabled && !hideLiveMeta ? (
         <div className="data-page-live-meta">
           <Badge tone={live.paused ? "warning" : "success"}>Live: {live.paused ? "Paused" : "Running"}</Badge>
           <Badge>Last updated: {lastUpdatedLabel}</Badge>
         </div>
       ) : null}
 
-      {page.showQuota ? (
+      {page.showQuota && !hideQuotaNote ? (
         <div className="data-page-quota data-page-quota-muted">
           Quota information is not exposed by the upstream API yet.
         </div>

@@ -1,19 +1,63 @@
-import type { CSSProperties, ReactNode } from "react";
+import { isValidElement, type CSSProperties, type ReactNode } from "react";
+import { 
+  AlertCircle, CheckCircle2, Info, X,
+  AlertTriangle, TrendingUp, Activity
+} from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACOB CRM3 — Vendor Wallet Design Primitives
-   Green/Lemon Financial Theme · Re-exported helpers & UI atoms
+   ACOB CRM3 — Wallet Design System Primitives
+   Design memory aligned light workspace · Poppins + DM Mono
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── TYPES ───────────────────────────────────────────────────────────────── */
+/* ─── DESIGN TOKENS (Shared) ──────────────────────────────────────────────── */
+export const T = {
+  sidebar: "#011508",
+  sidebarBg: "#011508",
+  sidebarMid: "#021f0d",
+  sidebarAccent: "#013b18",
+  primary: "#008000",
+  primaryDark: "#006600",
+  primaryLight: "#e6f4e6",
+  primaryGlow: "rgba(0, 128, 0, 0.1)",
+  lemon: "#C6E000",
+  lemonDark: "#A5BB00",
+  lemonLight: "#F4FAC2",
+  lemonText: "#2B3300",
+  bg: "#F2F4F2",
+  card: "#FFFFFF",
+  surface: "#FFFFFF",
+  surface2: "#FAFBFA",
+  border: "#E5EAE5",
+  border2: "#D1D8D1",
+  text: "#0d1f10",
+  textMid: "#374151",
+  muted: "#6B7280",
+  faint: "#9CA3AF",
+  glass: "rgba(242, 244, 242, 0.78)",
+  success: "#008000",
+  successBg: "#e6f4e6",
+  successText: "#014d01",
+  danger: "#DC2626",
+  dangerBg: "#FEF2F2",
+  dangerText: "#991B1B",
+  warning: "#D97706",
+  warningBg: "#FFFBEB",
+  warningText: "#92400E",
+  info: "#2563EB",
+  infoBg: "#EFF6FF",
+  infoText: "#1E40AF",
+  purpleBg: "#F5F3FF",
+  purpleText: "#5B21B6",
+  font: "'Poppins', sans-serif",
+  mono: "'DM Mono', monospace",
+};
 
 export type VwBadgeVariant = "success" | "danger" | "warning" | "info" | "lemon" | "gray" | "green" | "purple";
 export type VwBtnVariant = "primary" | "lemon" | "danger" | "outline" | "ghost" | "subtle" | "dark";
-export type VwBtnSize = "md" | "sm" | "xs";
+export type VwBtnSize = "lg" | "md" | "sm" | "xs";
 export type VwInfoType = "info" | "warning" | "success" | "danger" | "lemon";
 
 /* ─── FORMAT ──────────────────────────────────────────────────────────────── */
-
 export function NGN(value: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -23,7 +67,6 @@ export function NGN(value: number) {
 }
 
 /* ─── BADGE ───────────────────────────────────────────────────────────────── */
-
 export function VwBadge({
   children,
   variant = "gray",
@@ -44,182 +87,157 @@ export function VwBadge({
 }
 
 /* ─── BUTTON ──────────────────────────────────────────────────────────────── */
-
 export function VwBtn({
   children,
   variant = "primary",
   size = "md",
   full = false,
   disabled = false,
+  loading = false,
   onClick,
   style,
   type = "button",
+  icon: Icon,
 }: {
   children: ReactNode;
   variant?: VwBtnVariant;
   size?: VwBtnSize;
   full?: boolean;
   disabled?: boolean;
+  loading?: boolean;
   onClick?: () => void;
   style?: CSSProperties;
   type?: "button" | "submit" | "reset";
+  icon?: any;
 }) {
   return (
     <button
       className={`vw-btn vw-btn--${variant} vw-btn--${size}${full ? " vw-btn--full" : ""}`}
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={onClick}
       style={style}
       type={type}
     >
+      {Icon && <Icon size={size === "xs" ? 12 : size === "sm" ? 14 : size === "lg" ? 18 : 16} />}
       {children}
     </button>
   );
 }
 
 /* ─── KPI CARD ────────────────────────────────────────────────────────────── */
-
 export function VwKPI({
   label,
   value,
   sub,
-  icon,
-  iconBg = "#e6f4e6",
-  iconColor = "#008000",
+  icon: Icon,
+  trend,
+  iconBg,
+  valueColor,
+  tone = "gray",
+  dot = false,
 }: {
   label: string;
   value: ReactNode;
-  sub?: string;
-  icon?: ReactNode;
+  sub?: ReactNode;
+  icon?: any;
+  trend?: string;
   iconBg?: string;
-  iconColor?: string;
+  valueColor?: string;
+  tone?: "success" | "danger" | "warning" | "info" | "gray";
+  dot?: boolean;
 }) {
+  const toneMap = {
+    success: { value: T.success, dot: T.success },
+    danger: { value: T.danger, dot: T.danger },
+    warning: { value: T.warning, dot: T.warning },
+    info: { value: T.info, dot: T.info },
+    gray: { value: T.text, dot: T.faint },
+  };
+  const resolvedTone = toneMap[tone];
+
   return (
     <div className="vw-kpi">
       <div className="vw-kpi__top">
         <span className="vw-kpi__label">{label}</span>
-        {icon ? (
-          <div className="vw-kpi__icon" style={{ background: iconBg, color: iconColor }}>
-            {icon}
+        {Icon ? (
+          <div className="vw-kpi__icon" style={iconBg ? { background: iconBg } : undefined}>
+            <Icon size={18} />
           </div>
         ) : null}
       </div>
-      <div className="vw-kpi__value">{value}</div>
-      {sub ? <div className="vw-kpi__sub">{sub}</div> : null}
+      <div className="vw-kpi__value" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+        <div className="vw-kpi__sub" style={dot ? { display: "inline-flex", alignItems: "center", gap: 6 } : undefined}>
+          {dot ? (
+            <span
+              aria-hidden="true"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: resolvedTone.dot,
+                flexShrink: 0,
+              }}
+            />
+          ) : null}
+          {sub}
+        </div>
+        {trend && (
+          <div style={{ fontSize: 10, color: T.primary, display: "flex", alignItems: "center", gap: 3, fontWeight: 700 }}>
+            <TrendingUp size={10} />
+            {trend}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ─── INFO BOX ────────────────────────────────────────────────────────────── */
-
 export function VwInfoBox({
   children,
   type = "info",
-  icon,
+  icon: Icon,
 }: {
   children: ReactNode;
   type?: VwInfoType;
-  icon?: ReactNode;
+  icon?: ReactNode | any;
 }) {
+  const FallbackIcon = type === "danger" ? AlertTriangle : type === "warning" ? AlertCircle : Info;
+  const IconComponent = typeof Icon === "function" ? Icon : null;
+
   return (
     <div className={`vw-infobox vw-infobox--${type}`}>
-      {icon ? <span className="vw-infobox__icon">{icon}</span> : null}
-      <div>{children}</div>
+      <span className="vw-infobox__icon">
+        {isValidElement(Icon) ? Icon : IconComponent ? <IconComponent size={16} /> : <FallbackIcon size={16} />}
+      </span>
+      <div style={{ flex: 1 }}>{children}</div>
     </div>
   );
 }
 
-/* ─── DIVIDER ─────────────────────────────────────────────────────────────── */
-
-export function VwDivider({ label }: { label?: string }) {
-  return (
-    <div className="vw-divider">
-      <div className="vw-divider__line" />
-      {label ? <span className="vw-divider__label">{label}</span> : null}
-      {label ? <div className="vw-divider__line" /> : null}
-    </div>
-  );
-}
-
-/* ─── STEP BAR ────────────────────────────────────────────────────────────── */
-
-export function VwStepBar({
-  steps,
-  current,
-}: {
-  steps: string[];
-  current: number;
-}) {
-  return (
-    <div className="vw-steps">
-      {steps.map((label, i) => {
-        const done = i < current;
-        const active = i === current;
-        return (
-          <div key={label} className="vw-step" style={{ flex: i < steps.length - 1 ? 1 : "none" }}>
-            <div className="vw-step__content">
-              <div
-                className={`vw-step__circle ${done ? "vw-step__circle--done" : active ? "vw-step__circle--active" : "vw-step__circle--pending"}`}
-              >
-                {done ? "✓" : i + 1}
-              </div>
-              <span
-                className={`vw-step__label ${done ? "vw-step__label--done" : active ? "vw-step__label--active" : "vw-step__label--pending"}`}
-              >
-                {label}
-              </span>
-            </div>
-            {i < steps.length - 1 ? (
-              <div className={`vw-step__connector ${done ? "vw-step__connector--done" : "vw-step__connector--pending"}`} />
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── CONFIRM TABLE ───────────────────────────────────────────────────────── */
-
-export function VwConfirmTable({
-  rows,
-}: {
-  rows: Array<{ key: string; value: string; mono?: boolean; primary?: boolean }>;
-}) {
-  return (
-    <div className="vw-confirm-table">
-      {rows.map((row) => (
-        <div className="vw-confirm-row" key={row.key}>
-          <span className="vw-confirm-row__key">{row.key}</span>
-          <span
-            className={`vw-confirm-row__val${row.mono ? " vw-confirm-row__val--mono" : ""}${row.primary ? " vw-confirm-row__val--primary" : ""}`}
-          >
-            {row.value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── SURFACE ─────────────────────────────────────────────────────────────── */
-
+/* ─── SURFACE / PANEL ─────────────────────────────────────────────────────── */
 export function VwSurface({
   children,
   title,
   action,
   padded = true,
+  icon: Icon,
 }: {
   children: ReactNode;
   title?: string;
   action?: ReactNode;
   padded?: boolean;
+  icon?: any;
 }) {
   return (
     <div className={`vw-surface${padded ? " vw-surface--padded" : ""}`}>
       {title ? (
         <div className="vw-surface__header">
-          <span className="vw-surface__title">{title}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {Icon && <Icon size={16} style={{ color: T.primary }} />}
+            <span className="vw-surface__title">{title}</span>
+          </div>
           {action ? action : null}
         </div>
       ) : null}
@@ -229,7 +247,6 @@ export function VwSurface({
 }
 
 /* ─── MODAL ───────────────────────────────────────────────────────────────── */
-
 export function VwModal({
   children,
   footer,
@@ -237,6 +254,7 @@ export function VwModal({
   size = "md",
   subtitle,
   title,
+  open
 }: {
   children: ReactNode;
   footer?: ReactNode;
@@ -244,50 +262,153 @@ export function VwModal({
   size?: "sm" | "md" | "lg";
   subtitle?: string;
   title: string;
+  open: boolean;
 }) {
+  if (!open) return null;
+
+  const maxWidths = { sm: "400px", md: "560px", lg: "800px" };
+
   return (
-    <div className="vw-modal-overlay" onClick={onClose}>
-      <div className={`vw-modal vw-modal--${size}`} onClick={(e) => e.stopPropagation()}>
-        <div className="vw-modal__header">
+    <div 
+      className="vw-modal-overlay vw-fadeIn" 
+      onClick={onClose}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 1000, padding: 20
+      }}
+    >
+      <div 
+        className="vw-fadeUp"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "linear-gradient(165deg, #121814, #080C0A)",
+          borderRadius: 24, border: `1px solid ${T.border}`,
+          width: "100%", maxWidth: maxWidths[size],
+          boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+          maxHeight: "90vh", display: "flex", flexDirection: "column"
+        }}
+      >
+        <div style={{ padding: "24px 28px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div className="vw-modal__title">{title}</div>
-            {subtitle ? <div className="vw-modal__subtitle">{subtitle}</div> : null}
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>{subtitle}</div>}
           </div>
-          <button className="vw-modal__close" onClick={onClose} type="button">
-            ✕
+          <button 
+            onClick={onClose}
+            style={{ 
+              background: T.glass, border: `1px solid ${T.border}`, color: T.muted,
+              width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer"
+            }}
+          >
+            <X size={16} />
           </button>
         </div>
-        <div className="vw-modal__body">{children}</div>
-        {footer ? <div className="vw-modal__footer">{footer}</div> : null}
+        <div style={{ padding: "28px", overflowY: "auto", flex: 1 }}>{children}</div>
+        {footer && (
+          <div style={{ padding: "20px 28px", borderTop: `1px solid ${T.border}`, background: "rgba(0,0,0,0.2)" }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─── LEGACY COMPAT EXPORTS ───────────────────────────────────────────────── */
+/* ─── FORM FIELDS ─────────────────────────────────────────────────────────── */
+export const VwFI = ({ label, ...props }: any) => (
+  <div style={{ marginBottom: 16 }}>
+    {label && <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</label>}
+    <input
+      {...props}
+      style={{
+        width: "100%", background: T.glass, border: `1px solid ${T.border}`, 
+        borderRadius: 12, padding: "12px 16px", color: "#fff", fontSize: 14,
+        fontFamily: T.font, outline: "none", transition: "all 0.2s"
+      }}
+      onFocus={(e) => {
+        e.target.style.borderColor = T.primary;
+        e.target.style.boxShadow = `0 0 0 4px ${T.primary}22`;
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = T.border;
+        e.target.style.boxShadow = "none";
+      }}
+    />
+  </div>
+);
 
+/* ─── DIVIDER ─────────────────────────────────────────────────────────────── */
+export function VwDivider({ label }: { label?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "24px 0" }}>
+      <div style={{ flex: 1, height: 1, background: T.border }} />
+      {label && <span style={{ fontSize: 11, fontWeight: 700, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</span>}
+      {label && <div style={{ flex: 1, height: 1, background: T.border }} />}
+    </div>
+  );
+}
+
+/* ─── STEP BAR ────────────────────────────────────────────────────────────── */
+export function VwStepBar({ steps, current }: { steps: string[]; current: number }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+      {steps.map((step, i) => (
+        <React.Fragment key={step}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div 
+              style={{ 
+                width: 24, height: 24, borderRadius: 8, 
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 800,
+                background: i <= current ? T.primary : T.glass,
+                color: i <= current ? "#000" : T.muted,
+                border: i <= current ? "none" : `1px solid ${T.border}`
+              }}
+            >
+              {i < current ? <CheckCircle2 size={14} /> : i + 1}
+            </div>
+            <span style={{ fontSize: 12, fontWeight: i === current ? 700 : 400, color: i === current ? "#fff" : T.muted }}>
+              {step}
+            </span>
+          </div>
+          {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < current ? T.primary : T.border }} />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ─── CONFIRM TABLE ───────────────────────────────────────────────────────── */
+export function VwConfirmTable({ rows }: { rows: Array<{ key: string; value: string; mono?: boolean; primary?: boolean }> }) {
+  return (
+    <div style={{ borderRadius: 18, border: `1px solid ${T.border}`, overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
+      {rows.map((row, i) => (
+        <div 
+          key={row.key} 
+          style={{ 
+            display: "flex", justifyContent: "space-between", padding: "14px 20px",
+            borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : "none",
+            background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)"
+          }}
+        >
+          <span style={{ fontSize: 13, color: T.muted }}>{row.key}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: row.primary ? T.primary : "#fff", fontFamily: row.mono ? T.mono : T.font }}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+import React from "react";
+
+/* ─── LEGACY COMPAT EXPORTS ───────────────────────────────────────────────── */
 export interface VendorTableColumn<TRow> {
   key: string;
   label: string;
   render: (row: TRow) => ReactNode;
-}
-
-export function VendorStatusBanner({
-  reason,
-  title,
-}: {
-  contactLabel?: string;
-  reason: string;
-  title: string;
-}) {
-  return (
-    <div className="vw-infobox vw-infobox--danger" role="status">
-      <div>
-        <strong>{title}</strong>
-        <p>{reason}</p>
-      </div>
-    </div>
-  );
 }
 
 export function VendorEmptyState({
@@ -300,111 +421,21 @@ export function VendorEmptyState({
   title: string;
 }) {
   return (
-    <div className="vendor-wallet-empty-state" style={{ textAlign: "center", padding: "2rem" }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--vw-text)", marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: "var(--vw-muted)" }}>{description}</div>
-      {action ? <div style={{ marginTop: 14 }}>{action}</div> : null}
-    </div>
-  );
-}
-
-export function VendorKeyValueGrid({
-  items,
-  columns = 2,
-}: {
-  columns?: 2 | 3;
-  items: Array<{ label: string; value: ReactNode }>;
-}) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gap: 10,
-      }}
-    >
-      {items.map((item) => (
-        <div
-          key={item.label}
-          style={{
-            background: "var(--vw-bg)",
-            borderRadius: 10,
-            padding: "12px 14px",
-            border: "1px solid var(--vw-border)",
-          }}
-        >
-          <div style={{ fontSize: 10, color: "var(--vw-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5, fontWeight: 600 }}>
-            {item.label}
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--vw-text)" }}>{item.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function VendorFlowSteps({
-  activeStep,
-  steps,
-}: {
-  activeStep: number;
-  steps: string[];
-}) {
-  return <VwStepBar steps={steps} current={activeStep} />;
-}
-
-export function VendorDataCard({
-  action,
-  children,
-  description,
-  eyebrow,
-  title,
-}: {
-  action?: ReactNode;
-  children: ReactNode;
-  description?: ReactNode;
-  eyebrow?: ReactNode;
-  title: ReactNode;
-}) {
-  return (
-    <div className="vw-surface vw-surface--padded">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-        <div>
-          {eyebrow ? <div style={{ fontSize: 10, color: "var(--vw-muted)", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 600, marginBottom: 4 }}>{eyebrow}</div> : null}
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--vw-text)" }}>{title}</div>
-          {description ? <div style={{ fontSize: 12, color: "var(--vw-muted)", marginTop: 2 }}>{description}</div> : null}
-        </div>
-        {action}
-      </div>
-      {children}
+    <div className="vendor-wallet-empty-state" style={{ textAlign: "center", padding: "3rem 2rem", background: T.glass, borderRadius: 20, border: `1px dashed ${T.border}` }}>
+      <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 13, color: T.muted, maxWidth: 300, margin: "0 auto" }}>{description}</div>
+      {action ? <div style={{ marginTop: 20 }}>{action}</div> : null}
     </div>
   );
 }
 
 export function VendorLoadingPanel({ label }: { label: string }) {
   return (
-    <div className="vw-surface vw-surface--padded" style={{ textAlign: "center", padding: "2.5rem" }}>
-      <div className="vw-spinner vw-spinner--md" style={{ borderColor: "var(--vw-primary)", borderRightColor: "transparent", marginBottom: 12 }} />
-      <span style={{ color: "var(--vw-muted)", fontSize: 13 }}>{label}</span>
+    <div className="vw-surface vw-surface--padded" style={{ textAlign: "center", padding: "4rem 2rem" }}>
+      <Activity size={32} className="vw-pulse" style={{ color: T.primary, marginBottom: 16 }} />
+      <div style={{ color: T.muted, fontSize: 14, fontWeight: 600 }}>{label}</div>
     </div>
   );
-}
-
-export function VendorStatusPill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "neutral" | "success" | "warning" | "danger" | "info";
-}) {
-  const variantMap: Record<string, VwBadgeVariant> = {
-    neutral: "gray",
-    success: "success",
-    warning: "warning",
-    danger: "danger",
-    info: "info",
-  };
-  return <VwBadge variant={variantMap[tone] || "gray"}>{label}</VwBadge>;
 }
 
 export function VendorTable<TRow>({
@@ -444,6 +475,37 @@ export function VendorTable<TRow>({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+export function VendorKeyValueGrid({
+  columns = 2,
+  items,
+}: {
+  columns?: number;
+  items: Array<{ key?: string; label?: string; value: ReactNode; mono?: boolean }>;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: 12 }}>
+      {items.map((item) => (
+        <div
+          key={item.key ?? item.label ?? String(item.value)}
+          style={{
+            background: T.bg,
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            padding: "12px 14px",
+          }}
+        >
+          <div style={{ fontSize: 10, color: T.faint, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 5 }}>
+            {item.key ?? item.label ?? "--"}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: item.mono ? T.mono : T.font }}>
+            {item.value}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

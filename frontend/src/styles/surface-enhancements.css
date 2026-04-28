@@ -56,7 +56,7 @@
 
 .mini-button-primary {
   color: #ffffff;
-  background: linear-gradient(145deg, var(--acob-green), #0ea31b);
+  background: linear-gradient(145deg, var(--beverly-green), #0ea31b);
   box-shadow: 0 10px 20px rgba(6, 134, 18, 0.18);
 }
 
@@ -649,7 +649,7 @@
 }
 
 .pagination-number.active {
-  background: linear-gradient(145deg, var(--acob-green), #0ea31b);
+  background: linear-gradient(145deg, var(--beverly-green), #0ea31b);
   color: white;
   box-shadow: 0 10px 20px rgba(6, 134, 18, 0.24);
 }
@@ -772,7 +772,7 @@
 
 .dashboard-meta-pill-stable {
   background: rgba(6, 134, 18, 0.14);
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .dashboard-meta-pill-monitor {
@@ -793,7 +793,7 @@
   background: rgba(6, 134, 18, 0.1);
   border: 1px solid rgba(6, 134, 18, 0.2);
   border-radius: 999px;
-  color: var(--acob-green);
+  color: var(--beverly-green);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -802,7 +802,7 @@
 .live-dot {
   width: 6px;
   height: 6px;
-  background: var(--acob-green);
+  background: var(--beverly-green);
   border-radius: 50%;
   animation: pulse-green 2s infinite;
 }
@@ -1267,9 +1267,9 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: var(--acob-green);
+  background: var(--beverly-green);
   border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 8px var(--acob-green);
+  box-shadow: 0 0 8px var(--beverly-green);
 }
 
 /* 7. Typography - Refined Tracking */
@@ -1283,12 +1283,12 @@ h1, h2, h3, .stat-card strong {
 }
 
 .tab-item.active {
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .tab-item.active::after {
   height: 2px;
-  background-color: var(--acob-green);
+  background-color: var(--beverly-green);
   box-shadow: 0 -2px 8px rgba(6, 134, 18, 0.38);
   border-radius: 2px 2px 0 0;
 }

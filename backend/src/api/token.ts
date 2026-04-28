@@ -4,151 +4,66 @@ import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { buildTokenReconciliation } from "../services/analytics-mix.js";
 import { executeRemoteTokenSend } from "../services/remote-token-send.js";
 import { sendEnvelope } from "../services/response.js";
-import { buildUpstreamRequestPlan } from "../services/upstream-request-adapters.js";
-import { forwardWithUpstreamSessionRecovery } from "../services/upstream-session.js";
-import { forwardToUpstream, type UpstreamResult } from "../services/upstream.js";
-import { proxyHandler } from "./proxy.js";
+import { readCombinedTaskGroup, updateTaskGroup } from "../services/task-monitor.js";
+import {
+  applyWalletSiteScopeToBody,
+  buildWalletPurchaseInputFromCrm,
+  createWalletCrmContext,
+  flattenWalletPurchaseForCrm,
+  isWalletScopedCrmContext,
+} from "../services/wallet-crm-link.js";
+import { getWalletPurchaseService } from "../services/wallet-purchase.js";
+import { proxyCanonicalPath, proxyHandler } from "./proxy.js";
 
 export const tokenRouter = Router();
 
-type UpstreamTaskResult = {
-  path: string;
-  label: string;
-  rows: Array<Record<string, unknown>>;
-  total: number;
-  statusCode: number;
-  reason: string | null;
-};
-
-function asRecord(value: unknown) {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
+function readTokenBody(body: unknown) {
+  return typeof body === "object" && body !== null
+    ? (body as Record<string, unknown>)
     : {};
 }
 
-function extractRows(result: unknown): Array<Record<string, unknown>> {
-  if (Array.isArray(result)) {
-    return result.map((entry) => asRecord(entry));
-  }
-
-  const root = asRecord(result);
-  for (const key of ["rows", "data", "list", "records", "items"]) {
-    if (Array.isArray(root[key])) {
-      return (root[key] as unknown[]).map((entry) => asRecord(entry));
-    }
-  }
-
-  if (root.result !== undefined) {
-    return extractRows(root.result);
-  }
-
-  return [];
+function readTrimmedString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function extractTotal(result: unknown, rows: Array<Record<string, unknown>>) {
-  const root = asRecord(result);
-
-  for (const key of ["total", "count", "totalCount", "recordsTotal", "rowCount", "size"]) {
-    const value = root[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return Math.max(0, Math.floor(value));
-    }
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return Math.max(0, Math.floor(parsed));
-      }
-    }
-  }
-
-  return rows.length;
-}
-
-async function runTaskRead(
+async function proxyScopedTokenPath(
   request: AuthenticatedRequest,
   response: Response,
-  path: string,
-  body: Record<string, unknown>,
-  label: string,
-): Promise<UpstreamTaskResult> {
-  const plan = buildUpstreamRequestPlan(path, body);
-
-  const upstreamResult = await forwardWithUpstreamSessionRecovery(
+  pathname: string,
+) {
+  const body = readTokenBody(request.body);
+  const context = createWalletCrmContext(request, body);
+  return proxyCanonicalPath(
     request,
     response,
-    async (upstreamCookie) => {
-      let lastResult: UpstreamResult = {
-        statusCode: 500,
-        payload: {
-          code: 1,
-          reason: "No upstream candidate bodies provided",
-          result: null,
-        },
-      };
-
-      for (const candidate of plan.candidateBodies) {
-        lastResult = await forwardToUpstream(path, candidate, upstreamCookie, {
-          timeoutMs: plan.timeoutMs,
-        });
-
-        if (lastResult.statusCode < 400 && lastResult.payload.code === 0) {
-          return lastResult;
-        }
-      }
-
-      return lastResult;
-    },
+    pathname,
+    applyWalletSiteScopeToBody(body, context),
   );
-
-  const rows =
-    upstreamResult.statusCode < 400 && upstreamResult.payload.code === 0
-      ? extractRows(upstreamResult.payload.result)
-      : [];
-
-  return {
-    path,
-    label,
-    rows,
-    total: extractTotal(upstreamResult.payload.result, rows),
-    statusCode: upstreamResult.statusCode,
-    reason: upstreamResult.payload.reason || null,
-  };
-}
-
-async function readCombinedTokenTasks(request: AuthenticatedRequest, response: Response) {
-  const body = typeof request.body === "object" && request.body !== null
-    ? (request.body as Record<string, unknown>)
-    : {};
-
-  const [gprs, remote] = await Promise.all([
-    runTaskRead(request, response, "/API/GPRSMeterTask/GPRSGetTokenTask", body, "gprs-task"),
-    runTaskRead(request, response, "/API/RemoteMeterTask/GetTokenTask", body, "remote-task"),
-  ]);
-
-  const rows = [
-    ...gprs.rows.map((row) => ({ ...row, __taskSource: "gprs-task" })),
-    ...remote.rows.map((row) => ({ ...row, __taskSource: "remote-task" })),
-  ];
-
-  return {
-    rows,
-    total: rows.length,
-    sources: [gprs, remote].map((entry) => ({
-      path: entry.path,
-      label: entry.label,
-      total: entry.total,
-      ok: entry.statusCode < 400,
-      reason: entry.reason,
-    })),
-  };
 }
 
 tokenRouter.post("/remote-send", async (request, response) => {
   try {
-    const body = typeof request.body === "object" && request.body !== null
-      ? (request.body as Record<string, unknown>)
-      : {};
+    const body = readTokenBody(request.body);
+    const walletContext = createWalletCrmContext(request as AuthenticatedRequest, body);
+    if (isWalletScopedCrmContext(walletContext)) {
+      const purchaseInput = buildWalletPurchaseInputFromCrm(body, walletContext, "remote_send");
+      const walletResult = await getWalletPurchaseService().purchaseRemoteSend(
+        walletContext,
+        purchaseInput,
+        request as AuthenticatedRequest,
+        response,
+      );
+      const flattened = flattenWalletPurchaseForCrm(walletResult);
+      sendEnvelope(
+        response,
+        walletResult.receipt ? 200 : 202,
+        flattened,
+        walletResult.receipt ? "Remote-send wallet purchase completed" : "Remote-send wallet purchase requires follow-up",
+      );
+      return;
+    }
+
     const operation =
       body.operation === "clear-credit" ? "clear-credit" : "send-credit";
     const loadMode =
@@ -171,6 +86,9 @@ tokenRouter.post("/remote-send", async (request, response) => {
         operation,
         loadMode,
         amount,
+        taskName: readTrimmedString(body.taskName),
+        scheduleDate: readTrimmedString(body.scheduleDate),
+        operatorReason: readTrimmedString(body.operatorReason),
       },
     );
 
@@ -183,7 +101,15 @@ tokenRouter.post("/remote-send", async (request, response) => {
 
 tokenRouter.post("/remote-task/read", async (request, response) => {
   try {
-    const result = await readCombinedTokenTasks(request as AuthenticatedRequest, response);
+    const body = typeof request.body === "object" && request.body !== null
+      ? (request.body as Record<string, unknown>)
+      : {};
+    const result = await readCombinedTaskGroup(
+      request as AuthenticatedRequest,
+      response,
+      "token",
+      body,
+    );
     sendEnvelope(response, 200, result, "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load remote token tasks";
@@ -196,44 +122,11 @@ tokenRouter.post("/remote-task/update", async (request, response) => {
     const body = typeof request.body === "object" && request.body !== null
       ? (request.body as Record<string, unknown>)
       : {};
-    const row = typeof body.row === "object" && body.row !== null
-      ? (body.row as Record<string, unknown>)
-      : {};
-    const source = typeof row.__taskSource === "string"
-      ? row.__taskSource
-      : typeof body.__taskSource === "string"
-        ? body.__taskSource
-        : "gprs-task";
-    const path = source === "remote-task"
-      ? "/API/RemoteMeterTask/UpdateTokenTask"
-      : "/API/GPRSMeterTask/GPRSUpdateTokenTask";
-    const plan = buildUpstreamRequestPlan(path, body);
-
-    const upstreamResult = await forwardWithUpstreamSessionRecovery(
+    const upstreamResult = await updateTaskGroup(
       request as AuthenticatedRequest,
       response,
-      async (upstreamCookie) => {
-        let lastResult: UpstreamResult = {
-          statusCode: 500,
-          payload: {
-            code: 1,
-            reason: "No upstream candidate bodies provided",
-            result: null,
-          },
-        };
-
-        for (const candidate of plan.candidateBodies) {
-          lastResult = await forwardToUpstream(path, candidate, upstreamCookie, {
-            timeoutMs: plan.timeoutMs,
-          });
-
-          if (lastResult.statusCode < 400 && lastResult.payload.code === 0) {
-            return lastResult;
-          }
-        }
-
-        return lastResult;
-      },
+      "token",
+      body,
     );
 
     sendEnvelope(
@@ -260,39 +153,89 @@ tokenRouter.get("/reconciliation", async (request, response) => {
 });
 
 // Credit Token
-tokenRouter.post("/creditToken/generate", proxyHandler);
-tokenRouter.post("/creditTokenRecord/read", proxyHandler);
-tokenRouter.post("/creditTokenRecord/readMore", proxyHandler);
-tokenRouter.post("/creditTokenRecord/cancel", proxyHandler);
-tokenRouter.post("/creditTokenCancelRecord/read", proxyHandler);
+tokenRouter.post("/creditToken/generate", async (request, response) => {
+  try {
+    const body = readTokenBody(request.body);
+    const walletContext = createWalletCrmContext(request as AuthenticatedRequest, body);
+    if (!isWalletScopedCrmContext(walletContext)) {
+      await proxyScopedTokenPath(
+        request as AuthenticatedRequest,
+        response,
+        "/api/token/creditToken/generate",
+      );
+      return;
+    }
+
+    const purchaseInput = buildWalletPurchaseInputFromCrm(body, walletContext, "token_generate");
+    const walletResult = await getWalletPurchaseService().purchaseGenerateToken(
+      walletContext,
+      purchaseInput,
+      request as AuthenticatedRequest,
+      response,
+      body,
+    );
+    const flattened = flattenWalletPurchaseForCrm(walletResult);
+    sendEnvelope(
+      response,
+      walletResult.receipt ? 200 : 202,
+      flattened,
+      walletResult.receipt ? "Token wallet purchase completed" : "Token wallet purchase requires follow-up",
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to generate wallet-linked token";
+    sendEnvelope(response, 400, null, message, 1);
+  }
+});
+tokenRouter.post("/creditTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/creditTokenRecord/read"));
+tokenRouter.post("/creditTokenRecord/readMore", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/creditTokenRecord/readMore"));
+tokenRouter.post("/creditTokenRecord/cancel", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/creditTokenRecord/cancel"));
+tokenRouter.post("/creditTokenCancelRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/creditTokenCancelRecord/read"));
 
 // Clear Tamper Token
-tokenRouter.post("/clearTamperToken/generate", proxyHandler);
-tokenRouter.post("/clearTamperTokenRecord/read", proxyHandler);
+tokenRouter.post("/clearTamperToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/clearTamperToken/generate"));
+tokenRouter.post("/clearTamperTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/clearTamperTokenRecord/read"));
 
 // Clear Credit Token
-tokenRouter.post("/clearCreditToken/generate", proxyHandler);
-tokenRouter.post("/clearCreditTokenRecord/read", proxyHandler);
+tokenRouter.post("/clearCreditToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/clearCreditToken/generate"));
+tokenRouter.post("/clearCreditTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/clearCreditTokenRecord/read"));
 
 // Set Maximum Power Limit Token
-tokenRouter.post("/setMaximumPowerLimitToken/generate", proxyHandler);
-tokenRouter.post("/setMaximumPowerLimitTokenRecord/read", proxyHandler);
+tokenRouter.post("/setMaximumPowerLimitToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumPowerLimitToken/generate"));
+tokenRouter.post("/setMaximumPowerLimitTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumPowerLimitTokenRecord/read"));
 
 // Set Maximum Phase Power Unbalance Limit Token
-tokenRouter.post("/setMaximumPhasePowerUnbalanceLimitToken/generate", proxyHandler);
-tokenRouter.post("/setMaximumPhasePowerUnbalanceLimitTokenRecord/read", proxyHandler);
+tokenRouter.post("/setMaximumPhasePowerUnbalanceLimitToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumPhasePowerUnbalanceLimitToken/generate"));
+tokenRouter.post("/setMaximumPhasePowerUnbalanceLimitTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumPhasePowerUnbalanceLimitTokenRecord/read"));
 
 // Meter Test Token
-tokenRouter.post("/meterTestToken/read", proxyHandler);
+tokenRouter.post("/meterTestToken/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/meterTestToken/read"));
 
 // Meter Key
-tokenRouter.post("/meterKey/update", proxyHandler);
+tokenRouter.post("/meterKey/update", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/meterKey/update"));
 
 // Change Meter Key Token
-tokenRouter.post("/changeMeterKeyToken/generate", proxyHandler);
-tokenRouter.post("/changeMeterKeyTokenRecord/read", proxyHandler);
+tokenRouter.post("/changeMeterKeyToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/changeMeterKeyToken/generate"));
+tokenRouter.post("/changeMeterKeyTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/changeMeterKeyTokenRecord/read"));
 
 // Set Maximum Overdraft Limit Token
-tokenRouter.post("/setMaximumOverdraftLimitToken/generate", proxyHandler);
-tokenRouter.post("/setMaximumOverdraftLimitTokenRecord/read", proxyHandler);
+tokenRouter.post("/setMaximumOverdraftLimitToken/generate", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumOverdraftLimitToken/generate"));
+tokenRouter.post("/setMaximumOverdraftLimitTokenRecord/read", (request, response) =>
+  proxyScopedTokenPath(request as AuthenticatedRequest, response, "/api/token/setMaximumOverdraftLimitTokenRecord/read"));
 

@@ -616,6 +616,28 @@ function buildTransactionPresenceChart(rows: ReportRow[]): DashboardLineChartPay
   };
 }
 
+function buildTransactionCountSeries(rows: ReportRow[], limit = 30): DashboardLineChartPayload {
+  const countsByDate = new Map<string, number>();
+
+  for (const row of rows) {
+    const dateLabel = readRowDate(row);
+    if (!dateLabel) {
+      continue;
+    }
+
+    countsByDate.set(dateLabel, (countsByDate.get(dateLabel) ?? 0) + 1);
+  }
+
+  const entries = [...countsByDate.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-limit);
+
+  return {
+    xData: entries.map(([label]) => label),
+    yData: entries.map(([, count]) => count),
+  };
+}
+
 function buildAlarmChart(lowPurchaseRows: ReportRow[], longNonpurchaseRows: ReportRow[]) {
   let longNonpurchaseCount = 0;
   let inactiveMeterCount = 0;
@@ -1100,10 +1122,47 @@ export async function loadDashboardLineChart(
   });
   const typeValue = toFiniteNumber(body.type) ?? 0;
   const chartType = Math.max(0, Math.floor(typeValue));
+  const defaultDaysByType = new Map<number, number>([
+    [5, 12],
+    [6, 48],
+    [7, 1],
+  ]);
+  const days = toFiniteNumber(body.days) ?? defaultDaysByType.get(chartType) ?? 30;
   const useDerivedSiteChart = true;
-  let primaryChart: DashboardLineChartPayload = { xData: [], yData: [] };
+  const primaryResult = await postToUpstreamCandidates(
+    request,
+    response,
+    ["/dashboard/readLineChart", "/api/dashboard/readLineChart"],
+    applyDashboardScope({ ...body, type: chartType, days }, scope),
+  );
+  const primaryChart = normalizeLineChartPayload(primaryResult.payload.result);
+
+  if (hasChartData(primaryChart)) {
+    return primaryChart;
+  }
 
   if (chartType === 1) {
+    const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
+    const purchaseRows =
+      supabaseRows.length > 0
+        ? supabaseRows
+        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
+    return buildTransactionCountSeries(purchaseRows, 30);
+  }
+
+  if (chartType === 2) {
+    const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
+    const purchaseRows =
+      supabaseRows.length > 0
+        ? supabaseRows
+        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
+    return buildDailySeries(purchaseRows, {
+      valueKeys: ["totalUnit", "TransactionKwh", "transactionKwh", "kwh"],
+      limit: 30,
+    });
+  }
+
+  if (chartType === 3) {
     const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
     const purchaseRows =
       supabaseRows.length > 0
@@ -1115,16 +1174,34 @@ export async function loadDashboardLineChart(
     });
   }
 
-  if (chartType === 2) {
-    const supabaseRows = await loadSupabaseDashboardPaymentRows(scope);
-    const purchaseRows =
-      supabaseRows.length > 0
-        ? supabaseRows
+  if (chartType === 4) {
+    const supabaseConsumptionRows = await loadSupabaseConsumptionRows(scope);
+    const consumptionRows =
+      supabaseConsumptionRows.length > 0
+        ? supabaseConsumptionRows
         : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
-    return buildTransactionPresenceChart(purchaseRows);
+    return buildDailySeries(consumptionRows, {
+      valueKeys: ["consumption", "totalEnergy", "usage", "TransactionKwh", "transactionKwh", "totalUnit", "kwh"],
+      limit: 30,
+    });
   }
 
-  if (chartType === 3) {
+  if (chartType === 6) {
+    const hourlyResult = await postToUpstreamCandidates(request, response, [
+      "/DailyDataMeter/readHourly",
+      "/api/DailyDataMeter/readHourly",
+    ], applyDashboardScope({
+      pageNumber: 1,
+      pageSize: useDerivedSiteChart ? DASHBOARD_SITE_SCOPED_ROW_LIMIT : 200,
+      page: 1,
+      limit: useDerivedSiteChart ? DASHBOARD_SITE_SCOPED_ROW_LIMIT : 200,
+    }, scope));
+    return buildHourlySuccessChart(
+      filterRowsBySite(extractRows(hourlyResult.payload.result), scope.siteId),
+    );
+  }
+
+  if (chartType === 7) {
     const [lowPurchaseResult, longNonpurchaseResult] = await Promise.all([
       postToUpstreamCandidates(request, response, [
         "/PrepayReport/LowPurchaseSituation",
@@ -1155,25 +1232,11 @@ export async function loadDashboardLineChart(
     );
   }
 
-  if (chartType === 4) {
-    const supabaseConsumptionRows = await loadSupabaseConsumptionRows(scope);
-    const consumptionRows =
-      supabaseConsumptionRows.length > 0
-        ? supabaseConsumptionRows
-        : await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 });
-    return buildDailySeries(consumptionRows, {
-      valueKeys: ["consumption", "totalEnergy", "usage", "TransactionKwh", "transactionKwh", "totalUnit", "kwh"],
-      limit: 30,
-    });
+  if (chartType === 0) {
+    return buildTransactionPresenceChart(
+      await loadDashboardPaymentRows(request, response, scope, { pageLimit: 2_000 }),
+    );
   }
 
-  const primaryResult = await postToUpstreamCandidates(
-    request,
-    response,
-    ["/dashboard/readLineChart", "/api/dashboard/readLineChart"],
-    applyDashboardScope({ ...body, type: chartType }, scope),
-  );
-  primaryChart = normalizeLineChartPayload(primaryResult.payload.result);
-
-  return hasChartData(primaryChart) ? primaryChart : { xData: [], yData: [] };
+  return { xData: [], yData: [] };
 }

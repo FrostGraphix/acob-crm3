@@ -56,21 +56,15 @@ export const creditTokenRecordFilters: FilterField[] = [
     type: "text",
   },
   {
-    key: "meterType",
-    label: "Meter Type",
-    placeholder: "Search meter type",
-    type: "text",
-  },
-  {
     key: "tariffId",
     label: "Tariff Id",
     placeholder: "Search tariff id",
     type: "text",
   },
   {
-    key: "vatCharge",
-    label: "VAT Charge",
-    placeholder: "Search VAT charge",
+    key: "totalPaid",
+    label: "Total Paid",
+    placeholder: "Search total paid",
     type: "number",
   },
   {
@@ -80,16 +74,10 @@ export const creditTokenRecordFilters: FilterField[] = [
     type: "number",
   },
   {
-    key: "totalPrice",
-    label: "Total Paid",
-    placeholder: "Search total paid",
-    type: "number",
-  },
-  {
-    key: "tokenRecharge",
-    label: "Recharge(kwh)",
-    placeholder: "Search recharge",
-    type: "number",
+    key: "status",
+    label: "Status",
+    placeholder: "Search status",
+    type: "text",
   },
   {
     key: "createId",
@@ -123,16 +111,62 @@ export const creditTokenRecordFilters: FilterField[] = [
   },
 ];
 
+export const tokenAuditFilters: FilterField[] = [
+  ...dateRangeFilters,
+  searchFilter,
+  filterField("receiptId", "Receipt Id", "Search receipt id"),
+  filterField("customerId", "Customer Id", "Search customer id"),
+  filterField("customerName", "Customer Name", "Search customer name"),
+  filterField("meterId", "Meter Id", "Search meter id"),
+  filterField("status", "Status", "Search status"),
+  filterField("stationId", "Station Id", "Search station id"),
+];
+
+export const remoteTaskFilters: FilterField[] = [
+  searchFilter,
+  filterField("id", "Task Id", "Search task id"),
+  filterField("name", "Task Name", "Search task name"),
+  filterField("customerId", "Customer Id", "Search customer id"),
+  filterField("customerName", "Customer Name", "Search customer name"),
+  filterField("meterId", "Meter Id", "Search meter id"),
+  filterField("status", "Status", "Search status"),
+  filterField("stationId", "Station Id", "Search station id"),
+  filterField("lang", "Lang", "Search language"),
+  ...dateRangeFilters,
+];
+
+export const loadProfileFilters: FilterField[] = [
+  searchFilter,
+  filterField("customerId", "Customer Id", "Search customer id"),
+  filterField("customerName", "Customer Name", "Search customer name"),
+  filterField("meterId", "Meter Id", "Search meter id"),
+  filterField("stationId", "Station Id", "Search station id"),
+  filterField("isThreePhase", "Three Phase", "true / false"),
+  ...dateRangeFilters,
+];
+
+export const eventNotificationFilters: FilterField[] = [
+  searchFilter,
+  filterField("meterId", "Meter Id", "Search meter id"),
+  filterField("eventCode", "Event Code", "Search event code"),
+  filterField("stationId", "Station Id", "Search station id"),
+  ...dateRangeFilters,
+];
+
 export const accountColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "oldMeterId", label: "Old Meter Id", searchable: true },
   { key: "meterType", label: "Meter Type" },
+  { key: "ctRatio", label: "CT Ratio", align: "end" },
   { key: "communicationWay", label: "Communication Way" },
   { key: "tariffId", label: "Tariff Id" },
   { key: "protocolVersion", label: "Protocol Version" },
+  { key: "status", label: "Status" },
   { key: "remark", label: "Remark" },
   { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
   { key: "stationId", label: "Station Id" },
 ];
 
@@ -153,13 +187,20 @@ export const creditTokenRecordColumns: TableColumn[] = [
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "meterType", label: "Meter Type", searchable: true },
   { key: "tariffId", label: "Tariff Id", searchable: true },
-  { key: "vatCharge", label: "VAT Charge", align: "end", searchable: true },
   { key: "totalUnit", label: "Total Unit", align: "end", searchable: true },
-  { key: "totalPrice", label: "Total Paid", align: "end", searchable: true },
-  { key: "tokenRecharge", label: "Recharge(kwh)", align: "end", searchable: true },
+  { key: "totalPaid", label: "Total Paid", align: "end", searchable: true },
+  { key: "tax", label: "Tax", align: "end", searchable: true },
+  { key: "monthlyCharge", label: "Monthly Charge", align: "end", searchable: true },
+  { key: "totalDebt", label: "Total Debt", align: "end", searchable: true },
+  { key: "remainingDebt", label: "Remaining Debt", align: "end", searchable: true },
+  { key: "payDebt", label: "Pay Debt", align: "end", searchable: true },
+  { key: "vatCharge", label: "VAT Charge", align: "end", searchable: true },
+  { key: "communicationWay", label: "Communication Way", searchable: true },
   { key: "createId", label: "Vend", searchable: true },
   { key: "token", label: "Token", searchable: true },
+  { key: "status", label: "Status", searchable: true },
   { key: "createTime", label: "Time", searchable: true },
+  { key: "updateTime", label: "Update Time", searchable: true },
   { key: "remark", label: "Remark", searchable: true },
   { key: "stationId", label: "Station Id", searchable: true },
 ];
@@ -179,7 +220,64 @@ export const maximumPowerRecordColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
   { key: "maximumPowerLimit", label: "Maximum Power Limit", align: "end" },
+  { key: "status", label: "Status" },
+  { key: "remark", label: "Remark" },
+  { key: "createTime", label: "Create Time" },
+  { key: "stationId", label: "Station Id" },
+];
+
+export const maximumPhaseUnbalanceRecordColumns: TableColumn[] = [
+  { key: "receiptId", label: "Receipt Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
+  { key: "maximumPhasePowerUnbalanceLimit", label: "Maximum Phase Power Unbalance Limit", align: "end" },
+  { key: "status", label: "Status" },
+  { key: "remark", label: "Remark" },
+  { key: "createTime", label: "Create Time" },
+  { key: "stationId", label: "Station Id" },
+];
+
+export const maximumOverdraftRecordColumns: TableColumn[] = [
+  { key: "receiptId", label: "Receipt Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
+  { key: "maximumOverdraftLimit", label: "Maximum Overdraft Limit", align: "end" },
+  { key: "status", label: "Status" },
+  { key: "remark", label: "Remark" },
+  { key: "createTime", label: "Create Time" },
+  { key: "stationId", label: "Station Id" },
+];
+
+export const changeMeterKeyRecordColumns: TableColumn[] = [
+  { key: "receiptId", label: "Receipt Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
+  { key: "token", label: "Token", searchable: true },
+  { key: "status", label: "Status" },
+  { key: "createTime", label: "Create Time" },
+  { key: "remark", label: "Remark" },
+  { key: "stationId", label: "Station Id" },
+];
+
+export const meterTestTokenRecordColumns: TableColumn[] = [
+  { key: "receiptId", label: "Receipt Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
+  { key: "token", label: "Token", searchable: true },
+  { key: "status", label: "Status" },
+  { key: "createTime", label: "Create Time" },
+  { key: "remark", label: "Remark" },
+  { key: "stationId", label: "Station Id" },
 ];
 
 export const remoteColumns: TableColumn[] = [
@@ -192,10 +290,22 @@ export const remoteColumns: TableColumn[] = [
 ];
 
 export const genericTaskColumns: TableColumn[] = [
+  { key: "__taskSource", label: "Channel" },
+  { key: "taskCategory", label: "Task Type" },
+  { key: "id", label: "Task Id", searchable: true },
+  { key: "name", label: "Task Name", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
   { key: "status", label: "Status" },
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "dataItem", label: "Data Item" },
+  { key: "dataPrefix", label: "Data Prefix" },
+  { key: "data", label: "Data" },
+  { key: "concentratorId", label: "Concentrator Id" },
+  { key: "gatewayId", label: "Gateway Id" },
+  { key: "lang", label: "Lang" },
   { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
   { key: "remark", label: "Remark" },
   { key: "stationId", label: "Station Id" },
 ];
@@ -213,19 +323,46 @@ export const meterReadingTaskColumns: TableColumn[] = [
 ];
 
 export const meterControlTaskColumns: TableColumn[] = [
+  { key: "__taskSource", label: "Channel" },
+  { key: "taskCategory", label: "Task Type" },
+  { key: "id", label: "Task Id", searchable: true },
+  { key: "name", label: "Task Name", searchable: true },
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "dataItem", label: "Data Item" },
-  { key: "site", label: "Site" },
+  { key: "dataPrefix", label: "Data Prefix" },
+  { key: "data", label: "Raw Data" },
+  { key: "concentratorId", label: "Concentrator Id" },
+  { key: "gatewayId", label: "Gateway Id" },
+  { key: "remark", label: "Remark" },
+  { key: "lang", label: "Lang" },
+  { key: "status", label: "Status" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+  { key: "stationId", label: "Station Id" },
 ];
 
 export const meterTokenTaskColumns: TableColumn[] = [
+  { key: "__taskSource", label: "Channel" },
+  { key: "taskCategory", label: "Task Type" },
+  { key: "id", label: "Task Id", searchable: true },
+  { key: "name", label: "Task Name", searchable: true },
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "dataItem", label: "Data Item" },
   { key: "token", label: "Token" },
+  { key: "data", label: "Raw Data" },
+  { key: "dataPrefix", label: "Data Prefix" },
+  { key: "concentratorId", label: "Concentrator Id" },
+  { key: "gatewayId", label: "Gateway Id" },
+  { key: "remark", label: "Remark" },
+  { key: "lang", label: "Lang" },
+  { key: "status", label: "Status" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+  { key: "stationId", label: "Station Id" },
 ];
 
 export const intervalColumns: TableColumn[] = [
@@ -251,8 +388,8 @@ export const intervalColumns: TableColumn[] = [
 ];
 
 export const customerColumns: TableColumn[] = [
-  { key: "id", label: "Id", searchable: true },
-  { key: "name", label: "Name", searchable: true },
+  { key: "id", label: "Customer Id", searchable: true },
+  { key: "name", label: "Customer Name", searchable: true },
   { key: "phone", label: "Phone", searchable: true },
   { key: "address", label: "Address", searchable: true },
   { key: "certifiName", label: "Certifi Name" },
@@ -264,8 +401,8 @@ export const customerColumns: TableColumn[] = [
 ];
 
 export const tariffColumns: TableColumn[] = [
-  { key: "id", label: "Id", searchable: true },
-  { key: "name", label: "Name", searchable: true },
+  { key: "id", label: "Tariff Id", searchable: true },
+  { key: "name", label: "Tariff Name", searchable: true },
   { key: "price", label: "Price", align: "end" },
   { key: "remark", label: "Remark" },
   { key: "createTime", label: "Create Time" },
@@ -275,21 +412,29 @@ export const tariffColumns: TableColumn[] = [
 export const gatewayColumns: TableColumn[] = [
   { key: "status", label: "Status" },
   { key: "successRate", label: "Success Rate", align: "end" },
-  { key: "id", label: "Id", searchable: true },
-  { key: "name", label: "Name", searchable: true },
+  { key: "id", label: "Gateway Id", searchable: true },
+  { key: "name", label: "Gateway Name", searchable: true },
 ];
 
 export const meterColumns: TableColumn[] = [
   { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "type", label: "Type" },
   { key: "meterType", label: "Meter Type" },
-  { key: "customerId", label: "Customer Id", searchable: true },
-  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "isThreePhase", label: "Three Phase" },
   { key: "communicationWay", label: "Communication Way" },
   { key: "protocolVersion", label: "Protocol Version" },
-  { key: "gatewayId", label: "Gateway Id" },
+  { key: "lat", label: "Latitude", align: "end" },
+  { key: "lng", label: "Longitude", align: "end" },
+  { key: "baseYear", label: "Base Year" },
+  { key: "sgc", label: "SGC" },
+  { key: "krn", label: "KRN" },
+  { key: "ken", label: "KEN" },
+  { key: "ti", label: "TI" },
+  { key: "kt", label: "KT" },
   { key: "stationId", label: "Station Id" },
   { key: "status", label: "Status" },
   { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
 ];
 
 export const debtColumns: TableColumn[] = [
@@ -297,11 +442,87 @@ export const debtColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
-  { key: "amount", label: "Amount", align: "end" },
+  { key: "totalDebt", label: "Total Debt", align: "end" },
+  { key: "amount", label: "Legacy Amount", align: "end" },
   { key: "status", label: "Status" },
   { key: "remark", label: "Remark" },
   { key: "createTime", label: "Create Time" },
   { key: "updateTime", label: "Update Time" },
+  { key: "stationId", label: "Station Id" },
+];
+
+export const stationColumns: TableColumn[] = [
+  { key: "stationId", label: "Station Id", searchable: true },
+  { key: "stationName", label: "Station Name", searchable: true },
+  { key: "name", label: "Name", searchable: true },
+  { key: "address", label: "Address", searchable: true },
+  { key: "lat", label: "Latitude", align: "end" },
+  { key: "lng", label: "Longitude", align: "end" },
+  { key: "remark", label: "Remark" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+];
+
+export const roleColumns: TableColumn[] = [
+  { key: "roleId", label: "Role Id", searchable: true },
+  { key: "roleName", label: "Role Name", searchable: true },
+  { key: "name", label: "Name", searchable: true },
+  { key: "description", label: "Description", searchable: true },
+  { key: "remark", label: "Remark" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+];
+
+export const userAdminColumns: TableColumn[] = [
+  { key: "userId", label: "User Id", searchable: true },
+  { key: "username", label: "Username", searchable: true },
+  { key: "name", label: "Name", searchable: true },
+  { key: "roleId", label: "Role Id", searchable: true },
+  { key: "roleName", label: "Role Name", searchable: true },
+  { key: "phone", label: "Phone", searchable: true },
+  { key: "email", label: "Email", searchable: true },
+  { key: "stationId", label: "Station Id" },
+  { key: "status", label: "Status" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+];
+
+export const gprsOnlineStatusColumns: TableColumn[] = [
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
+  { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "gatewayId", label: "Gateway Id", searchable: true },
+  { key: "onlineStatus", label: "Online Status" },
+  { key: "status", label: "Status" },
+  { key: "lastOnlineTime", label: "Last Online Time" },
+  { key: "lastOfflineTime", label: "Last Offline Time" },
+  { key: "ip", label: "IP Address" },
+  { key: "stationId", label: "Station Id" },
+  { key: "remark", label: "Remark" },
+];
+
+export const updateFirmwareTaskColumns: TableColumn[] = [
+  { key: "id", label: "Task Id", searchable: true },
+  { key: "name", label: "Task Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "gatewayId", label: "Gateway Id", searchable: true },
+  { key: "concentratorId", label: "Concentrator Id", searchable: true },
+  { key: "fileName", label: "File Name", searchable: true },
+  { key: "fileUrl", label: "File URL" },
+  { key: "firmwareVersion", label: "Firmware Version" },
+  { key: "status", label: "Status" },
+  { key: "progress", label: "Progress", align: "end" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
+  { key: "stationId", label: "Station Id" },
+  { key: "remark", label: "Remark" },
+];
+
+export const dailyDataColumns: TableColumn[] = [
+  ...intervalColumns,
+  { key: "day", label: "Day" },
+  { key: "month", label: "Month" },
+  { key: "year", label: "Year" },
 ];
 
 export const dlmsColumns: TableColumn[] = [
@@ -325,21 +546,33 @@ export const dlt645Columns: TableColumn[] = [
 
 
 export const loadProfileColumns: TableColumn[] = [
-  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "ctRatio", label: "CT Ratio", align: "end" },
+  { key: "currentDate", label: "Current Date" },
   { key: "collectionDate", label: "Collection Date" },
+  { key: "headline", label: "Headline" },
   { key: "value", label: "Value", align: "end" },
+  { key: "data", label: "Data" },
   { key: "unit", label: "Unit" },
   { key: "status", label: "Status" },
+  { key: "stationId", label: "Station Id" },
+  { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
 ];
 
 export const eventNotificationColumns: TableColumn[] = [
   { key: "id", label: "Id", searchable: true },
+  { key: "eventCode", label: "Event Code", searchable: true },
   { key: "eventType", label: "Event Type" },
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "description", label: "Description" },
+  { key: "remark", label: "Remark" },
   { key: "severity", label: "Severity" },
+  { key: "stationId", label: "Station Id" },
   { key: "createTime", label: "Create Time" },
+  { key: "updateTime", label: "Update Time" },
   { key: "status", label: "Status" },
 ];
 
@@ -363,19 +596,16 @@ export const dlt645TaskColumns: TableColumn[] = [
 ];
 
 export const meterTestTokenColumns: TableColumn[] = [
+  { key: "receiptId", label: "Receipt Id", searchable: true },
+  { key: "customerId", label: "Customer Id", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
+  { key: "meterType", label: "Meter Type" },
+  { key: "stationId", label: "Station Id" },
   { key: "testToken", label: "Test Token" },
   { key: "createTime", label: "Create Time" },
+  { key: "status", label: "Status" },
   { key: "remark", label: "Remark" },
-];
-
-export const changeMeterKeyRecordColumns: TableColumn[] = [
-  { key: "receiptId", label: "Receipt Id", searchable: true },
-  { key: "meterId", label: "Meter Id", searchable: true },
-  { key: "customerName", label: "Customer Name", searchable: true },
-  { key: "token", label: "Token" },
-  { key: "createTime", label: "Create Time" },
 ];
 
 export const overdraftRecordColumns: TableColumn[] = [
@@ -383,8 +613,12 @@ export const overdraftRecordColumns: TableColumn[] = [
   { key: "customerId", label: "Customer Id", searchable: true },
   { key: "customerName", label: "Customer Name", searchable: true },
   { key: "meterId", label: "Meter Id", searchable: true },
+  { key: "meterType", label: "Meter Type" },
   { key: "maximumOverdraftLimit", label: "Max Overdraft Limit", align: "end" },
+  { key: "status", label: "Status" },
   { key: "createTime", label: "Create Time" },
+  { key: "remark", label: "Remark" },
+  { key: "stationId", label: "Station Id" },
 ];
 
 export const theftSignalColumns: TableColumn[] = [
@@ -438,11 +672,13 @@ export function selectField(
 }
 
 export const remoteCommonFields: ActionField[] = [
-  field("taskName", "Task Name", "Task name"),
+  field("taskName", "Name", "Task name"),
   {
     ...field("scheduleDate", "Schedule Date", "Schedule date", "date"),
     helpText: "Leave empty to dispatch immediately.",
   },
+  field("dataPrefix", "Data Prefix", "DLT645 flag / prefix"),
+  field("remark", "Remark", "Operator remark"),
 ];
 
 export const readingTaskFields: ActionField[] = [
@@ -470,6 +706,7 @@ export const settingTaskFields: ActionField[] = [
     ...field("settingValue", "Setting Value", "Setting value"),
     required: true,
   },
+  field("data", "Data", "Raw task data"),
   selectField("valueType", "Value Type", "Select value type", [
     { label: "String", value: "string" },
     { label: "Number", value: "number" },
@@ -494,6 +731,7 @@ export const controlTaskFields: ActionField[] = [
     ...field("reason", "Reason", "Reason for command"),
     helpText: "Recommended for operator traceability.",
   },
+  field("data", "Data", "Raw task data"),
   {
     ...field("operatorReason", "Operator Reason", "Reason for high-risk action"),
     required: true,
@@ -517,6 +755,7 @@ export const tokenTaskFields: ActionField[] = [
     ...field("tokenValue", "Token Value", "Token value"),
     helpText: "Sensitive values are redacted in the review step and logs.",
   },
+  field("data", "Data", "Raw task data"),
   {
     ...field("operatorReason", "Operator Reason", "Reason for token operation"),
     required: true,
@@ -550,8 +789,9 @@ export const transparentForwardingFields: ActionField[] = [
 ];
 
 export const customerManagementFields = [
-  field("id", "Customer Id", "Customer id"),
-  field("name", "Name", "Customer name"),
+  field("customerId", "Customer Id", "Customer id"),
+  field("customerName", "Customer Name", "Customer name"),
+  field("type", "Type", "Customer type"),
   field("phone", "Phone", "Phone number"),
   field("address", "Address", "Address"),
   field("certifiName", "Certifi Name", "Certificate name"),
@@ -562,39 +802,41 @@ export const customerManagementFields = [
 
 export const accountManagementFields = [
   field("customerId", "Customer Id", "Customer id"),
-  field("customerName", "Customer Name", "Customer name"),
   field("meterId", "Meter Id", "Meter id"),
-  field("meterType", "Meter Type", "Meter type"),
-  field("communicationWay", "Communication Way", "Communication way"),
+  field("oldMeterId", "Old Meter Id", "Required when replacing an existing meter"),
+  field("ctRatio", "CT Ratio", "Current transformer ratio", "number"),
   field("tariffId", "Tariff Id", "Tariff id"),
-  field("protocolVersion", "Protocol Version", "Protocol version"),
   field("remark", "Remark", "Optional note"),
   field("stationId", "Station Id", "Station id"),
 ];
 
 export const tariffManagementFields = [
-  field("id", "Id", "Tariff id"),
-  field("name", "Name", "Tariff name"),
+  field("tariffId", "Tariff Id", "Tariff id"),
+  field("tariffName", "Tariff Name", "Tariff name"),
   field("price", "Price", "Tariff price", "number"),
+  field("tax", "Tax", "Tax amount or percentage", "number"),
+  field("stationId", "Station Id", "Station id"),
   field("remark", "Remark", "Optional note"),
 ];
 
 export const gatewayManagementFields = [
-  field("id", "Id", "Gateway id"),
-  field("name", "Name", "Gateway name"),
-  field("status", "Status", "Status"),
-  field("successRate", "Success Rate", "Success rate", "number"),
+  field("gatewayId", "Gateway Id", "Gateway id"),
+  field("gatewayName", "Gateway Name", "Gateway name"),
+  field("stationId", "Station Id", "Station id"),
   field("remark", "Remark", "Optional note"),
 ];
 
 export const meterManagementFields = [
   field("meterId", "Meter Id", "Meter id"),
-  field("meterType", "Meter Type", "Meter type"),
-  field("customerId", "Customer Id", "Customer id"),
-  field("customerName", "Customer Name", "Customer name"),
+  field("type", "Type", "Meter type"),
+  selectField("isThreePhase", "Three Phase", "Select phase mode", [
+    { label: "Single Phase", value: "false" },
+    { label: "Three Phase", value: "true" },
+  ]),
   field("communicationWay", "Communication Way", "Communication way"),
   field("protocolVersion", "Protocol Version", "Protocol version"),
-  field("gatewayId", "Gateway Id", "Gateway id"),
+  field("lat", "Latitude", "Latitude", "number"),
+  field("lng", "Longitude", "Longitude", "number"),
   field("stationId", "Station Id", "Station id"),
   field("remark", "Remark", "Optional note"),
 ];
@@ -603,9 +845,52 @@ export const debtManagementFields = [
   field("customerId", "Customer Id", "Customer id"),
   field("customerName", "Customer Name", "Customer name"),
   field("meterId", "Meter Id", "Meter id"),
-  field("amount", "Amount", "Debt amount", "number"),
+  field("totalDebt", "Total Debt", "Debt amount", "number"),
   field("status", "Status", "Status"),
   field("remark", "Remark", "Optional note"),
+  field("stationId", "Station Id", "Station id"),
+];
+
+export const stationManagementFields = [
+  field("stationId", "Station Id", "Station id"),
+  field("stationName", "Station Name", "Station name"),
+  field("name", "Name", "Display name"),
+  field("address", "Address", "Station address"),
+  field("lat", "Latitude", "Latitude", "number"),
+  field("lng", "Longitude", "Longitude", "number"),
+  field("remark", "Remark", "Optional note"),
+];
+
+export const roleManagementFields = [
+  field("roleId", "Role Id", "Role id"),
+  field("roleName", "Role Name", "Role name"),
+  field("name", "Name", "Display name"),
+  field("description", "Description", "Role description", "textarea"),
+  field("remark", "Remark", "Optional note"),
+];
+
+export const userAdminFields = [
+  field("userId", "User Id", "User id"),
+  field("username", "Username", "Login username"),
+  field("name", "Name", "Display name"),
+  field("password", "Password", "Initial or reset password"),
+  field("roleId", "Role Id", "Role id"),
+  field("phone", "Phone", "Phone number"),
+  field("email", "Email", "Email address"),
+  field("stationId", "Station Id", "Station id"),
+  field("remark", "Remark", "Optional note"),
+];
+
+export const updateFirmwareTaskFields: ActionField[] = [
+  field("name", "Task Name", "Firmware task name"),
+  field("meterId", "Meter Id", "Target meter id"),
+  field("gatewayId", "Gateway Id", "Gateway id"),
+  field("concentratorId", "Concentrator Id", "Concentrator id"),
+  field("fileName", "File Name", "Firmware file name"),
+  field("fileUrl", "File URL", "Uploaded firmware URL"),
+  field("firmwareVersion", "Firmware Version", "Target firmware version"),
+  field("stationId", "Station Id", "Station id"),
+  field("remark", "Remark", "Deployment note"),
 ];
 
 export const dlmsManagementFields = [
@@ -826,7 +1111,7 @@ export function createRemoteOperationPage(
     toolbarActions: [
       {
         key: "remote-command",
-        label: options.requiresReviewStep ? "Review Command" : "Submit Command",
+        label: `Create ${title} Task`,
         endpoint,
         tone: options.dangerLevel === "high" ? "danger" : "primary",
         operationKind: "task-create",

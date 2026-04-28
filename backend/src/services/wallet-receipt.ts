@@ -39,7 +39,7 @@ function buildPrintableContent(input: WalletReceiptIssueInput, receiptNumber: st
       : "VENDING RECEIPT - TOKEN";
 
   const lines = [
-    "ACOB Lighting Technology Ltd",
+    "Beverly Technology Ltd",
     header,
     "",
     `Receipt No: ${receiptNumber}`,

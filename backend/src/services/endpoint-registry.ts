@@ -42,9 +42,31 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/api/customer/import", "import"],
 
   // User maintenance
+  ["/api/user/read", "read"],
+  ["/api/user/create", "crud-create"],
+  ["/api/user/update", "crud-update"],
+  ["/api/user/delete", "crud-delete"],
+  ["/api/user/import", "import"],
+  ["/api/user/reset", "crud-update"],
+  ["/api/user/info", "read"],
   ["/api/user/updateInfo", "crud-update"],
   ["/api/user/modifyLoginPassword", "crud-update"],
   ["/api/user/modifyAuthorizationPassword", "crud-update"],
+
+  // Station CRUD
+  ["/api/station/read", "read"],
+  ["/api/station/create", "crud-create"],
+  ["/api/station/update", "crud-update"],
+  ["/api/station/delete", "crud-delete"],
+  ["/api/station/import", "import"],
+
+  // Role CRUD and data role tree
+  ["/api/role/read", "read"],
+  ["/api/role/ReadDataRole", "read"],
+  ["/api/role/create", "crud-create"],
+  ["/api/role/update", "crud-update"],
+  ["/api/role/delete", "crud-delete"],
+  ["/api/role/import", "import"],
 
   // Tariff CRUD
   ["/api/tariff/read", "read"],
@@ -113,6 +135,12 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/api/token/setMaximumOverdraftLimitTokenRecord/read", "read"],
 
   // DailyDataMeter
+  ["/api/DailyData/read", "read"],
+  ["/api/DailyData/readMore", "read"],
+  ["/api/DailyData/readMonthly", "drilldown"],
+  ["/api/dailyData/read", "read"],
+  ["/api/dailyData/readMore", "read"],
+  ["/api/dailyData/readMonthly", "drilldown"],
   ["/api/DailyDataMeter/read", "read"],
   ["/api/DailyDataMeter/readMore", "read"],
   ["/api/DailyDataMeter/readHourly", "drilldown"],
@@ -138,6 +166,20 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/API/RemoteMeterTask/UpdateSettingTask", "task-update"],
   ["/API/RemoteMeterTask/UpdateControlTask", "task-update"],
   ["/API/RemoteMeterTask/UpdateTokenTask", "task-update"],
+  ["/api/remoteMeterTask/createReadingTask", "task-create"],
+  ["/api/remoteMeterTask/createSettingTask", "task-create"],
+  ["/api/remoteMeterTask/createControlTask", "task-create"],
+  ["/api/remoteMeterTask/createTokenTask", "task-create"],
+  ["/api/remoteMeterTask/CreateTransparentForwardingTask", "task-create"],
+  ["/api/remoteMeterTask/getReadingTask", "task-read"],
+  ["/api/remoteMeterTask/getSettingTask", "task-read"],
+  ["/api/remoteMeterTask/getControlTask", "task-read"],
+  ["/api/remoteMeterTask/getTokenTask", "task-read"],
+  ["/api/remoteMeterTask/GetTransparentForwardingTask", "task-read"],
+  ["/api/remoteMeterTask/updateReadingTask", "task-update"],
+  ["/api/remoteMeterTask/updateSettingTask", "task-update"],
+  ["/api/remoteMeterTask/updateControlTask", "task-update"],
+  ["/api/remoteMeterTask/updateTokenTask", "task-update"],
 
   // GPRS Meter Tasks
   ["/API/GPRSMeterTask/GPRSCreateReadingTask", "task-create"],
@@ -165,6 +207,19 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/api/GPRSMeterTask/GPRSUpdateControlTask", "task-update"],
   ["/api/GPRSMeterTask/GPRSUpdateTokenTask", "task-update"],
 
+  // GPRS Online Status
+  ["/API/GPRSOnlineStatus/Read", "read"],
+  ["/API/GPRSOnlineStatus/View", "read"],
+  ["/API/GPRSOnlineStatus/Update", "crud-update"],
+  ["/api/gprsOnlineStatus/read", "read"],
+  ["/api/gprsOnlineStatus/view", "read"],
+
+  // Firmware Update Tasks
+  ["/API/UpdateFirmwareTask/GetUpdateFirmwareTask", "task-read"],
+  ["/API/UpdateFirmwareTask/CreateUpdateFirmwareTask", "task-create"],
+  ["/api/updateFirmwareTask/getUpdateFirmwareTask", "task-read"],
+  ["/api/updateFirmwareTask/createUpdateFirmwareTask", "task-create"],
+
   // DLMS Protocol
   ["/api/dlms/Read", "read"],
   ["/api/dlms/ReadDLMSTree", "read"],
@@ -189,6 +244,10 @@ const explicitPolicies = new Map<string, OperationKind>([
   ["/API/LoadProfile/InstantaneousValueCurve", "read"],
   ["/API/LoadProfile/DailyData", "read"],
   ["/API/LoadProfile/MonthlyData", "read"],
+  ["/api/loadProfile/electricEnergyCurve", "read"],
+  ["/api/loadProfile/instantaneousValueCurve", "read"],
+  ["/api/loadProfile/dailyData", "read"],
+  ["/api/loadProfile/monthlyData", "read"],
 
   // Item Management
   ["/api/item/read", "read"],
@@ -200,11 +259,14 @@ const explicitPolicies = new Map<string, OperationKind>([
 
   // Event Notification
   ["/API/EventNotification/Read", "read"],
+  ["/api/eventNotification/read", "read"],
 
   // File Upload
   ["/API/File/Upload", "file-upload"],
   ["/API/File/UploadBin", "file-upload"],
   ["/API/File/ConcentratorUploadBin", "file-upload"],
+  ["/api/file/upload", "file-upload"],
+  ["/api/file/uploadBin", "file-upload"],
 
   // System Log
   ["/api/Log/read", "read"],

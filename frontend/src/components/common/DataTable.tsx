@@ -23,6 +23,8 @@ interface DataTableProps {
   onColumnFilterChange?: (key: string, value: string) => void;
   onColumnSearch?: () => void;
   selectionMode?: "multiple" | "single" | "none";
+  rowActionDisplay?: "menu" | "inline";
+  title?: string;
 }
 
 function getColumnLabelText(label: React.ReactNode, fallback: string) {
@@ -135,6 +137,8 @@ export function DataTable({
   onColumnFilterChange,
   onColumnSearch,
   selectionMode = "multiple",
+  rowActionDisplay = "menu",
+  title,
 }: DataTableProps) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const showSelection = selectionMode !== "none";
@@ -166,7 +170,7 @@ export function DataTable({
     <Surface className="table-panel table-panel-vercel ds-table-surface" tone="raised">
       <div className="table-panel-header">
         <div>
-          <p className="table-panel-eyebrow">Data view</p>
+          <p className="table-panel-eyebrow">{title ? `${title} List` : "Data view"}</p>
           <div className="table-panel-title-row">
             <strong className="table-panel-title">{total.toLocaleString()} entries</strong>
             <span className="table-panel-range">
@@ -281,6 +285,7 @@ export function DataTable({
                         <RowActionsMenu
                           actions={rowActions}
                           row={row}
+                          display={rowActionDisplay}
                           onAction={(action, currentRow) => {
                             onRowAction(action, currentRow);
                           }}
@@ -453,10 +458,12 @@ function ColumnFilter({
 function RowActionsMenu({
   actions,
   row,
+  display,
   onAction,
 }: {
   actions: ActionConfig[];
   row: DataRow;
+  display: "menu" | "inline";
   onAction: (action: ActionConfig, row: DataRow) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -475,6 +482,34 @@ function RowActionsMenu({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
+
+  if (display === "inline") {
+    return (
+      <div className="table-filter-shell" ref={containerRef} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {actions.map((action) => (
+            <Button
+              key={action.key}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction(action, row);
+              }}
+              size="sm"
+              tone={
+                action.tone === "primary"
+                  ? "primary"
+                  : action.tone === "danger"
+                    ? "danger"
+                    : "ghost"
+              }
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="table-filter-shell" ref={containerRef} onClick={(e) => e.stopPropagation()}>

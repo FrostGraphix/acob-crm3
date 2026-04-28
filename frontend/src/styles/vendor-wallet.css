@@ -1,51 +1,50 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACOB CRM3 — Vendor Wallet Design System
+   Beverly CRM — Vendor Wallet Design System
    Green/Lemon Financial Theme · Poppins + DM Mono
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap');
 
-/* ─── TOKENS ──────────────────────────────────────────────────────────────── */
+/* ─── TOKENS (LIGHT THEME) ────────────────────────────────────────────────── */
 :root {
-  --vw-sidebar:       #021f0d;
+  --vw-sidebar:       #011508; /* Dark Forest Green */
   --vw-sidebar-bg:    #011508;
-  --vw-primary:       #008000;
-  --vw-primary-dark:  #006600;
-  --vw-primary-light: #e6f4e6;
+  --vw-primary:       #008000; /* Primary Green */
+  --vw-primary-dark:  #006400;
+  --vw-primary-light: rgba(0, 128, 0, 0.08);
   --vw-primary-glow:  rgba(0, 128, 0, 0.15);
-  --vw-lemon:         #C6E000;
+  --vw-lemon:         #C6E000; /* Brand Lemon */
   --vw-lemon-dark:    #A5BB00;
-  --vw-lemon-light:   #F4FAC2;
-  --vw-lemon-text:    #2B3300;
-  --vw-lemon-glow:    rgba(198, 224, 0, 0.18);
-  --vw-bg:            #F2F4F2;
-  --vw-surface:       #FFFFFF;
-  --vw-surface2:      #FAFBFA;
-  --vw-text:          #0d1f10;
+  --vw-lemon-light:   rgba(198, 224, 0, 0.12);
+  --vw-lemon-text:    #152209;
+  --vw-lemon-glow:    rgba(198, 224, 0, 0.25);
+  --vw-bg:            #F2F4F2; /* Light Gray Background */
+  --vw-surface:       #FFFFFF; /* Pure White Surfaces */
+  --vw-surface-glass: rgba(255, 255, 255, 0.8);
+  --vw-surface2:      #F8FAF8;
+  --vw-text:          #0D1F10; /* Dark green-tinted text */
   --vw-text-mid:      #374151;
   --vw-muted:         #6B7280;
   --vw-faint:         #9CA3AF;
   --vw-border:        #E5EAE5;
   --vw-border2:       #D1D8D1;
-  --vw-success:       #008000;
-  --vw-success-bg:    #e6f4e6;
-  --vw-success-text:  #014d01;
-  --vw-danger:        #DC2626;
+  --vw-success:       #10B981;
+  --vw-success-bg:    #ECFDF5;
+  --vw-success-text:  #065F46;
+  --vw-danger:        #EF4444;
   --vw-danger-bg:     #FEF2F2;
   --vw-danger-text:   #991B1B;
-  --vw-warning:       #D97706;
+  --vw-warning:       #F59E0B;
   --vw-warning-bg:    #FFFBEB;
   --vw-warning-text:  #92400E;
-  --vw-info:          #2563EB;
+  --vw-info:          #3B82F6;
   --vw-info-bg:       #EFF6FF;
   --vw-info-text:     #1E40AF;
-  --vw-purple-bg:     #F5F3FF;
-  --vw-purple-text:   #5B21B6;
   --vw-font:          'Poppins', sans-serif;
   --vw-mono:          'DM Mono', monospace;
   --vw-radius:        12px;
   --vw-radius-lg:     16px;
-  --vw-radius-xl:     18px;
+  --vw-radius-xl:     20px;
 }
 
 /* ─── ANIMATIONS ──────────────────────────────────────────────────────────── */
@@ -88,20 +87,24 @@
 /* ─── LAYOUT STACK ────────────────────────────────────────────────────────── */
 .vendor-wallet-stack {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
   font-family: var(--vw-font);
+  background: var(--vw-bg);
+  min-height: 100vh;
 }
 
 /* ─── HERO BALANCE CARD ───────────────────────────────────────────────────── */
 .vw-hero {
-  background: linear-gradient(135deg, var(--vw-sidebar-bg) 0%, #013b18 100%);
+  background: linear-gradient(135deg, rgba(0, 200, 83, 0.12), rgba(0, 200, 83, 0.05));
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--vw-border);
   border-radius: var(--vw-radius-xl);
-  padding: 26px 28px;
-  color: #fff;
+  padding: 32px;
+  color: var(--vw-text);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 40px rgba(1, 21, 8, 0.22);
-  animation: vw-fadeUp 0.35s ease both;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  animation: vw-fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .vw-hero::before {
   content: '';
@@ -122,23 +125,27 @@
 }
 .vw-hero__eyebrow {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--vw-primary);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-  font-weight: 600;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  font-weight: 700;
 }
 .vw-hero__balance {
-  font-size: 44px;
+  font-size: 52px;
   font-weight: 800;
-  letter-spacing: -1.5px;
+  letter-spacing: -2px;
   line-height: 1;
   font-family: var(--vw-font);
+  background: linear-gradient(to bottom, #fff, #b0b0b0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .vw-hero__sub {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
-  margin-top: 8px;
+  font-size: 13px;
+  color: var(--vw-muted);
+  margin-top: 10px;
   font-family: var(--vw-mono);
 }
 .vw-hero__right {
@@ -148,22 +155,23 @@
   align-items: flex-end;
 }
 .vw-hero__active-badge {
-  background: rgba(74, 222, 128, 0.15);
-  border: 1px solid rgba(74, 222, 128, 0.25);
-  color: #4ade80;
-  padding: 4px 12px;
+  background: rgba(0, 200, 83, 0.1);
+  border: 1px solid rgba(0, 200, 83, 0.2);
+  color: var(--vw-primary);
+  padding: 6px 16px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 .vw-hero__active-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #4ade80;
+  background: var(--vw-primary);
+  box-shadow: 0 0 12px var(--vw-primary);
   animation: vw-pulse 2s ease-in-out infinite;
 }
 .vw-hero__grid {
@@ -253,28 +261,29 @@
 .vw-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 9px;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: 20px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   font-family: var(--vw-font);
 }
-.vw-badge--lg { padding: 5px 13px; font-size: 12px; }
-.vw-badge--success { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid #b7dfc8; }
-.vw-badge--danger  { background: var(--vw-danger-bg);  color: var(--vw-danger-text);  border: 1px solid #fecaca; }
-.vw-badge--warning { background: var(--vw-warning-bg); color: var(--vw-warning-text); border: 1px solid #fcd34d; }
-.vw-badge--info    { background: var(--vw-info-bg);    color: var(--vw-info-text);    border: 1px solid #bfdbfe; }
-.vw-badge--lemon   { background: var(--vw-lemon-light); color: var(--vw-lemon-text);  border: 1px solid #d6ee66; }
-.vw-badge--gray    { background: #F9FAFB;              color: var(--vw-muted);        border: 1px solid var(--vw-border); }
-.vw-badge--green   { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid #b7dfc8; }
-.vw-badge--purple  { background: var(--vw-purple-bg);  color: var(--vw-purple-text);  border: 1px solid #DDD6FE; }
+.vw-badge--lg { padding: 6px 14px; font-size: 12.5px; }
+.vw-badge--success { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid rgba(0, 200, 83, 0.2); }
+.vw-badge--danger  { background: var(--vw-danger-bg);  color: var(--vw-danger-text);  border: 1px solid rgba(255, 82, 82, 0.2); }
+.vw-badge--warning { background: var(--vw-warning-bg); color: var(--vw-warning-text); border: 1px solid rgba(255, 171, 64, 0.2); }
+.vw-badge--info    { background: var(--vw-info-bg);    color: var(--vw-info-text);    border: 1px solid rgba(68, 138, 255, 0.2); }
+.vw-badge--lemon   { background: var(--vw-lemon-light); color: var(--vw-lemon-text);  border: 1px solid rgba(198, 255, 0, 0.2); }
+.vw-badge--gray    { background: var(--vw-surface-glass); color: var(--vw-muted);        border: 1px solid var(--vw-border); }
+.vw-badge--green   { background: var(--vw-success-bg); color: var(--vw-success-text); border: 1px solid rgba(0, 200, 83, 0.2); }
+.vw-badge--purple  { background: var(--vw-purple-bg);  color: var(--vw-purple-text);  border: 1px solid rgba(124, 77, 255, 0.2); }
 .vw-badge__dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
 }
 .vw-badge--success .vw-badge__dot { background: var(--vw-success-text); }
 .vw-badge--danger  .vw-badge__dot { background: var(--vw-danger-text); }
@@ -287,48 +296,56 @@
 .vw-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 8px;
-  font-weight: 600;
+  gap: 8px;
+  border-radius: 12px;
+  font-weight: 700;
   cursor: pointer;
   border: none;
   font-family: var(--vw-font);
-  transition: all 0.15s;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
+  border: 1px solid transparent;
 }
-.vw-btn:active { transform: scale(0.97); }
-.vw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.vw-btn--md  { font-size: 13px; padding: 9px 18px; }
-.vw-btn--sm  { font-size: 12px; padding: 6px 14px; }
-.vw-btn--xs  { font-size: 11px; padding: 3px 9px; }
+.vw-btn:active { transform: scale(0.96); }
+.vw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.vw-btn--lg  { font-size: 13px; padding: 10px 18px; }
+.vw-btn--md  { font-size: 13.5px; padding: 12px 24px; }
+.vw-btn--sm  { font-size: 12.5px; padding: 8px 18px; }
+.vw-btn--xs  { font-size: 11px; padding: 5px 12px; }
 .vw-btn--full { width: 100%; justify-content: center; }
 
-.vw-btn--primary { background: var(--vw-primary);  color: #fff; box-shadow: 0 1px 6px rgba(0, 128, 0, 0.3); }
-.vw-btn--lemon   { background: var(--vw-lemon);    color: var(--vw-lemon-text); box-shadow: 0 1px 6px var(--vw-lemon-glow); }
-.vw-btn--danger  { background: var(--vw-danger);   color: #fff; box-shadow: 0 1px 4px rgba(220, 38, 38, 0.25); }
-.vw-btn--outline { background: transparent;        color: var(--vw-text-mid); border: 1px solid var(--vw-border2); }
-.vw-btn--ghost   { background: transparent;        color: var(--vw-muted); border: 1px solid var(--vw-border); }
-.vw-btn--subtle  { background: var(--vw-primary-light); color: var(--vw-primary); border: 1px solid #b7dfc8; }
-.vw-btn--dark    { background: var(--vw-sidebar);  color: #fff; }
+.vw-btn--primary { background: var(--vw-primary);  color: #000; box-shadow: 0 4px 16px var(--vw-primary-glow); }
+.vw-btn--primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--vw-primary-glow); }
+.vw-btn--lemon   { background: var(--vw-lemon);    color: #000; box-shadow: 0 4px 16px var(--vw-lemon-glow); }
+.vw-btn--lemon:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--vw-lemon-glow); }
+.vw-btn--danger  { background: var(--vw-danger);   color: #fff; box-shadow: 0 4px 16px rgba(255, 82, 82, 0.2); }
+.vw-btn--outline { background: transparent;        color: var(--vw-text); border: 1px solid var(--vw-border2); }
+.vw-btn--outline:hover { background: var(--vw-primary-light); border-color: var(--vw-primary); }
+.vw-btn--ghost   { background: var(--vw-surface-glass); color: var(--vw-text-mid); border: 1px solid var(--vw-border); }
+.vw-btn--ghost:hover { background: var(--vw-surface2); color: var(--vw-text); border-color: var(--vw-border2); }
+.vw-btn--subtle  { background: var(--vw-primary-light); color: var(--vw-primary); border: 1px solid var(--vw-border); }
+.vw-btn--dark    { background: var(--vw-sidebar);  color: #fff; border: 1px solid rgba(255, 255, 255, 0.08); }
 
 /* ─── KPI CARD ────────────────────────────────────────────────────────────── */
 .vw-kpi {
   background: var(--vw-surface);
   border: 1px solid var(--vw-border);
-  border-radius: var(--vw-radius);
+  border-radius: 12px;
   padding: 16px 18px;
-  transition: all 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   font-family: var(--vw-font);
+  box-shadow: 0 8px 28px rgba(2, 85, 34, 0.08);
 }
 .vw-kpi:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(2, 85, 34, 0.1);
+  border-color: #d8e2d8;
+  box-shadow: 0 12px 30px rgba(2, 85, 34, 0.1);
 }
 .vw-kpi__top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .vw-kpi__label {
   font-size: 10px;
@@ -344,17 +361,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--vw-primary-light);
+  color: var(--vw-primary);
 }
 .vw-kpi__value {
   font-size: 23px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.5px;
+  color: var(--vw-text);
 }
 .vw-kpi__sub {
   color: var(--vw-faint);
   font-size: 11px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* ─── QUICK ACTION CARDS ──────────────────────────────────────────────────── */
@@ -404,21 +424,23 @@
 .vw-surface {
   background: var(--vw-surface);
   border: 1px solid var(--vw-border);
-  border-radius: 14px;
+  border-radius: var(--vw-radius-lg);
   font-family: var(--vw-font);
+  box-shadow: 0 10px 28px rgba(2, 31, 13, 0.05);
 }
-.vw-surface--padded  { padding: 22px; }
+.vw-surface--padded  { padding: 24px; }
 .vw-surface__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 20px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--vw-border);
 }
 .vw-surface__title {
   font-size: 14px;
   font-weight: 700;
   color: var(--vw-text);
+  letter-spacing: -0.1px;
 }
 .vw-page-title {
   font-family: var(--vw-font);
@@ -426,11 +448,12 @@
   font-size: 22px;
   color: var(--vw-text);
   margin: 0;
+  letter-spacing: -0.3px;
 }
 .vw-page-sub {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--vw-muted);
-  margin-top: 2px;
+  margin-top: 4px;
   font-family: var(--vw-font);
 }
 
@@ -448,7 +471,7 @@
   text-align: left;
   font-size: 10px;
   font-weight: 700;
-  color: var(--vw-muted);
+  color: var(--vw-primary);
   border-bottom: 1px solid var(--vw-border);
   white-space: nowrap;
   background: var(--vw-surface2);
@@ -462,14 +485,14 @@
   font-size: 13px;
   color: var(--vw-text);
 }
-.vw-table td.vw-td--mono   { font-family: var(--vw-mono); }
+.vw-table td.vw-td--mono   { font-family: var(--vw-mono); color: var(--vw-primary); font-size: 11.5px; }
 .vw-table td.vw-td--muted  { color: var(--vw-muted); }
-.vw-table td.vw-td--bold   { font-weight: 600; }
+.vw-table td.vw-td--bold   { font-weight: 600; color: var(--vw-text); }
 .vw-table td.vw-td--danger { color: var(--vw-danger); }
 .vw-table td.vw-td--success { color: var(--vw-success); }
 .vw-table td.vw-td--center { text-align: center; }
 .vw-table tbody tr {
-  transition: background 0.12s;
+  transition: all 0.2s;
 }
 .vw-table tbody tr:hover {
   background: #f6faf6;
@@ -1648,78 +1671,139 @@
   background: var(--vw-bg);
 }
 
+.crm-shell--wallet {
+  grid-template-columns: 220px minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.crm-shell--wallet.sidebar-collapsed {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.crm-shell--wallet .crm-main {
+  height: 100vh;
+  min-height: 100vh;
+}
+
 .crm-shell--wallet .crm-content {
   background: transparent;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
 }
 
 .wallet-shell-sidebar {
-  width: 230px;
+  width: 220px;
+  height: 100vh;
   background: var(--vw-sidebar-bg);
   color: #fff;
   border-right: 1px solid rgba(255, 255, 255, 0.04);
+  overflow: hidden;
 }
 
 .wallet-shell-sidebar__scroll {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .wallet-shell-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 18px 16px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .wallet-shell-sidebar__logo {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  border: 1px solid rgba(198, 224, 0, 0.35);
-  color: var(--vw-lemon);
-  background: rgba(198, 224, 0, 0.08);
+  border: none;
+  color: var(--vw-lemon-text);
+  background: var(--vw-lemon);
   display: grid;
   place-items: center;
-  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(198, 224, 0, 0.18);
+  font-size: 18px;
   font-weight: 800;
+  flex-shrink: 0;
+}
+
+.wallet-shell-sidebar__brand-copy {
+  min-width: 0;
 }
 
 .wallet-shell-sidebar__brand-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   color: #fff;
 }
 
 .wallet-shell-sidebar__brand-subtitle {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  margin-top: 1px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .wallet-shell-sidebar__workspace {
-  padding: 14px 16px 8px;
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.wallet-shell-sidebar__workspace-label,
 .wallet-shell-sidebar__section {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-bottom: 4px;
+  padding: 12px 8px 4px;
 }
 
-.wallet-shell-sidebar__workspace-copy {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.54);
-  line-height: 1.6;
+.wallet-shell-sidebar__workspace-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wallet-shell-sidebar__workspace-pill.is-admin {
+  background: rgba(198, 224, 0, 0.1);
+  color: var(--vw-lemon);
+}
+
+.wallet-shell-sidebar__workspace-pill.is-vendor {
+  background: rgba(0, 128, 0, 0.12);
+  color: #4ade80;
+}
+
+.wallet-shell-sidebar__workspace-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.wallet-shell-sidebar__workspace-pill.is-admin .wallet-shell-sidebar__workspace-dot {
+  background: var(--vw-lemon);
+}
+
+.wallet-shell-sidebar__workspace-pill.is-vendor .wallet-shell-sidebar__workspace-dot {
+  background: #4ade80;
 }
 
 .wallet-shell-sidebar__nav {
   flex: 1;
   padding: 8px 10px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .wallet-shell-sidebar__item {
@@ -1737,9 +1821,21 @@
   color: rgba(255, 255, 255, 0.52);
   font: inherit;
   font-size: 13px;
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.wallet-shell-sidebar__item-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-shell-sidebar__item-icon {
+  flex-shrink: 0;
 }
 
 .wallet-shell-sidebar__item:hover {
@@ -1748,10 +1844,11 @@
 }
 
 .wallet-shell-sidebar__item.is-active {
-  background: var(--vw-primary);
+  background: rgba(0, 128, 0, 0.18);
   color: #fff;
   border-left-color: var(--vw-lemon);
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(0, 128, 0, 0.14);
 }
 
 .wallet-shell-sidebar__item-label {
@@ -1763,10 +1860,10 @@
 .wallet-shell-sidebar__badge {
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(198, 224, 0, 0.16);
-  color: var(--vw-lemon);
+  background: var(--vw-lemon);
+  color: var(--vw-lemon-text);
   font-size: 10px;
   font-weight: 700;
   display: inline-flex;
@@ -1775,15 +1872,17 @@
 }
 
 .wallet-shell-sidebar__badge.is-danger {
-  background: rgba(220, 38, 38, 0.16);
-  color: #fecaca;
+  background: var(--vw-danger);
+  color: #fff;
 }
 
 .wallet-shell-sidebar__footer {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  background: linear-gradient(180deg, rgba(1, 21, 8, 0) 0%, rgba(1, 21, 8, 0.96) 18%);
 }
 
 .wallet-shell-sidebar__user {
@@ -1793,38 +1892,45 @@
 }
 
 .wallet-shell-sidebar__avatar {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--vw-primary);
-  color: #fff;
+  background: var(--vw-lemon);
+  color: var(--vw-lemon-text);
   font-size: 12px;
   font-weight: 700;
 }
 
 .wallet-shell-sidebar__user-name {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wallet-shell-sidebar__user-role {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .wallet-shell-sidebar__signout {
-  min-height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.4);
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .wallet-shell-topbar {
@@ -1862,6 +1968,31 @@
   gap: 10px;
 }
 
+.wallet-shell-topbar__portal {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--vw-border);
+  background: var(--vw-surface);
+  color: var(--vw-text-mid);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  box-shadow: 0 2px 8px rgba(2, 31, 13, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, color 0.15s ease;
+}
+
+.wallet-shell-topbar__portal:hover {
+  color: var(--vw-text);
+  border-color: var(--vw-border2);
+  box-shadow: 0 10px 24px rgba(2, 31, 13, 0.06);
+  transform: translateY(-1px);
+}
+
 .wallet-shell-topbar__bell {
   display: flex;
   align-items: center;
@@ -1880,12 +2011,183 @@
   height: 34px;
   border-radius: 50%;
   border: none;
-  background: var(--vw-lemon);
-  color: var(--vw-lemon-text);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wallet-shell-topbar__avatar.is-admin {
+  background: var(--vw-lemon);
+  color: var(--vw-lemon-text);
+}
+
+.wallet-shell-topbar__avatar.is-vendor {
+  background: var(--vw-primary);
+  color: #fff;
+}
+
+.wallet-command-palette__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(5, 12, 7, 0.36);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 72px 24px 24px;
+}
+
+.wallet-command-palette {
+  width: min(760px, 100%);
+  max-height: min(78vh, 760px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 248, 0.9) 100%);
+  box-shadow: 0 24px 80px rgba(2, 31, 13, 0.18);
+  overflow: hidden;
+}
+
+.wallet-command-palette__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(1, 21, 8, 0.08);
+}
+
+.wallet-command-palette__search-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(1, 21, 8, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 14px;
+  height: 50px;
+}
+
+.wallet-command-palette__search-icon {
+  flex-shrink: 0;
+  color: var(--vw-muted);
+}
+
+.wallet-command-palette__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--vw-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.wallet-command-palette__close {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--vw-border);
+  background: var(--vw-surface2);
+  color: var(--vw-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wallet-command-palette__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 18px 0;
+  color: var(--vw-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.wallet-command-palette__results {
+  overflow-y: auto;
+  padding: 12px 12px 16px;
+}
+
+.wallet-command-palette__group {
+  display: grid;
+  gap: 6px;
+}
+
+.wallet-command-palette__group + .wallet-command-palette__group {
+  margin-top: 12px;
+}
+
+.wallet-command-palette__group-label {
+  padding: 6px 8px 2px;
+  color: var(--vw-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallet-command-palette__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--vw-text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.wallet-command-palette__item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 128, 0, 0.14);
+  box-shadow: 0 10px 24px rgba(2, 31, 13, 0.08);
+}
+
+.wallet-command-palette__item-copy {
+  min-width: 0;
+}
+
+.wallet-command-palette__item-title {
+  color: var(--vw-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wallet-command-palette__item-subtitle {
+  margin-top: 2px;
+  color: var(--vw-muted);
+  font-size: 11px;
+}
+
+.wallet-command-palette__item-hint {
+  color: var(--vw-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wallet-command-palette__empty {
+  padding: 28px 16px;
+  color: var(--vw-muted);
+  text-align: center;
+  font-size: 13px;
 }
 
 .wallet-admin-data-page .data-view-header,
@@ -1951,6 +2253,11 @@
   .wallet-shell-topbar__sub {
     display: none;
   }
+
+  .wallet-shell-topbar__portal {
+    display: none;
+  }
+
 }
 
 @media print {

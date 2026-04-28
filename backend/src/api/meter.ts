@@ -22,4 +22,4 @@ meterRouter.post("/addread", proxyHandler);
 meterRouter.post("/create", proxyHandler);
 meterRouter.post("/update", proxyHandler);
 meterRouter.post("/delete", proxyHandler);
-meterRouter.post("/import", createBulkImportHandler("/api/meter/create", "meter"));
+meterRouter.post("/import", createBulkImportHandler("/api/meter/import", "meter"));

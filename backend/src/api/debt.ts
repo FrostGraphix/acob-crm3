@@ -8,4 +8,4 @@ debtRouter.post("/read", proxyHandler);
 debtRouter.post("/create", proxyHandler);
 debtRouter.post("/update", proxyHandler);
 debtRouter.post("/delete", proxyHandler);
-debtRouter.post("/import", createBulkImportHandler("/api/debt/create", "debt"));
+debtRouter.post("/import", createBulkImportHandler("/api/debt/import", "debt"));

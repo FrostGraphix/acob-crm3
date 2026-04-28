@@ -117,6 +117,10 @@ function hasRowIdentifier(row: Record<string, unknown>) {
       row.meterId ??
       row.receiptId ??
       row.gatewayId ??
+      row.stationId ??
+      row.tariffId ??
+      row.roleId ??
+      row.userId ??
       row.name,
   );
 }
@@ -250,15 +254,39 @@ export function validateRequestBodyByPathname(
   pathname: string,
   body: Record<string, unknown>,
 ): ValidationResult {
-  if (pathname.startsWith("/API/RemoteMeterTask/")) {
-    if (pathname.includes("/Update")) {
+  const canonicalPathname = new Map<string, string>([
+    ["/api/dailyData/read", "/api/DailyData/read"],
+    ["/api/dailyData/readMore", "/api/DailyData/readMore"],
+    ["/api/dailyData/readMonthly", "/api/DailyData/readMonthly"],
+    ["/api/remoteMeterTask/createReadingTask", "/API/RemoteMeterTask/CreateReadingTask"],
+    ["/api/remoteMeterTask/createSettingTask", "/API/RemoteMeterTask/CreateSettingTask"],
+    ["/api/remoteMeterTask/createControlTask", "/API/RemoteMeterTask/CreateControlTask"],
+    ["/api/remoteMeterTask/createTokenTask", "/API/RemoteMeterTask/CreateTokenTask"],
+    ["/api/remoteMeterTask/CreateTransparentForwardingTask", "/API/RemoteMeterTask/CreateTransparentForwardingTask"],
+    ["/api/remoteMeterTask/getReadingTask", "/API/RemoteMeterTask/GetReadingTask"],
+    ["/api/remoteMeterTask/getSettingTask", "/API/RemoteMeterTask/GetSettingTask"],
+    ["/api/remoteMeterTask/getControlTask", "/API/RemoteMeterTask/GetControlTask"],
+    ["/api/remoteMeterTask/getTokenTask", "/API/RemoteMeterTask/GetTokenTask"],
+    ["/api/remoteMeterTask/GetTransparentForwardingTask", "/API/RemoteMeterTask/GetTransparentForwardingTask"],
+    ["/api/remoteMeterTask/updateReadingTask", "/API/RemoteMeterTask/UpdateReadingTask"],
+    ["/api/remoteMeterTask/updateSettingTask", "/API/RemoteMeterTask/UpdateSettingTask"],
+    ["/api/remoteMeterTask/updateControlTask", "/API/RemoteMeterTask/UpdateControlTask"],
+    ["/api/remoteMeterTask/updateTokenTask", "/API/RemoteMeterTask/UpdateTokenTask"],
+    ["/api/loadProfile/electricEnergyCurve", "/API/LoadProfile/ElectricEnergyCurve"],
+    ["/api/loadProfile/instantaneousValueCurve", "/API/LoadProfile/InstantaneousValueCurve"],
+    ["/api/loadProfile/dailyData", "/API/LoadProfile/DailyData"],
+    ["/api/loadProfile/monthlyData", "/API/LoadProfile/MonthlyData"],
+  ]).get(pathname) ?? pathname;
+
+  if (canonicalPathname.startsWith("/API/RemoteMeterTask/")) {
+    if (canonicalPathname.includes("/Update")) {
       const row = toRecord(body.row);
       if (!hasRowIdentifier(row)) {
         return { valid: false, message: "task update requires a target row identifier" };
       }
     }
 
-    if (!pathname.includes("/Create")) {
+    if (!canonicalPathname.includes("/Create")) {
       return { valid: true };
     }
 
@@ -268,13 +296,13 @@ export function validateRequestBodyByPathname(
       return targetValidation;
     }
 
-    if (pathname === "/API/RemoteMeterTask/CreateReadingTask") {
+    if (canonicalPathname === "/API/RemoteMeterTask/CreateReadingTask") {
       if (!getSanitizedString(body, "dataItem")) {
         return { valid: false, message: "dataItem is required" };
       }
     }
 
-    if (pathname === "/API/RemoteMeterTask/CreateSettingTask") {
+    if (canonicalPathname === "/API/RemoteMeterTask/CreateSettingTask") {
       if (!getSanitizedString(body, "settingKey")) {
         return { valid: false, message: "settingKey is required" };
       }
@@ -284,7 +312,7 @@ export function validateRequestBodyByPathname(
       }
     }
 
-    if (pathname === "/API/RemoteMeterTask/CreateControlTask") {
+    if (canonicalPathname === "/API/RemoteMeterTask/CreateControlTask") {
       const controlCommand = getSanitizedString(body, "controlCommand");
       if (!["connect", "disconnect", "open", "close"].includes(controlCommand)) {
         return { valid: false, message: "controlCommand is invalid" };
@@ -292,9 +320,9 @@ export function validateRequestBodyByPathname(
     }
 
     if (
-      pathname === "/API/RemoteMeterTask/CreateControlTask" ||
-      pathname === "/API/RemoteMeterTask/CreateTokenTask" ||
-      pathname === "/API/RemoteMeterTask/CreateTransparentForwardingTask"
+      canonicalPathname === "/API/RemoteMeterTask/CreateControlTask" ||
+      canonicalPathname === "/API/RemoteMeterTask/CreateTokenTask" ||
+      canonicalPathname === "/API/RemoteMeterTask/CreateTransparentForwardingTask"
     ) {
       if (body.reviewConfirmed !== true) {
         return { valid: false, message: "reviewConfirmed must be true for high-risk tasks" };
@@ -306,13 +334,13 @@ export function validateRequestBodyByPathname(
       }
     }
 
-    if (pathname === "/API/RemoteMeterTask/CreateTokenTask") {
+    if (canonicalPathname === "/API/RemoteMeterTask/CreateTokenTask") {
       if (!getSanitizedString(body, "tokenType")) {
         return { valid: false, message: "tokenType is required" };
       }
     }
 
-    if (pathname === "/API/RemoteMeterTask/CreateTransparentForwardingTask") {
+    if (canonicalPathname === "/API/RemoteMeterTask/CreateTransparentForwardingTask") {
       const protocolMode = getSanitizedString(body, "protocolMode");
       if (!["hex", "ascii"].includes(protocolMode)) {
         return { valid: false, message: "protocolMode is invalid" };
@@ -390,10 +418,10 @@ export function validateRequestBodyByPathname(
   }
 
   if (
-    pathname === "/API/LoadProfile/DailyData" ||
-    pathname === "/API/LoadProfile/MonthlyData" ||
-    pathname === "/API/LoadProfile/ElectricEnergyCurve" ||
-    pathname === "/API/LoadProfile/InstantaneousValueCurve"
+    canonicalPathname === "/API/LoadProfile/DailyData" ||
+    canonicalPathname === "/API/LoadProfile/MonthlyData" ||
+    canonicalPathname === "/API/LoadProfile/ElectricEnergyCurve" ||
+    canonicalPathname === "/API/LoadProfile/InstantaneousValueCurve"
   ) {
     const dateRange = validateDateRange(body, { required: false, maxDays: 366 });
     if (!dateRange.valid) {
@@ -410,28 +438,54 @@ export function validateRequestBodyByPathname(
       if (amount === null || amount <= 0) {
         return { valid: false, message: "amount must be greater than zero" };
       }
-      if (unit === null || unit <= 0) {
+      if (unit !== null && unit <= 0) {
         return { valid: false, message: "unit must be greater than zero" };
+      }
+      const payDebtPercent = coerceNumber(body.payDebtPercent);
+      if (
+        payDebtPercent !== null &&
+        (payDebtPercent < 0 || payDebtPercent > 100)
+      ) {
+        return { valid: false, message: "payDebtPercent must be between 0 and 100" };
       }
       return { valid: true };
     }
 
-    if (
-      pathname === "/api/token/setMaximumPowerLimitToken/generate" ||
-      pathname === "/api/token/setMaximumPhasePowerUnbalanceLimitToken/generate" ||
-      pathname === "/api/token/setMaximumOverdraftLimitToken/generate"
-    ) {
+  if (
+    pathname === "/api/token/setMaximumPowerLimitToken/generate" ||
+    pathname === "/api/token/setMaximumPhasePowerUnbalanceLimitToken/generate" ||
+    pathname === "/api/token/setMaximumOverdraftLimitToken/generate"
+  ) {
       const limitValue = coerceNumber(body.limitValue);
       if (limitValue === null || limitValue <= 0) {
-        return { valid: false, message: "limitValue must be greater than zero" };
-      }
-      return { valid: true };
+      return { valid: false, message: "limitValue must be greater than zero" };
+    }
+    return { valid: true };
+  }
+
+  if (pathname === "/api/token/meterKey/update") {
+    const oldMeterKey =
+      getSanitizedString(body, "oldMeterKey") || getSanitizedString(body, "oldKey");
+    const newMeterKey =
+      getSanitizedString(body, "newMeterKey") || getSanitizedString(body, "newKey");
+
+    if (!oldMeterKey) {
+      return { valid: false, message: "oldMeterKey is required" };
+    }
+
+    if (!newMeterKey) {
+      return { valid: false, message: "newMeterKey is required" };
     }
 
     return { valid: true };
   }
 
+    return { valid: true };
+  }
+
   if (
+    canonicalPathname === "/api/DailyData/readMonthly" ||
+    canonicalPathname === "/api/DailyData/readMore" ||
     pathname === "/api/DailyDataMeter/readHourly" ||
     pathname === "/api/DailyDataMeter/readMonthly" ||
     pathname === "/api/DailyDataMeter/readMore"

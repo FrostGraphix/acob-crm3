@@ -1,8 +1,8 @@
-export const ACOB_RECEIPT_BRAND = {
-  companyName: "ACOB Lighting Technology Limited",
-  website: "www.acoblighting.com",
-  email: "info@acoblighting.com",
-  secondaryEmail: "infoacob@gmail.com",
+export const BEVERLY_RECEIPT_BRAND = {
+  companyName: "Beverly Technology Limited",
+  website: "www.beverly.com",
+  email: "info@beverly.com",
+  secondaryEmail: "infobeverly@gmail.com",
   primaryPhone: "+234 704 920 2634",
   secondaryPhone: "+234 803 290 2825",
   address:
@@ -62,7 +62,7 @@ export function buildBrandedReceiptDocument(options: BrandedReceiptDocumentOptio
     <title>${escapeHtml(options.documentTitle)}</title>
     <style>
       @page {
-        size: A4 portrait;
+        size: 60mm auto;
         margin: 8mm;
       }
 
@@ -87,7 +87,8 @@ export function buildBrandedReceiptDocument(options: BrandedReceiptDocumentOptio
       }
 
       .receipt-page {
-        max-width: 860px;
+        width: 60mm;
+        max-width: 60mm;
         margin: 0 auto;
         background: var(--panel);
         border: 1px solid rgba(15, 118, 110, 0.14);
@@ -264,7 +265,8 @@ export function buildBrandedReceiptDocument(options: BrandedReceiptDocumentOptio
           box-shadow: none;
           border: 0;
           border-radius: 0;
-          max-width: none;
+          width: 60mm;
+          max-width: 60mm;
         }
 
         .receipt-hero {
@@ -311,22 +313,32 @@ export function buildBrandedReceiptDocument(options: BrandedReceiptDocumentOptio
         }
       }
     </style>
+    <script>
+      (function () {
+        var userAgent = navigator.userAgent || "";
+        var isFirefox = userAgent.indexOf("Firefox") > -1;
+        if (!isFirefox) return;
+        var style = document.createElement("style");
+        style.textContent = "@page { size: 49mm auto; margin: 2mm; } .receipt-page { width: 49mm; max-width: 49mm; }";
+        document.head.appendChild(style);
+      })();
+    </script>
   </head>
   <body>
     <main class="receipt-page">
       <section class="receipt-hero">
         <div class="receipt-brand">
           <div class="receipt-brand-mark">
-            <p class="receipt-kicker">ACOB Official Receipt</p>
-            <h1>${escapeHtml(ACOB_RECEIPT_BRAND.companyName)}</h1>
-            <p class="receipt-tagline">${escapeHtml(ACOB_RECEIPT_BRAND.tagline)}</p>
-            <p class="receipt-address">${escapeHtml(ACOB_RECEIPT_BRAND.address)}</p>
+            <p class="receipt-kicker">Beverly Official Receipt</p>
+            <h1>${escapeHtml(BEVERLY_RECEIPT_BRAND.companyName)}</h1>
+            <p class="receipt-tagline">${escapeHtml(BEVERLY_RECEIPT_BRAND.tagline)}</p>
+            <p class="receipt-address">${escapeHtml(BEVERLY_RECEIPT_BRAND.address)}</p>
           </div>
           <div class="receipt-contact">
-            <span>${escapeHtml(ACOB_RECEIPT_BRAND.primaryPhone)}</span>
-            <span>${escapeHtml(ACOB_RECEIPT_BRAND.secondaryPhone)}</span>
-            <span>${escapeHtml(ACOB_RECEIPT_BRAND.email)}</span>
-            <span>${escapeHtml(ACOB_RECEIPT_BRAND.website)}</span>
+            <span>${escapeHtml(BEVERLY_RECEIPT_BRAND.primaryPhone)}</span>
+            <span>${escapeHtml(BEVERLY_RECEIPT_BRAND.secondaryPhone)}</span>
+            <span>${escapeHtml(BEVERLY_RECEIPT_BRAND.email)}</span>
+            <span>${escapeHtml(BEVERLY_RECEIPT_BRAND.website)}</span>
           </div>
         </div>
         <div class="receipt-title-row">
@@ -343,7 +355,7 @@ export function buildBrandedReceiptDocument(options: BrandedReceiptDocumentOptio
           <tbody>${rows}</tbody>
         </table>
         <p class="receipt-meta">
-          Verified contact: ${escapeHtml(ACOB_RECEIPT_BRAND.email)} | ${escapeHtml(ACOB_RECEIPT_BRAND.primaryPhone)} | ${escapeHtml(ACOB_RECEIPT_BRAND.website)}
+          Verified contact: ${escapeHtml(BEVERLY_RECEIPT_BRAND.email)} | ${escapeHtml(BEVERLY_RECEIPT_BRAND.primaryPhone)} | ${escapeHtml(BEVERLY_RECEIPT_BRAND.website)}
         </p>
         ${footer}
       </section>

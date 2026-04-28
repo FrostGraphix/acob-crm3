@@ -1,9 +1,9 @@
 :root {
   /* ACOB Brand Colors (Synced from acoblighting.com) */
-  --acob-green: #068612;
-  --acob-green-hover: #056e0f;
-  --acob-green-subtle: rgba(6, 134, 18, 0.12);
-  --acob-yellow: #facc15;
+  --beverly-green: #068612;
+  --beverly-green-hover: #056e0f;
+  --beverly-green-subtle: rgba(6, 134, 18, 0.12);
+  --beverly-yellow: #facc15;
 
   /* System / Default (Light Mode) */
   --bg-app: #f6f8f3;
@@ -106,7 +106,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--acob-green) 5%, transparent), transparent 40%),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--beverly-green) 5%, transparent), transparent 40%),
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--sapphire) 4%, transparent), transparent 40%),
     var(--bg-app);
   color: var(--text-main);
@@ -177,7 +177,7 @@ button {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: linear-gradient(135deg, var(--acob-green), #0a5c0e);
+  background: linear-gradient(135deg, var(--beverly-green), #0a5c0e);
   color: #fff;
   border-radius: 10px;
   flex-shrink: 0;
@@ -233,8 +233,8 @@ button {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  background: color-mix(in srgb, var(--acob-green) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--acob-green) 20%, transparent);
+  background: color-mix(in srgb, var(--beverly-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--beverly-green) 20%, transparent);
   border-radius: 10px;
   flex-shrink: 0;
   transition: all 0.3s ease;
@@ -255,7 +255,7 @@ button {
 
 .brand-title strong {
   font-weight: 800;
-  color: var(--acob-green);
+  color: var(--beverly-green);
 }
 
 .brand-subtitle {

@@ -78,9 +78,10 @@ function getCookieByName(response, name) {
   if (setCookies.length === 0) {
     const legacyHeader = response.headers.get("set-cookie");
     if (typeof legacyHeader === "string") {
-      const first = legacyHeader.split(",").find((entry) => entry.trim().startsWith(`${name}=`));
-      if (first) {
-        return first.trim().split(";")[0] ?? null;
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const match = legacyHeader.match(new RegExp(`(?:^|,\\s*)${escapedName}=([^;]*)`));
+      if (match?.[1]) {
+        return `${name}=${match[1]}`;
       }
     }
     return null;
@@ -573,6 +574,41 @@ test("legacy login falls back to configured local credentials when upstream auth
   } finally {
     upstreamState.forceLoginFailure = false;
   }
+});
+
+test("legacy user info POST reads the authenticated session without csrf", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: "ACOB_admin",
+    }),
+  });
+
+  assert.equal(loginResponse.status, 200);
+  const sessionCookie =
+    getCookieByName(loginResponse, "beverly_session") ??
+    getCookieByName(loginResponse, "acob_session");
+  const csrfCookie =
+    getCookieByName(loginResponse, "beverly_csrf") ??
+    getCookieByName(loginResponse, "acob_csrf");
+  assert.ok(sessionCookie);
+  assert.ok(csrfCookie);
+
+  const infoResponse = await fetch(`${baseUrl}/api/user/info`, {
+    method: "POST",
+    headers: {
+      Cookie: buildCookieHeader(sessionCookie, csrfCookie),
+    },
+  });
+
+  assert.equal(infoResponse.status, 200);
+  const infoPayload = await infoResponse.json();
+  assert.equal(infoPayload.code, 0);
+  assert.equal(infoPayload.result.displayName, "Beverly Admin");
 });
 
 test.beforeEach(() => {

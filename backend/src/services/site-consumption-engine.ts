@@ -45,6 +45,12 @@ interface SiteConsumptionStatus {
   };
 }
 
+interface RefreshWindowOptions {
+  fromDate?: string;
+  toDate?: string;
+  reason?: string;
+}
+
 interface SiteConsumptionRangeData {
   summary: Array<{
     site: SiteConsumptionSite;
@@ -133,6 +139,15 @@ function getRecentWindowStartDate(today = new Date()) {
   const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   start.setUTCDate(start.getUTCDate() - 2);
   return formatDateKey(start);
+}
+
+function normalizeIsoDate(value: string | undefined | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = toIsoDate(value);
+  return parsed;
 }
 
 function formatMonthKey(value: Date) {
@@ -640,7 +655,7 @@ class SiteConsumptionEngine {
     };
   }
 
-  public async refresh() {
+  public async refresh(options: RefreshWindowOptions = {}) {
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
@@ -656,9 +671,15 @@ class SiteConsumptionEngine {
           })
         : null;
       this.setRefreshing(true);
-      const sourceWindow = {
+      const defaultWindow = {
         fromDate: getRecentWindowStartDate(),
         toDate: formatDateKey(new Date()),
+      };
+      const requestedFromDate = normalizeIsoDate(options.fromDate) ?? defaultWindow.fromDate;
+      const requestedToDate = normalizeIsoDate(options.toDate) ?? defaultWindow.toDate;
+      const sourceWindow = {
+        fromDate: requestedFromDate <= requestedToDate ? requestedFromDate : requestedToDate,
+        toDate: requestedToDate >= requestedFromDate ? requestedToDate : requestedFromDate,
       };
 
       try {
@@ -707,11 +728,12 @@ class SiteConsumptionEngine {
             status: "completed",
             completed_at: this.lastRunCompletedAt,
             duration_ms: this.lastRunDurationMs,
-            metadata: {
-              sourceWindow,
-              sites: SITE_CONSUMPTION_SITES,
-            },
-          });
+              metadata: {
+                sourceWindow,
+                sites: SITE_CONSUMPTION_SITES,
+                reason: options.reason ?? "scheduled-refresh",
+              },
+            });
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Site consumption refresh failed";
@@ -740,6 +762,20 @@ class SiteConsumptionEngine {
 
   public requestRefresh() {
     void this.refresh();
+  }
+
+  public requestBackfill(fromDate: string, toDate: string) {
+    void this.refresh({ fromDate, toDate, reason: "manual-backfill" });
+  }
+
+  public async backfill(fromDate: string, toDate: string) {
+    await this.refresh({ fromDate, toDate, reason: "manual-backfill" });
+    return {
+      accepted: true,
+      reason: "Site consumption backfill completed.",
+      sourceWindow: this.state.snapshot.sourceWindow,
+      lastUpdatedAt: this.state.lastUpdatedAt,
+    };
   }
 
   public start() {

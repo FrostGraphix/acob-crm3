@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { AppLayout } from "./components/layout/AppLayout";
+import { ReferenceShell } from "./components/layout/ReferenceShell";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SkeletonTable } from "./components/common/LoadingSkeleton";
 import { AuthProvider } from "./contexts/AuthProvider";
@@ -33,6 +33,16 @@ const ManagementAnalyticsPage = lazy(() =>
 const DataPage = lazy(() => loadLazyPage("DataPage", () => import("./pages/DataPage"), "DataPage"));
 const TokenGeneratePage = lazy(() =>
   loadLazyPage("TokenGeneratePage", () => import("./pages/TokenGeneratePage"), "TokenGeneratePage"),
+);
+const ReferenceMirrorPage = lazy(() =>
+  loadLazyPage(
+    "ReferenceMirrorPage",
+    () => import("./pages/ReferenceMirrorPage"),
+    "ReferenceMirrorPage",
+  ),
+);
+const TokenRecordPage = lazy(() =>
+  loadLazyPage("TokenRecordPage", () => import("./pages/TokenRecordPage"), "TokenRecordPage"),
 );
 const RemoteOperationPage = lazy(() =>
   loadLazyPage(
@@ -77,6 +87,14 @@ const WalletAdminVendorOnboardingPage = lazy(() =>
   ),
 );
 
+const reportSectionKeys = new Set(["prepay-report", "remote-report", "data-report", "load-profile"]);
+const remoteSectionKeys = new Set([
+  "remote-operation",
+  "remote-operation-gprs",
+  "remote-operation-task",
+  "remote-operation-task-gprs",
+]);
+
 function LoadingFallback() {
   return (
     <div style={{ padding: "2rem" }}>
@@ -91,21 +109,41 @@ function renderPage(page: AppPageConfig) {
       <Suspense fallback={<LoadingFallback />}>
         {page.path === "/management/analytics" ? <ManagementAnalyticsPage /> : null}
         {page.path === "/design-system" ? <DesignSystemPage /> : null}
+        {page.path === "/token-generate/credit-token" ? (
+          <ReferenceMirrorPage pageTitle="Credit Token" referenceHash="#/token-generate/credit-token" />
+        ) : null}
+        {page.path === "/token-record/credit-token-record" ? (
+          <ReferenceMirrorPage
+            pageTitle="Credit Token Record"
+            referenceHash="#/token-record/credit-token-record"
+          />
+        ) : null}
         {page.kind === "data" && page.path === "/wallet-admin/vendor-onboarding" ? (
           <WalletAdminVendorOnboardingPage page={page} />
         ) : null}
-        {page.kind === "dashboard" && page.path !== "/management/analytics" ? <DashboardPage /> : null}
-        {page.kind === "data" && (page.sectionKey === "data-report" || page.sectionKey === "load-profile") ? (
+        {page.kind === "dashboard" && page.path !== "/management/analytics" ? (
+          <DashboardPage />
+        ) : null}
+        {page.kind === "data" && reportSectionKeys.has(page.sectionKey) ? (
           <ReportsPage />
         ) : null}
-        {page.kind === "data" && page.sectionKey === "token-generate" ? <TokenGeneratePage page={page} /> : null}
-        {page.kind === "data" && page.sectionKey === "remote-operation" ? <RemoteOperationPage page={page} /> : null}
+        {page.kind === "data" &&
+        page.sectionKey === "token-generate" &&
+        page.path !== "/token-generate/credit-token" ? (
+          <TokenGeneratePage page={page} />
+        ) : null}
+        {page.kind === "data" &&
+        page.sectionKey === "token-record" &&
+        page.path !== "/token-record/credit-token-record" ? (
+          <TokenRecordPage page={page} />
+        ) : null}
+        {page.kind === "data" && remoteSectionKeys.has(page.sectionKey) ? <RemoteOperationPage page={page} /> : null}
         {page.kind === "data" &&
         page.path !== "/wallet-admin/vendor-onboarding" &&
         page.sectionKey !== "token-generate" &&
-        page.sectionKey !== "data-report" &&
-        page.sectionKey !== "load-profile" &&
-        page.sectionKey !== "remote-operation" ? (
+        page.sectionKey !== "token-record" &&
+        !reportSectionKeys.has(page.sectionKey) &&
+        !remoteSectionKeys.has(page.sectionKey) ? (
           <DataPage page={page} />
         ) : null}
         {page.kind === "profile" && page.path !== "/design-system" ? <ProfilePage /> : null}
@@ -158,14 +196,22 @@ function buildWorkspaceSections(
 }
 
 function AppRoutes({ pages }: { pages: AppPageConfig[] }) {
+  const routeDefinitions = pages.flatMap((page) =>
+    [page.path, ...(page.aliasPaths ?? [])].map((path) => ({
+      path,
+      page,
+      key: `${page.path}::${path}`,
+    })),
+  );
+
   return (
     <Routes>
       <Route path="/" element={<Navigate replace to={defaultPath} />} />
       <Route path="/login" element={<Navigate replace to={defaultPath} />} />
-      <Route path="/management" element={<Navigate replace to="/management/analytics" />} />
+      <Route path="/management" element={<Navigate replace to="/management/meter" />} />
       <Route path="/site-consumption" element={<Navigate replace to="/data-report/site-consumption" />} />
-      {pages.map((page) => (
-        <Route key={page.path} path={page.path} element={renderPage(page)} />
+      {routeDefinitions.map(({ key, path, page }) => (
+        <Route key={key} path={path} element={renderPage(page)} />
       ))}
       <Route path="*" element={<Navigate replace to={defaultPath} />} />
     </Routes>
@@ -196,6 +242,9 @@ function AppContent() {
     const userSections = filterNavigationSectionsForUser(navigationSections, user);
     return buildWorkspaceSections(userSections, currentWorkspace);
   }, [currentWorkspace, user]);
+  const useReferenceStandaloneShell =
+    currentPage.path === "/token-generate/credit-token" ||
+    currentPage.path === "/token-record/credit-token-record";
 
   useEffect(() => {
     if (loading) return;
@@ -251,8 +300,12 @@ function AppContent() {
     return <AppRoutes pages={accessiblePages} />;
   }
 
+  if (useReferenceStandaloneShell) {
+    return <AppRoutes pages={accessiblePages} />;
+  }
+
   return (
-    <AppLayout
+    <ReferenceShell
       currentPage={currentPage}
       onLogout={async () => {
         await logout();
@@ -262,7 +315,7 @@ function AppContent() {
       sections={accessibleSections}
     >
       <AppRoutes pages={accessiblePages} />
-    </AppLayout>
+    </ReferenceShell>
   );
 }
 
